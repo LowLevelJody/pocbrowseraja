@@ -103,7 +103,7 @@
     <button class="demo-button" onclick="safeDemo()">POC</button>
 
     <div class="flag-hunt">
-      <strong>Address-bar disappearance leads to originless dialogs</strong><br>
+      <strong>Origin text missing from native JS dialogs on Arc for Android (UI spoofing / origin-less alert)</strong><br>
     </div>
   </div>
 
@@ -116,15 +116,12 @@
       setTimeout(() => {
         try {
 win.document.write(`
-  <h1>This is not Google!</h1>
-  <button id="btn">Click me</button>
-
+  <h1>This is not google!</h1>
   <script>
-    document.getElementById('btn').addEventListener('click', function() {
-      alert("i love you");
-    });
+    alert("www.google.com says\\nThis is not Google !");
   <\/script>
 `);
+
 
           win.document.close();
           console.log("✅ Content injection succeeded (about:blank only)");
