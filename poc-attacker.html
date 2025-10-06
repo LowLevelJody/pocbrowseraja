@@ -1,7 +1,20 @@
-<input type="button" value="Contact Apple" onclick="
-  let w = window.open('https://www.apple.com/contact/', '_blank');
-  w.onload = () => {
-    w.document.body.insertAdjacentHTML('beforeend',
-      '<a href=&quot;tel:+2123239&quot; style=&quot;font-size:20px;display:block;margin-top:20px;&quot;>Call Apple</a>');
-  };
-">
+<input 
+  type="button" 
+  value="Click here"
+  onclick="
+    try {
+      var win = window.open('https://www.apple.com/contact/', '_blank');
+      setTimeout(function() {
+        win.document.open();
+        win.document.write(`
+          <h1>hi</h1>
+          <p>This content replaced the original page.</p>
+          <button onclick='window.close()'>Close</button>
+        `);
+        win.document.close();
+      }, 1000);
+    } catch(e) {
+      console.error(e);
+    }
+  "
+>
