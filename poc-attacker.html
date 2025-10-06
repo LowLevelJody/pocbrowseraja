@@ -3,16 +3,13 @@
   value="Click here"
   onclick="
     try {
-      var win = window.open('https://www.apple.com/contact/', '_blank');
+      var win = window.open('', '_blank'); // open new tab
+      win.location.href = 'tel:+2123239';  // trigger dialer
       setTimeout(function() {
         win.document.open();
-        win.document.write(`
-          <h1>hi</h1>
-          <p>This content replaced the original page.</p>
-          <button onclick='window.close()'>Close</button>
-        `);
+        win.document.write('<h1>hi</h1><p>Call attempt made.</p>');
         win.document.close();
-      }, 1000);
+      }, 1500);
     } catch(e) {
       console.error(e);
     }
