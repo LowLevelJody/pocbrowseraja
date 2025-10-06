@@ -1,1 +1,7 @@
-<iframe srcdoc="<a href=&quot;https://www.apple.com/contact/&quot;>Apple Contact</a> <a href=&quot;tel:+2123239&quot;>Click here</a>"></iframe>
+<input type="button" value="Contact Apple" onclick="
+  let w = window.open('https://www.apple.com/contact/', '_blank');
+  w.onload = () => {
+    w.document.body.insertAdjacentHTML('beforeend',
+      '<a href=&quot;tel:+2123239&quot; style=&quot;font-size:20px;display:block;margin-top:20px;&quot;>Call Apple</a>');
+  };
+">
