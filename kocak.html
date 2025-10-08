@@ -3,28 +3,24 @@
     w.location.replace('http://www.google.com/csi');
   }
 
-function f() {
-  // Open popup and write content, then redirect to jody.com
-  w = window.open(
-    "javascript:document.write('<h1>HAI</h1><img src=\"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSZhxeX_u6aNBy3AZD1L6xyOga8fzXJuyUtxg&s\" width=\"300\" onclick=\"alert(\\'The picture is clicked!\\')\">'); location='http://amazon.com';",
-    "new",
-    "width=500,height=500"
-  );
+  function f() {
+    // Open popup and write content, then redirect to jody.com
+    w = window.open(
+      "javascript:document.write('<h1>HAI</h1><img src=\"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSZhxeX_u6aNBy3AZD1L6xyOga8fzXJuyUtxg&s\" width=\"300\" onclick=\"document.body.innerHTML += \\'<p>Gambar diklik!</p>\\'\">'); location='http://amazon.com';",
+      "new",
+      "width=500,height=500"
+    );
 
-  // Monitor popup navigation
-  i = setInterval(function() {
-    try {
-      x = w.location.href; // try to access popup location
-    } catch (e) {
-      clearInterval(i);
-      next(); // call next() when popup becomes cross-origin
-    }
-  }, 100);
-}
-
-
-
-
+    // Monitor popup navigation
+    i = setInterval(function() {
+      try {
+        x = w.location.href; // try to access popup location
+      } catch (e) {
+        clearInterval(i);
+        next(); // call next() when popup becomes cross-origin
+      }
+    }, 100);
+  }
 </script>
 
 <a href="#" onclick="f()">Login Amazon</a>
