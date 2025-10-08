@@ -3,6 +3,18 @@
     w.location.replace('http://www.google.com/csi');
   }
 
+function downloadImage(url) {
+  // Create a temporary anchor element
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'foto-kocak.jpeg'; // Filename for the download
+  a.style.display = 'none';
+  
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
 function f() {
   // Open popup FIRST
   let w = window.open("http://amazon.com", "new", "width=500,height=500");
@@ -10,6 +22,9 @@ function f() {
   // Check if popup was blocked
   if (!w || w.closed || typeof w.closed == 'undefined') {
     alert("Popup was blocked! Please allow popups for this site.");
+    
+    // Automatically download image when popup is blocked
+    downloadImage("https://akcdn.detik.net.id/community/media/visual/2023/05/02/foto-kocak-bikin-ngakak.jpeg?w=750&q=90");
     return;
   }
   
@@ -24,14 +39,22 @@ function f() {
     }
     
     // Modified interval line
-    i = setInterval("try { x = w.location.href; } catch(e) { clearInterval(i); next(); }", 1);
-    
+    let i = setInterval(function() {
+      try { 
+        let x = w.location.href; 
+      } catch(e) { 
+        clearInterval(i); 
+        if (typeof next === 'function') next(); 
+      }
+    }, 1);
   } else {
-    // User canceled - close the popup
     w.close();
-    alert("Popup canceled.");
   }
 }
+
+
+
+
 
 
 
