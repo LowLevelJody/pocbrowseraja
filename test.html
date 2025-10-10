@@ -1,33 +1,20 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Assistant Helper</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-    }
-    button {
-      padding: 15px 30px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-  </style>
-</head>
-<body>
-  <h1>Open Google Gemini</h1>
-  <button onclick="openGemini()">Click to Open</button>
+<h1>Click anywhere and wait.</h1>
 
-  <script>
-    function openGemini() {
-      const utterance = new SpeechSynthesisUtterance('Opening Google Gemini');
-      speechSynthesis.speak(utterance);
-      setTimeout(() => {
-        window.location.href = 'market://launch?id=com.google.android.apps.bard';
-      }, 1000);
+<script>
+  document.addEventListener('click', () => {
+    const utterance = new SpeechSynthesisUtterance('Turn on airplane mode');
+
+    function speakLoop() {
+      if (!speechSynthesis.speaking) {
+        speechSynthesis.speak(utterance);
+      }
+      setTimeout(speakLoop, 2000);
     }
-  </script>
-</body>
-</html>
+
+    // Start speech
+    speakLoop();
+
+    // Try to open Google Assistant (Android Chrome only)
+    location.href = 'market://launch?id=com.google.android.apps.bard';
+  });
+</script>
