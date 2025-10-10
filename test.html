@@ -1,20 +1,65 @@
-<h1>Click anywhere and wait.</h1>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Speech Synthesis Demo</title>
+</head>
+<body>
+    <h1>Click anywhere to start</h1>
 
-<script>
-  document.addEventListener('click', () => {
-    const utterance = new SpeechSynthesisUtterance('Turn on airplane mode');
+    <script>
+        document.addEventListener('click', () => {
+            // Initialize speech synthesis properly
+            const synth = window.speechSynthesis;
+            
+            // Need to get voices first (may need a moment to load)
+            let voices = synth.getVoices();
+            
+            // On some browsers, voices load asynchronously
+            if (voices.length === 0) {
+                synth.onvoiceschanged = () => {
+                    voices = synth.getVoices();
+                    speakText();
+                };
+            } else {
+                speakText();
+            }
+            
+            function speakText() {
+                // Create utterance with the command
+                const utterance = new SpeechSynthesisUtterance('Turn on airplane mode');
+                
+                // Select a voice if available
+                if (voices.length > 0) {
+                    // Prefer a default system voice
+                    utterance.voice = voices.find(v => v.default) || voices[0];
+                }
+                
+                // Set utterance properties
+                utterance.rate = 1;
+                utterance.pitch = 1;
+                utterance.volume = 1;
+                
+                // Speak the utterance
+                synth.speak(utterance);
+                
+                // Set up repeating speech
+                utterance.onend = () => {
+                    // Schedule next speech after a delay
+                    setTimeout(() => {
+                        synth.speak(new SpeechSynthesisUtterance('Turn on airplane mode'));
+                    }, 4000);
+                };
+            }
+            
 
-    function speakLoop() {
-      if (!speechSynthesis.speaking) {
-        speechSynthesis.speak(utterance);
-      }
-      setTimeout(speakLoop, 2000);
-    }
-
-    // Start speech
-    speakLoop();
-
-    // Try to open Google Assistant (Android Chrome only)
-    location.href = 'market://launch?id=com.google.android.apps.bard';
-  });
-</script>
+            setTimeout(() => {
+                try {
+                    window.location.href = 'intent://com.google.android.apps.bard#Intent;scheme=android-app;end';
+                } catch(e) {
+                    window.location.href = 'googleassistant://';
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
