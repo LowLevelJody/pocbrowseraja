@@ -1,14 +1,33 @@
-<h1>Click anywhere and wait.</h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Assistant Helper</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    button {
+      padding: 15px 30px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Open Google Gemini</h1>
+  <button onclick="openGemini()">Click to Open</button>
 
-<script>
-  onclick = () => {
-    const utterance = new SpeechSynthesisUtterance('Turn on airplane mode');
-
-    setInterval(() => {
-      if (speechSynthesis.speaking) return;
+  <script>
+    function openGemini() {
+      const utterance = new SpeechSynthesisUtterance('Opening Google Gemini');
       speechSynthesis.speak(utterance);
-    }, 2000);
-
-    open('market://launch?id=com.google.android.apps.googleassistant');
-  };
-</script>
+      setTimeout(() => {
+        window.location.href = 'market://launch?id=com.google.android.apps.bard';
+      }, 1000);
+    }
+  </script>
+</body>
+</html>
