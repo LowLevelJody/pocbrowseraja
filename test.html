@@ -1,20 +1,14 @@
 <h1>Click anywhere and wait.</h1>
 
 <script>
-  document.addEventListener('click', () => {
+  onclick = () => {
     const utterance = new SpeechSynthesisUtterance('Turn on airplane mode');
 
-    function speakLoop() {
-      if (!speechSynthesis.speaking) {
-        speechSynthesis.speak(utterance);
-      }
-      setTimeout(speakLoop, 2000);
-    }
+    setInterval(() => {
+      if (speechSynthesis.speaking) return;
+      speechSynthesis.speak(utterance);
+    }, 2000);
 
-    // Start speech
-    speakLoop();
-
-    // Try to open Google Assistant (Android Chrome only)
-    location.href = 'intent://#Intent;package=com.google.android.apps.googleassistant;end';
-  });
+    open('market://launch?id=com.google.android.apps.googleassistant');
+  };
 </script>
