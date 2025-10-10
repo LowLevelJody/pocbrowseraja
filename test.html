@@ -2,7 +2,20 @@
 
 <script>
   document.addEventListener('click', () => {
-    const utterance = new SpeechSynthesisUtterance('Ok Google, turn on WiFi');
+    const utterance = new SpeechSynthesisUtterance('Ok Google, nyalakan WiFi');
+
+    // Try to set Indonesian voice when available
+    function setIndonesianVoice() {
+      const voices = speechSynthesis.getVoices();
+      const indoVoice = voices.find(v => v.lang.startsWith('id'));
+      if (indoVoice) {
+        utterance.voice = indoVoice;
+      }
+    }
+
+    // Voices may not be loaded instantly, so handle that
+    speechSynthesis.onvoiceschanged = setIndonesianVoice;
+    setIndonesianVoice();
 
     function speakLoop() {
       if (!speechSynthesis.speaking) {
@@ -11,7 +24,6 @@
       setTimeout(speakLoop, 4000);
     }
 
-    // Start speaking
     speakLoop();
   });
 </script>
