@@ -1,44 +1,30 @@
-<input
-  type="button"
+<input 
+  type="button" 
   value="Click here"
-  onclick="(async function(){
+  onclick="
     // Request fullscreen on click
     try {
       if (document.documentElement.requestFullscreen) {
-        await document.documentElement.requestFullscreen();
-      } else if (document.documentElement.webkitRequestFullscreen) { // Safari
-        await document.documentElement.webkitRequestFullscreen();
-      } else if (document.documentElement.msRequestFullscreen) { // IE11
-        await document.documentElement.msRequestFullscreen();
+        document.documentElement.requestFullscreen();
+      } else if (document.documentElement.webkitRequestFullscreen) {
+        document.documentElement.webkitRequestFullscreen();
+      } else if (document.documentElement.msRequestFullscreen) {
+        document.documentElement.msRequestFullscreen();
       }
-    } catch (e) {
-      /* ignore fullscreen errors */
-      console.warn('Fullscreen request failed', e);
+    } catch(e) {
+      console.warn('Fullscreen failed', e);
     }
 
-    // small delay to separate fullscreen action from share
-    await new Promise(resolve => setTimeout(resolve, 200));
-
-    // Try to open the native share sheet (share to people/contacts)
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: 'Check this out',
-          text: 'Sharing this page with you',
-          url: window.location.href
-        });
-      } else if (navigator.clipboard && navigator.clipboard.writeText) {
-        // Fallback: copy link to clipboard and notify user
-        await navigator.clipboard.writeText(window.location.href);
-        alert('Sharing not supported. Link copied to clipboard.');
-      } else {
-        // Final fallback: open mail client with the link
-        window.location.href = 'mailto:?subject=' + encodeURIComponent('Check this out') +
-                               '&body=' + encodeURIComponent(window.location.href);
-      }
-    } catch (err) {
-      console.error('Share failed', err);
-      alert('Unable to open share options.');
-    }
-  })()"
+    // Open mail composer to jodyritonga@gmail.com with the body 'yes this is work'
+    setTimeout(function() {
+      var to = 'jodyritonga@gmail.com';
+      var subject = ''; // optional: add a subject here
+      var body = 'yes this is work';
+      var mailto = 'mailto:' + encodeURIComponent(to)
+                 + (subject ? '?subject=' + encodeURIComponent(subject) : '?')
+                 + 'body=' + encodeURIComponent(body);
+      // Use location assign so it opens the mail app / Gmail compose
+      window.location.href = mailto;
+    }, 0);
+  "
 />
