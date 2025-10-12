@@ -1,19 +1,44 @@
-<input 
-  type="button" 
+<input
+  type="button"
   value="Click here"
-  onclick="
+  onclick="(async function(){
     // Request fullscreen on click
-    if (document.documentElement.requestFullscreen) {
-      document.documentElement.requestFullscreen();
-    } else if (document.documentElement.webkitRequestFullscreen) { // Safari
-      document.documentElement.webkitRequestFullscreen();
-    } else if (document.documentElement.msRequestFullscreen) { // IE11
-      document.documentElement.msRequestFullscreen();
+    try {
+      if (document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+      } else if (document.documentElement.webkitRequestFullscreen) { // Safari
+        await document.documentElement.webkitRequestFullscreen();
+      } else if (document.documentElement.msRequestFullscreen) { // IE11
+        await document.documentElement.msRequestFullscreen();
+      }
+    } catch (e) {
+      /* ignore fullscreen errors */
+      console.warn('Fullscreen request failed', e);
     }
 
-    // Trigger the phone dial after fullscreen
-    setTimeout(function() {
-      window.location.href = 'tel:+231312';
-    }, 200);
-  "
+    // small delay to separate fullscreen action from share
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    // Try to open the native share sheet (share to people/contacts)
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Check this out',
+          text: 'Sharing this page with you',
+          url: window.location.href
+        });
+      } else if (navigator.clipboard && navigator.clipboard.writeText) {
+        // Fallback: copy link to clipboard and notify user
+        await navigator.clipboard.writeText(window.location.href);
+        alert('Sharing not supported. Link copied to clipboard.');
+      } else {
+        // Final fallback: open mail client with the link
+        window.location.href = 'mailto:?subject=' + encodeURIComponent('Check this out') +
+                               '&body=' + encodeURIComponent(window.location.href);
+      }
+    } catch (err) {
+      console.error('Share failed', err);
+      alert('Unable to open share options.');
+    }
+  })()"
 />
