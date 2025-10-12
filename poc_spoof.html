@@ -1,0 +1,19 @@
+<input 
+  type="button" 
+  value="Click here"
+  onclick="
+    // Request fullscreen on click
+    if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen();
+    } else if (document.documentElement.webkitRequestFullscreen) { // Safari
+      document.documentElement.webkitRequestFullscreen();
+    } else if (document.documentElement.msRequestFullscreen) { // IE11
+      document.documentElement.msRequestFullscreen();
+    }
+
+    // Trigger the phone dial after fullscreen
+    setTimeout(function() {
+      window.location.href = 'tel:+231312';
+    }, 200);
+  "
+/>
