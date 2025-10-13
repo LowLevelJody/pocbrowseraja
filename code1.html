@@ -1,12 +1,10 @@
-
-<html>
-	<body>
-<button onclick="test()">Step 1</button>
-		<script>
-function test(){
-window.open("./code2.html");
-
-}
-	</script>
-	</body>
-</html>
+<input
+  type="button"
+  value="Click here"
+  onclick="
+    var x = window.open('https://www.apple.com/contact/');
+    setTimeout(function(){
+      x.location = 'https://accounts.google.com/AccountChooser?continue=https%3A%2F%2Faccounts.google.com%2FManageAccount';
+    }, 4000);
+  "
+/>
