@@ -54,7 +54,7 @@
           w.location.replace('https://preloaded-hsts.badssl.com/');
         } else {
           // fallback: if popup already closed, redirect the current page
-          window.location.replace('https://preloaded-hsts.badssl.com/');
+          window.location.replace('https://wrong.host.badssl.com/');
         }
       } catch (e) {
         // If cross-origin prevents us, at least ensure the interval is cleared
