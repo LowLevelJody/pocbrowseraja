@@ -66,7 +66,7 @@
       // open a new window. This uses a javascript: URL like your original,
       // but note: browsers sometimes block or sanitize `javascript:` URLs.
       w = window.open(
-        "javascript:document.prompt('spoof');location='http://google.com'",
+        "javascript:prompt('spoof');location='http://google.com'",
         "new",
         "width=500,height=500"
       );
