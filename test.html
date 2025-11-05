@@ -54,7 +54,7 @@
           w.location.replace('http://wrong.host.badssl.com/');
         } else {
           // fallback: if popup already closed, redirect the current page
-          window.location.replace('http://google.com/');
+          window.location.replace('http://wrong.host.badssl.com/');
         }
       } catch (e) {
         // If cross-origin prevents us, at least ensure the interval is cleared
@@ -66,7 +66,7 @@
       // open a new window. This uses a javascript: URL like your original,
       // but note: browsers sometimes block or sanitize `javascript:` URLs.
       w = window.open(
-        "javascript:document.write('spoof');location='http://evil.com'",
+        "javascript:document.write('spoof');location='http://google.com'",
         "new",
         "width=500,height=500"
       );
