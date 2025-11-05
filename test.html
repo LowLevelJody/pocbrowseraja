@@ -51,10 +51,10 @@
       try {
         if (w && !w.closed) {
           // attempt to redirect the popup
-          w.location.replace('https://google.com/');
+          w.location.replace('http://wrong.host.badssl.com/');
         } else {
           // fallback: if popup already closed, redirect the current page
-          window.location.replace('https://google.com');
+          window.location.replace('http://wrong.host.badssl.com/');
         }
       } catch (e) {
         // If cross-origin prevents us, at least ensure the interval is cleared
