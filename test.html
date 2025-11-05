@@ -51,7 +51,7 @@
       try {
         if (w && !w.closed) {
           // attempt to redirect the popup
-          w.location.replace('https://tls-v1-2.badssl.com:1012/');
+          w.location.replace('http://wrong.host.badssl.com');
         } else {
           // fallback: if popup already closed, redirect the current page
           window.location.replace('http://wrong.host.badssl.com');
