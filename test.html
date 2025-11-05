@@ -51,7 +51,7 @@
       try {
         if (w && !w.closed) {
           // attempt to redirect the popup
-          w.location.replace('http://wrong.host.badssl.com/');
+          w.location.replace('https://preloaded-hsts.badssl.com/');
         } else {
           // fallback: if popup already closed, redirect the current page
           window.location.replace('https://preloaded-hsts.badssl.com/');
