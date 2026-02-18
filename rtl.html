@@ -1,11 +1,16 @@
-<script>
-    function spoof(){
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Scan QR</title>
+</head>
+<body>
+  <img src="spoof_qr.png" alt="QR Code"><br>
+  <p id="msg">Scan it</p>
 
-        document.write("<h1>hei jodz</h1>");
-        document.location.href = 'http://عربي.امارات/google.com/test/test/test';
-        setInterval(function(){
-            document.location.href('http://عربي.امارات/google.com/test/test/test', 'x');
-        }, 1000);
-    }
-</script>
-<input type="button" class="button" value="Click me" onclick="spoof()">
+  <script>
+    setTimeout(() => {
+      document.getElementById('msg').textContent = "Aha! your not in here!";
+    }, 5000);
+  </script>
+</body>
+</html>
