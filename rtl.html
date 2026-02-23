@@ -1,20 +1,32 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Scan QR</title>
-</head>
-<body>
-  <img id="qr" src="https://lowleveljody.github.io/pocbrowseraja/spoof_qr.png" alt="QR Code"><br>
-  <p id="msg">Scan it</p>
+<title>Awesome Video Player</title>
+<style>
+  #content { display: none; }
+</style>
 
-  <script>
-    setTimeout(() => {
-      document.getElementById('qr').style.display = 'none';
-      const msg = document.getElementById('msg');
-      msg.textContent = "Aha! You're not in here!";
-      msg.style.fontSize = '60px';
-      msg.style.fontWeight = 'bold';
-    }, 8000);
-  </script>
-</body>
-</html>
+<center>
+<br><h2>Watch the <b>Video</b> below <br><br><br><br>
+<img style="cursor: pointer;"
+     src="https://azbigmedia.com/wp-content/uploads/2020/04/vlc-media-player.png"
+     width="600"
+     height="300"
+     id="button">
+
+<script>
+  var pipOpen = async () => {
+      const pipWindow = await documentPictureInPicture.requestWindow({
+          width: 9999,
+          height: 9999
+      });
+
+      const iframe = document.createElement("iframe");
+      iframe.src = "https://example.com";
+      iframe.style.width = "100%";
+      iframe.style.height = "100%";
+      iframe.style.border = "none";
+
+      pipWindow.document.body.style.margin = "0";
+      pipWindow.document.body.appendChild(iframe);
+  };
+
+  button.onclick = pipOpen;
+</script>
