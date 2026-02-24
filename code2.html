@@ -1,1 +1,25 @@
-<h1>ingin dansa</h1>
+<!DOCTYPE html>
+<html>
+<body>
+
+<button id="btn">Open and Write</button>
+
+<script>
+document.getElementById("btn").addEventListener("click", () => {
+  const v = window.open('about:#blank#https://example.com');
+
+  if (!v) return;
+
+  // Clear safely
+  v.document.body.replaceChildren();
+
+  // Create element (modern way)
+  const h1 = v.document.createElement("h1");
+  h1.textContent = "hi its me";
+
+  v.document.body.append(h1);
+});
+</script>
+
+</body>
+</html>
