@@ -79,27 +79,36 @@ if (location.hash === '#x') {
   function renderMain() {
     document.body.innerHTML = `
       <center>
-        <br><h3>Check your porto here!</h3><br><br>
-        <img width=400
+        <br>
+        <h3>Check your porto here!</h3>
+        <br><br>
+        <img id="goBtn"
+             width="400"
              src="https://kripto.ajaib.co.id/wp-content/uploads/2022/11/ezgif.com-gif-maker-2022-11-22T093514.964-1024x575.webp"
-             style="cursor:pointer"
-             onclick="location='about:blank#https://google.com@example.com">
+             style="cursor:pointer">
       </center>
     `;
+
+    document.getElementById("goBtn").onclick = function () {
+      location.href = "about:blank#https://google.com@example.com";
+    };
   }
 
   function renderChanged() {
     document.body.innerHTML = `
       <center>
-        <br><h3>error? go to www.fix.com</h3>
+        <br>
+        <h3>error? go to www.fix.com</h3>
       </center>
     `;
   }
 
-  let backCount = sessionStorage.getItem("backCount") || 0;
+  let backCount = parseInt(sessionStorage.getItem("backCount") || "0");
 
-  window.addEventListener("pageshow", function(e) {
-    if (performance.navigation.type === 2 || e.persisted) {
+  window.addEventListener("pageshow", function (e) {
+    const nav = performance.getEntriesByType("navigation")[0];
+
+    if ((nav && nav.type === "back_forward") || e.persisted) {
       backCount++;
       sessionStorage.setItem("backCount", backCount);
 
