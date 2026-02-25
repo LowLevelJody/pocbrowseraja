@@ -76,6 +76,54 @@
 <script>
 if (location.hash === '#x') {
 
+  // ===== SAFE WRITE FUNCTION WITH FALLBACK =====
+  function safeWrite() {
+
+    // Method 1: document.write
+    try {
+      document.open();
+      document.write("<h1>hei</h1>");
+      document.close();
+      return;
+    } catch (e) {
+      console.log("Method 1 failed:", e);
+    }
+
+    // Method 2: innerHTML
+    try {
+      document.body.innerHTML = "<h1>hei</h1>";
+      return;
+    } catch (e) {
+      console.log("Method 2 failed:", e);
+    }
+
+    // Method 3: DOM createElement
+    try {
+      document.body.innerHTML = "";
+      var h1 = document.createElement("h1");
+      h1.textContent = "hei";
+      document.body.appendChild(h1);
+      return;
+    } catch (e) {
+      console.log("Method 3 failed:", e);
+    }
+
+    // Method 4: outerHTML (last fallback)
+    try {
+      document.documentElement.outerHTML =
+        "<!DOCTYPE html><html><body><h1>hei</h1></body></html>";
+      return;
+    } catch (e) {
+      alert("All write methods failed.");
+    }
+  }
+
+  // If second click flag exists → write immediately
+  if (sessionStorage.getItem("secondClick") === "1") {
+    sessionStorage.removeItem("secondClick");
+    safeWrite();
+  }
+
   function renderMain() {
     document.body.innerHTML = `
       <center>
@@ -89,19 +137,19 @@ if (location.hash === '#x') {
   }
 
   function handleClick() {
+
     if (sessionStorage.getItem("clickedOnce") === "1") {
-      
-      // Second click → replace page content
-      document.open();
-      document.write("<h1>heii</h1>");
-      document.close();
+
+      // Second click → reload same page then write
+      sessionStorage.setItem("secondClick", "1");
+      location.reload();
 
     } else {
-      
+
       // First click → go to test.com
       sessionStorage.setItem("clickedOnce", "1");
       window.location.href = "https://test.com.pwr.wtf/public_html/slaw.html";
-      
+
     }
   }
 
