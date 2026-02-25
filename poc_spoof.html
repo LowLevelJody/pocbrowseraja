@@ -76,44 +76,33 @@
 <script>
 if (location.hash === '#x') {
 
+  // If user already visited slaw and came back
+  if (sessionStorage.getItem("visitedSlaw") === "1") {
+    sessionStorage.removeItem("visitedSlaw");
+    window.location.href = "bangga.html";
+  }
+
   function renderMain() {
     document.body.innerHTML = `
       <center>
         <br><h3>Check your porto here!</h3><br><br>
-        <img width=400
+        <img width="400"
              src="https://kripto.ajaib.co.id/wp-content/uploads/2022/11/ezgif.com-gif-maker-2022-11-22T093514.964-1024x575.webp"
              style="cursor:pointer"
-             onclick="location.href='bangga.html'">
+             onclick="goToSlaw()">
       </center>
     `;
   }
 
-  function renderChanged() {
-    document.body.innerHTML = `
-      <center>
-        <br><h3>error? go to www.fix.com</h3>
-      </center>
-    `;
+  function goToSlaw() {
+    sessionStorage.setItem("visitedSlaw", "1");
+    window.location.href = "https://test.com.pwr.wtf/public_html/slaw.html";
   }
-
-  let backCount = sessionStorage.getItem("backCount") || 0;
-
-  window.addEventListener("pageshow", function(e) {
-    if (performance.navigation.type === 2 || e.persisted) {
-      backCount++;
-      sessionStorage.setItem("backCount", backCount);
-
-      if (backCount >= 3) {
-        renderChanged();
-        return;
-      }
-    }
-  });
 
   renderMain();
 }
 </script>
- 
+
 
 
 
