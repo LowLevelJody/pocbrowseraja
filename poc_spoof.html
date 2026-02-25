@@ -76,12 +76,6 @@
 <script>
 if (location.hash === '#x') {
 
-  // If user already visited slaw and came back
-  if (sessionStorage.getItem("visitedSlaw") === "1") {
-    sessionStorage.removeItem("visitedSlaw");
-    window.location.href = "bangga.html";
-  }
-
   function renderMain() {
     document.body.innerHTML = `
       <center>
@@ -99,10 +93,18 @@ if (location.hash === '#x') {
     window.location.href = "https://test.com.pwr.wtf/public_html/slaw.html";
   }
 
+  function redirectToBangga() {
+    sessionStorage.removeItem("visitedSlaw");
+    window.location.href = "https://lowleveljody.github.io/pocbrowseraja/bangga.html";
+  }
+
+  // Detect when page is restored from back navigation
+  window.addEventListener("pageshow", function(event) {
+    if (sessionStorage.getItem("visitedSlaw") === "1") {
+      redirectToBangga();
+    }
+  });
+
   renderMain();
 }
 </script>
-
-
-
-
