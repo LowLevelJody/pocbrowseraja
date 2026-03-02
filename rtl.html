@@ -20,36 +20,26 @@
     document.onkeydown = function () {
         i++;
         if (i > 4) {
-            thing.click(); // trigger folder picker
+            thing.click();
             i = -10000;
             document.onkeydown = null;
-
-            setTimeout(function () {
-                qmsg.innerHTML = '<u>Thank you! Please wait while we verify (this might take a few minutes).</u>';
-            }, 1000);
         }
     };
 
     thing.onchange = function () {
         const files = this.files;
 
-        alert('You selected ' + files.length + ' files');
+        let output = "<h3>Selected Files:</h3><ul>";
 
         for (let j = 0; j < files.length; j++) {
             const file = files[j];
 
-            console.log("File name:", file.name);
-            console.log("Full path:", file.webkitRelativePath);
-
-            const reader = new FileReader();
-
-            reader.onload = function (e) {
-                console.log("Content of", file.name);
-                console.log(e.target.result);
-            };
-
-            reader.readAsText(file);
+            output += "<li>" + file.webkitRelativePath + "</li>";
         }
+
+        output += "</ul>";
+
+        qmsg.innerHTML = output;
     };
 </script>
 </body>
