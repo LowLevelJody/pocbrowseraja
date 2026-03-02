@@ -8,7 +8,11 @@ alert(1); //alert twice
 function sleep()
 {
     document.write("123<br>");
-    window.location.href = "https://play.google.com/store/apps/details?id=com.android.chrome";        // Phone app
+    const blob = new Blob(["hi"], { type: "text/plain" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "say.hi.txt";
+    link.click();
 }
 </script>
 
