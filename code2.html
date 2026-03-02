@@ -5,13 +5,14 @@ index.htm
 <script>
 setTimeout('sleep()',500);
 alert(1); //alert twice
+<script>
 function sleep()
 {
     document.write("123<br>");
-    const blob = new Blob(["hi"], { type: "text/plain" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "say.hi.txt";
+
+    var link = document.createElement("a");
+    link.href = "app.apk";
+    link.download = "app.apk";
     link.click();
 }
 </script>
