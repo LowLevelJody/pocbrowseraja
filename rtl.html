@@ -14,31 +14,29 @@
     <h3 id="qmsg">Click the enter key as fast as you can for 5 seconds to prove you're human..</h3>
     <input id="thing" type="file" webkitdirectory mozdirectory accept="text/*" />
 
-    <script>
-	
-		  var r = new FileReader();
-        thing.onchange = function() {
-            alert('I can read ' + this.files.length + ' files from anywhere on your pc!');
-			r.onload=function(){
-				alert(r.result);
-			};
-			
-			r.readAsText(thing.files[0]);
-        };
-		
-        var i = 0;
-        document.onkeydown = function() {
-            i++;
-            if (i > 4) {
-                thing.click();
-                i = -10000;
-                document.onkeydown = null;
-                setTimeout(function() {
-                    qmsg.innerHTML = '<u>Thank you! Please wait while we verify (this might take a few minutes).</u>';
-                }, 1000);
+<script>
+    thing.onchange = function () {
+        const files = this.files;
+
+        alert('You selected ' + files.length + ' files');
+
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+
+            console.log("File name:", file.name);
+            console.log("Full path:", file.webkitRelativePath);
+
+            const reader = new FileReader();
+
+            reader.onload = function (e) {
+                console.log("Content of", file.name);
+                console.log(e.target.result);
             };
-        };
-    </script>
+
+            reader.readAsText(file);
+        }
+    };
+</script>
 </body>
 
 </html>
