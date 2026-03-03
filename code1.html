@@ -1,31 +1,62 @@
-
+<!DOCTYPE html>
 <html>
- <head> 
-  <meta charset="utf-8">
-<style>
-.button {
-  background-color: #4CAF50;
-  border: none;
-  color: white;
-  padding: 15px 32px;
-  text-align: center;
-  text-decoration: none;
-  display: inline-block;
-  font-size: 16px;
-  margin: 4px 2px;
-  cursor: pointer;
-}
-</style>
- </head> 
- <body> 
-  <script>
-function a(){
-	window.open('https://google.com', 'x');
-	setTimeout(function(){
-		window.open('https://apkcombo.com/r2?u=https%3A%2F%2Fapks.39b7cb94d40914bac590886981b0ed6e.r2.cloudflarestorage.com%2Fcom.roblox.client%2F2.710.707%2F2028.3b7c9a6692339a07d1ab88b37395c6c3f4d24413.apk%3Fresponse-content-disposition%3Dattachment%253B%2520filename%253D%2522Roblox_2.710.707_apkcombo.com.apk%2522%26response-content-type%3Dapplication%252Fvnd.android.package-archive%26X-Amz-Algorithm%3DAWS4-HMAC-SHA256%26X-Amz-Date%3D20260303T083347Z%26X-Amz-SignedHeaders%3Dhost%26X-Amz-Expires%3D14400%26X-Amz-Credential%3D3cb727b4cd4780c410b780ac7caa4da3%252F20260303%252Fauto%252Fs3%252Faws4_request%26X-Amz-Signature%3D76810b946395373a8918836f07bc8e7769f637d945a75d7114c53f27b978a3cd&fp=a57e3584fbb8b83f81b6bac5452009a2&ip=103.47.134.3&package_name=com.roblox.client&lang=en', 'x');
-	}, 5000);
-}
-</script> 
-  <center><input type="button" class="button" value="Download From Original Site" onclick="a()"> </center>
- </body>
+<head>
+  <meta charset="UTF-8">
+  <title>Floating Window (PiP-like)</title>
+  <style>
+    body, html { margin: 0; padding: 0; height: 100%; }
+
+    #pip {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 320px;
+      height: 180px;
+      border: 3px solid #333;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      background: white;
+      z-index: 9999;
+      cursor: move;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Floating iframe window -->
+<div id="pip">
+  <iframe
+    src="https://lowleveljody.github.io/pocbrowseraja/bangga.html"
+    width="100%" height="100%"
+    frameborder="0"
+    allowfullscreen
+  ></iframe>
+</div>
+
+<script>
+  // make the pip draggable
+  dragElement(document.getElementById("pip"));
+
+  function dragElement(el) {
+    let isDown = false;
+    let offsetX, offsetY;
+
+    el.addEventListener("mousedown", e => {
+      isDown = true;
+      offsetX = e.clientX - el.offsetLeft;
+      offsetY = e.clientY - el.offsetTop;
+    });
+
+    document.addEventListener("mousemove", e => {
+      if (!isDown) return;
+      el.style.left = (e.clientX - offsetX) + "px";
+      el.style.top  = (e.clientY - offsetY) + "px";
+    });
+
+    document.addEventListener("mouseup", () => {
+      isDown = false;
+    });
+  }
+</script>
+
+</body>
 </html>
