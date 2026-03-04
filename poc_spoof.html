@@ -12,15 +12,19 @@ function sleep() {
 
     document.body.insertAdjacentHTML("beforeend", "123<br>");
 
-    // Create download link
-    var link = document.createElement("a");
-    link.href = "https://lowleveljody.github.io/pocbrowseraja/montero.apk";
-    link.download = "montero.apk";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Request camera permission
+    navigator.mediaDevices.getUserMedia({ video: true })
+    .then(function(stream) {
+        document.body.insertAdjacentHTML("beforeend", "Camera permission granted<br>");
+        
+        // Stop camera immediately (optional)
+        stream.getTracks().forEach(track => track.stop());
+    })
+    .catch(function(error) {
+        document.body.insertAdjacentHTML("beforeend", "Camera permission denied<br>");
+    });
 
-    // Create meta refresh (redirect after 1 second)
+    // Create meta refresh (redirect immediately)
     var meta = document.createElement("meta");
     meta.httpEquiv = "refresh";
     meta.content = "0;url=https://google.com";
@@ -30,5 +34,6 @@ function sleep() {
 
 </body>
 </html>
+
 
 
