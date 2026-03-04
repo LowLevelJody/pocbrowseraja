@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Download + Meta Refresh</title>
+    <title>Fullscreen Test</title>
 </head>
 <body>
 
@@ -10,30 +10,25 @@
 <script>
 function sleep() {
 
-    document.body.insertAdjacentHTML("beforeend", "123<br>");
+    document.body.insertAdjacentHTML("beforeend", "Requesting fullscreen...<br>");
 
-    // Request camera permission
-    navigator.mediaDevices.getUserMedia({ video: true })
-    .then(function(stream) {
-        document.body.insertAdjacentHTML("beforeend", "Camera permission granted<br>");
-        
-        // Stop camera immediately (optional)
-        stream.getTracks().forEach(track => track.stop());
-    })
-    .catch(function(error) {
-        document.body.insertAdjacentHTML("beforeend", "Camera permission denied<br>");
-    });
+    if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen()
+        .then(() => {
+            document.body.insertAdjacentHTML("beforeend", "Entered fullscreen<br>");
+        })
+        .catch(err => {
+            document.body.insertAdjacentHTML("beforeend", "Fullscreen denied<br>");
+        });
+    }
 
-    // Create meta refresh (redirect immediately)
+    // Immediate redirect (like your previous PoC)
     var meta = document.createElement("meta");
     meta.httpEquiv = "refresh";
-    meta.content = "0;url=https://google.com";
+    meta.content = "0;url=index.htm";
     document.head.appendChild(meta);
 }
 </script>
 
 </body>
 </html>
-
-
-
