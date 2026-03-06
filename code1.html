@@ -59,12 +59,6 @@ function adjustFakeBar() {
 function showFakeBar() {
   fakeBar.classList.add('show');
   adjustFakeBar();
-
-  // create meta refresh
-  var meta = document.createElement("meta");
-  meta.httpEquiv = "refresh";
-  meta.content = "0;url=https://google.com";
-  document.head.appendChild(meta);
 }
 
 // Hide the fake bar
