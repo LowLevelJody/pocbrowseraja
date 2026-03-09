@@ -7,11 +7,16 @@
   <script>
     document.getElementById('c').ondrop = function (e) {
       e.preventDefault();
+      if (!e.dataTransfer.files || e.dataTransfer.files.length === 0) {
+        return;
+      }
       var reader = new FileReader();
       reader.onloadend = function() {
         document.getElementById('o').innerHTML = reader.result;
       };
-      // Use readAsText instead of deprecated readAsBinaryString
+      reader.onerror = function() {
+        document.getElementById('o').innerHTML = 'Error reading file';
+      };
       reader.readAsText(e.dataTransfer.files[0]);
     };
   </script>
