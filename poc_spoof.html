@@ -1,9 +1,41 @@
+<html>
+
+
+<a href="https://www.youtube.com">go to youtube</a>
+<br>
+
+
+
+<iframe id="1" src=""></iframe>
+
+
+<button onclick="document.getElementById('1').src='http://www.eurosport.fr';">iframe 1</button>
+
+<button onclick="document.getElementById('1').src='https://fr.wikipedia.org';">iframe 2</button>
+
+
+
+
+<button onclick="attack()">Start Attack</button>
+
+
 <script>
-    function spoof() {
-        var w = open()
-        w.opener = null
-        w.document.write('Current URL: ' + document.URL)
-        w.location = 'https://keitahaga.com/'
-    }
+
+
+function attack(){
+
+for(var i=0;i<2;i++){
+
+window.history.forward();
+
+}
+
+
+}
+
+
 </script>
-<a href='JavaScript:spoof()'>Go</a>
+
+
+
+</html>
