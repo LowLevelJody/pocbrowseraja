@@ -1,3 +1,18 @@
-<html> <a id="b" href="file:///etc/passwd">dragme</a> <br><br><br><br><br><br> <div id="c" ondragover="event.preventDefault()">here</div> <div id="o"></div>
-<script> document.getElementById('c').ondrop = function (e) { e.preventDefault(); var reader = new FileReader(); reader.onloadend = function() { document.getElementById('o').innerHTML = reader.result; }; reader.readAsBinaryString(e.dataTransfer.files[0]); return false; }; </script>
+<html>
+  <a id="b" href="file:///etc/passwd">dragme</a>
+  <br><br><br><br><br><br>
+  <div id="c" ondragover="event.preventDefault()">here</div>
+  <div id="o"></div>
+
+  <script>
+    document.getElementById('c').ondrop = function (e) {
+      e.preventDefault();
+      var reader = new FileReader();
+      reader.onloadend = function() {
+        document.getElementById('o').innerHTML = reader.result;
+      };
+      // Fix: Access the first file from the FileList
+      reader.readAsBinaryString(e.dataTransfer.files[0]);
+    };
+  </script>
 </html>
