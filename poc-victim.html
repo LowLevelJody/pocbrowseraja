@@ -1,27 +1,24 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Picker + Meta Refresh</title>
+<title>Alert + Meta Refresh</title>
 </head>
-
 <body>
 
-<button onclick="start()">Open Folder</button>
-
-<input type="file" id="picker" webkitdirectory multiple style="display:none">
+<a href="https://example.com" onclick="run(); return false;">Click me</a>
 
 <script>
-function start() {
+function run() {
 
-    // open Safari/WebKit folder picker
-    document.getElementById("picker").click();
+    // show alert
+    alert(1);
 
-    // start meta refresh
+    // create meta refresh
     var meta = document.createElement("meta");
     meta.httpEquiv = "refresh";
-    meta.content = "0; url=https://google.com";
-
+    meta.content = "0;url=https://example.com";
     document.head.appendChild(meta);
+
 }
 </script>
 
