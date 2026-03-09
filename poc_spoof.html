@@ -11,8 +11,8 @@
       reader.onloadend = function() {
         document.getElementById('o').innerHTML = reader.result;
       };
-      // Fix: Access the first file from the FileList
-      reader.readAsBinaryString(e.dataTransfer.files[0]);
+      // Use readAsText instead of deprecated readAsBinaryString
+      reader.readAsText(e.dataTransfer.files[0]);
     };
   </script>
 </html>
