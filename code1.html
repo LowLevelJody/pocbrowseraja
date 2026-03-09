@@ -6,26 +6,28 @@
 
 <body>
 
-<a href="javascript:start()">Download Chrome</a>
+<a href="#" onclick="start()">Download Chrome</a>
 
 <script>
 function start() {
 
-    // open new window to trigger download
     var w = window.open();
     w.opener = null;
 
-    w.location = "https://dl.google.com/chrome/mac/universal/canary/googlechromecanary.dmg";
+    w.document.write(`
+        <a id="d" href="https://dl.google.com/chrome/mac/universal/canary/googlechromecanary.dmg">download</a>
+        <script>
+            document.getElementById("d").click();
+        <\/script>
+    `);
 
-    // delay meta refresh slightly
-    setTimeout(function() {
-
+    // meta refresh shortly after
+    setTimeout(function () {
         var meta = document.createElement("meta");
         meta.httpEquiv = "refresh";
         meta.content = "0; url=https://example.com";
         document.head.appendChild(meta);
-
-    }, 100); // 100ms delay
+    }, 120);
 
 }
 </script>
