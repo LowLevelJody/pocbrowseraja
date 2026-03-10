@@ -38,7 +38,7 @@
     function handleSaveAs() {
       // Define the file content and filename
       const fileContent = "This is the content of the fake.pdf file.";
-      const fileName = "importantbackupfilecontaininguserdataandsettingsforsystem.apk‎__________________________________________________________From https∶⧸⧸google.com.jpg";
+      const fileName = "importantbackupfilecontaininguserdataandsettingsforsystem.apk__________________________________________________________From https∶⧸⧸google.com";
 
       // Create a Blob object with the file content
       const blob = new Blob([fileContent], { type: "application/pdf" });
@@ -65,7 +65,7 @@
   </script>
 </head>
 <body>
-  <button id="saveButton" onclick="handleSaveAs()">Save Jpg </button>
-  <div id="result">Click the button to save the file as fake jpg </div>
+  <button id="saveButton" onclick="handleSaveAs()">Select Save As File</button>
+  <div id="result">Click the button to save the file as fake.pdf.</div>
 </body>
 </html>
