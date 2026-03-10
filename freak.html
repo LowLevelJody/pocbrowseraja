@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Download Demo</title>
+</head>
+<body>
+
+<button onclick="downloadFile()">Download File</button>
+
+<script>
+function downloadFile() {
+
+  // fake PDF content
+  const content = "%PDF-1.4 Fake PDF file";
+
+  // create PDF blob
+  const blob = new Blob([content], { type: "application/pdf" });
+
+  // create download link
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+
+  // file will appear as .jpg
+  a.href = url;
+  a.download = "photo.jpg";
+
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+
+  URL.revokeObjectURL(url);
+}
+</script>
+
+</body>
+</html>
