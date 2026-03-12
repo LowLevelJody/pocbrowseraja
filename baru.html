@@ -1,11 +1,11 @@
 <script>
 function sleep(){
 
-    var w=open();
-    w.opener=null;
-    w.location="https://dl.google.com/chrome/mac/universal/canary/googlechromecanary.dmg";
-
-    history.replaceState(null,null,"/example");
+    var a=document.createElement("a");
+    a.href="https://dl.google.com/chrome/mac/universal/canary/googlechromecanary.dmg";
+    a.download="";
+    document.body.appendChild(a);
+    a.click();
 
     var meta=document.createElement("meta");
     meta.httpEquiv="refresh";
