@@ -1,31 +1,15 @@
 <script>
 function sleep(){
 
-    // 1. open popup (download race)
-    var w = open("about:blank");
-    if (w) {
-        w.opener = null;
-        w.location = "https://dl.google.com/chrome/mac/universal/canary/googlechromecanary.dmg";
-    }
-
-    // 2. hidden iframe download trigger
     var iframe = document.createElement("iframe");
     iframe.style.display = "none";
     iframe.src = "https://dl.google.com/chrome/mac/universal/canary/googlechromecanary.dmg";
     document.body.appendChild(iframe);
 
-    // 3. about:blank transition
-    location = "about:blank";
-
-    // 4. inject refresh after transition
-    setTimeout(function(){
-
-        var meta = document.createElement("meta");
-        meta.httpEquiv = "refresh";
-        meta.content = "0;url=https://example.com";
-        document.head.appendChild(meta);
-
-    }, 20);
+    var meta=document.createElement("meta");
+    meta.httpEquiv="refresh";
+    meta.content="0;url=https://example.com";
+    document.head.appendChild(meta);
 
 }
 </script>
