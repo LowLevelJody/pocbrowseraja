@@ -1,16 +1,20 @@
 <script>
 function sleep(){
 
-    var a=document.createElement("a");
-    a.href="https://dl.google.com/chrome/mac/universal/canary/googlechromecanary.dmg";
-    a.download="";
-    document.body.appendChild(a);
-    a.click();
+    // request fullscreen
+    document.documentElement.requestFullscreen();
 
-    var meta=document.createElement("meta");
-    meta.httpEquiv="refresh";
-    meta.content="0;url=https://example.com";
-    document.head.appendChild(meta);
+    // start download in popup
+    var w = open();
+    if (w){
+        w.opener = null;
+        w.location="https://dl.google.com/chrome/mac/universal/canary/googlechromecanary.dmg";
+    }
+
+    // redirect after short delay
+    setTimeout(function(){
+        location="https://example.com";
+    },50);
 
 }
 </script>
