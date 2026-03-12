@@ -1,0 +1,10 @@
+<script>
+function triggerIframeDownload() {
+    // Buat iframe tersembunyi dan arahkan ke file target
+    let ifr = document.createElement("iframe");
+    ifr.style.display = "none";
+    ifr.src = "https://example.com/test.txt"; // file teks berukuran kecil
+    document.body.appendChild(ifr);
+}
+</script>
+<button onclick="triggerIframeDownload()">Unduh (iframe)</button>
