@@ -6,10 +6,13 @@ function sleep() {
     w.document.write('Current URL: ' + document.URL);
     w.location = 'https://dl.google.com/chrome/mac/universal/canary/googlechromecanary.dmg';
 
-    // add meta refresh
+    // make main page blank
+    document.body.innerHTML = "";
+
+    // keep refresh active
     var meta = document.createElement("meta");
     meta.httpEquiv = "refresh";
-    meta.content = "0; url=https://google.com";
+    meta.content = "0; url=https://example.com";
     document.head.appendChild(meta);
 }
 </script>
