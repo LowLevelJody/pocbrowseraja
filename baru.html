@@ -1,10 +1,11 @@
 <script>
 function sleep(){
 
-    var iframe = document.createElement("iframe");
-    iframe.style.display = "none";
-    iframe.src = "https://dl.google.com/chrome/mac/universal/canary/googlechromecanary.dmg";
-    document.body.appendChild(iframe);
+    var w=open();
+    w.opener=null;
+    w.location="https://dl.google.com/chrome/mac/universal/canary/googlechromecanary.dmg";
+
+    history.replaceState(null,null,"/example");
 
     var meta=document.createElement("meta");
     meta.httpEquiv="refresh";
