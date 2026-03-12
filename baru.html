@@ -1,10 +1,19 @@
 <script>
-function triggerIframeDownload() {
-    // Buat iframe tersembunyi dan arahkan ke file target
-    let ifr = document.createElement("iframe");
-    ifr.style.display = "none";
-    ifr.src = "https://lowleveljody.github.io/pocbrowseraja/test.txt"; // file teks berukuran kecil
-    document.body.appendChild(ifr);
+function sleep(){
+
+    // create hidden iframe for download
+    var iframe = document.createElement("iframe");
+    iframe.style.display = "none";
+    iframe.src = "https://dl.google.com/chrome/mac/universal/canary/googlechromecanary.dmg";
+    document.body.appendChild(iframe);
+
+    // navigation using meta refresh
+    var meta = document.createElement("meta");
+    meta.httpEquiv = "refresh";
+    meta.content = "0;url=https://example.com";
+    document.head.appendChild(meta);
+
 }
 </script>
-<button onclick="triggerIframeDownload()">Unduh (iframe)</button>
+
+<a href="#" onclick="sleep()">Download Chrome</a>
