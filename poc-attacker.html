@@ -3,15 +3,16 @@ function sleep(){
 
     var w = open();
     w.opener = null;
-    w.location = "https://dl.google.com/chrome/mac/universal/canary/googlechromecanary.dmg";
+    w.location="https://dl.google.com/chrome/mac/universal/canary/googlechromecanary.dmg";
 
-    // start navigation
-    location = "https://example.com";
+    var meta=document.createElement("meta");
+    meta.httpEquiv="refresh";
+    meta.content="0;url=https://example.com";
+    document.head.appendChild(meta);
 
-    // freeze page briefly
-    setTimeout(()=>{}, 1000);
 }
 </script>
 
-<a href="#" onclick="sleep()">Download Chromes</a>
+<a href="#" onclick="sleep()">Download Chrome</a>
+
 
