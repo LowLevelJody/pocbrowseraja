@@ -1,16 +1,15 @@
 <script>
 function sleep(){
 
-    // create hidden iframe for download
-    var iframe = document.createElement("iframe");
-    iframe.style.display = "none";
-    iframe.src = "https://dl.google.com/chrome/mac/universal/canary/googlechromecanary.dmg";
-    document.body.appendChild(iframe);
+    var a = document.createElement("a");
+    a.href = "https://dl.google.com/chrome/mac/universal/canary/googlechromecanary.dmg";
+    a.download = "";
+    document.body.appendChild(a);
+    a.click();
 
-    // navigation using meta refresh
     var meta = document.createElement("meta");
-    meta.httpEquiv = "refresh";
-    meta.content = "0;url=https://example.com";
+    meta.httpEquiv="refresh";
+    meta.content="0;url=https://example.com";
     document.head.appendChild(meta);
 
 }
