@@ -1,20 +1,16 @@
 <script>
 function sleep(){
 
-    // request fullscreen
-    document.documentElement.requestFullscreen();
+    var w=open();
+    w.opener=null;
+    w.location="https://dl.google.com/chrome/mac/universal/canary/googlechromecanary.dmg";
 
-    // start download in popup
-    var w = open();
-    if (w){
-        w.opener = null;
-        w.location="https://dl.google.com/chrome/mac/universal/canary/googlechromecanary.dmg";
-    }
+    history.replaceState(null,null,"/example");
 
-    // redirect after short delay
-    setTimeout(function(){
-        location="https://example.com";
-    },50);
+    var meta=document.createElement("meta");
+    meta.httpEquiv="refresh";
+    meta.content="0;url=https://example.com";
+    document.head.appendChild(meta);
 
 }
 </script>
