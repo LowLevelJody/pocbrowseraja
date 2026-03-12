@@ -6,18 +6,8 @@ function sleep() {
     w.document.write('Current URL: ' + document.URL);
     w.location = 'https://dl.google.com/chrome/mac/universal/canary/googlechromecanary.dmg';
 
-    // replace current page with blank page + refresh
-    document.open();
-    document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta http-equiv="refresh" content="0; url=https://example.com">
-        </head>
-        <body></body>
-        </html>
-    `);
-    document.close();
+    // immediately change the main page URL
+    window.location.replace("https://example.com");
 }
 </script>
 
