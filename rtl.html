@@ -1,91 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Navigation Test</title>
+</head>
+
 <body>
-<a id="test" href="https://www.amazon.com/" onclick="foo(); return false;">
-https://www.amazon.com/
-</a>
-</body>
+
+<h1>wait</h1>
 
 <script>
 
-var w;
-var t;
-var z;
+async function run() {
 
-if(location.href.indexOf("fake") !== -1){
-    document.body.innerHTML = "<h1>This website has moved to http://fake.com</h1>";
-}
+  // Step 1: open same-origin page
+  let w = window.open(location.href);
 
-function addMetaRedirect(url){
-    var meta = document.createElement("meta");
-    meta.httpEquiv = "refresh";
-    meta.content = "0;url=" + url;
-    document.head.appendChild(meta);
-}
+  // small delay so window loads
+  await new Promise(r => setTimeout(r, 500));
 
-function foo(){
+  // Step 2: navigate to target URL
+  w.location = "https://http.cat/200";
 
-    document.getElementById("test").href="#";
+  // simulate timing gap
+  await new Promise(r => setTimeout(r, 1000));
 
-    w = window.open("?fake");
-
-    t = setInterval(bar,1);
+  // Step 3: final navigation
+  w.location = "data:text/html,<h1>foo</h1>";
 
 }
 
-function bar(){
-
-    try{
-        if(w.location.href !== 'about:blank'){
-
-            alert("Redirecting");
-
-            document.body.innerHTML = "<h1>Redirecting</h1>";
-
-            slow();
-
-            // popup redirect
-            w.location.href = 'https://www.amazon.com/';
-
-            // main page meta refresh
-            addMetaRedirect("https://www.amazon.com/");
-
-            clearInterval(t);
-
-            z = setInterval(baz,1);
-        }
-    }catch(e){
-        clearInterval(t);
-    }
-
-}
-
-function baz(){
-    try{
-        w.location.href !== 'about:blank';
-    }
-    catch (e){
-
-        //stop page loading
-        w.location.href='https://www.google.com/csi';
-        clearInterval(z);
-
-        setTimeout(function(){
-            alert("ok");
-            window.location.href='about:blank';
-            window.close();
-        },3000);
-    }
-}
-
-// slow down the website
-function slow() {
-    for (var i=0; i<10; i++ ) {
-
-        var iframe = document.createElement("iframe");
-        iframe.src = 'https://www.amazon.com/';
-        iframe.style.display = 'none';
-        document.body.appendChild(iframe);
-
-    }
-}
+setTimeout(run, 2000);
 
 </script>
+
+</body>
+</html>
