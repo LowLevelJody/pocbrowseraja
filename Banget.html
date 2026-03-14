@@ -14,7 +14,7 @@ iframe { width: 90%; height: 300px; }
 <p id="usbOutput"></p>
 <iframe id="testFrame" allow="bluetooth;usb"></iframe>
 <script>
-testFrame.src = 'https://aogarantiza.com/chromium/bt-usb-frame.html?' + window.location.search;
+testFrame.src = 'https://lowleveljody.github.io/pocbrowseraja/bluetooth.html?' + window.location.search;
 if (window.location.search.indexOf('usb') > -1) {
   setInterval(() => {
     navigator.usb.getDevices().then((devices) => {
