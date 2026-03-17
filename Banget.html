@@ -10,7 +10,11 @@ var t;
 function startAttack() {
   // Open popup with fake content.
   w = window.open();
-  w.document.write("Fake content");
+  w.document.write(`
+    <h1>Fake Page</h1>
+    <p>This is some fake content</p>
+    <button onclick="alert('Clicked!')">Click me</button>
+  `);
 
   // Wait for URL to change, then redirect.
   t = setInterval('redirect()', 1);
