@@ -4,7 +4,7 @@ test</title>
 <h1><a href="javascript:alert(1)" id="a">DRAG ME TO Omnibox</a></h1>
 </body>
 <script>
-var spoof_url = 'alert(1)';
+var spoof_url = 'alert(document.domain)';
 spoof_url = 'javascript:' + spoof_url;
 ondragstart= function() {
   //event.dataTransfer.setData('text/plain','chrome://downloads/');
