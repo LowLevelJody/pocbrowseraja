@@ -1,35 +1,11 @@
-<!DOCTYPE html>
 <html>
-<head>
-  <title>Mobile Redirect PoC</title>
-
-  <script>
-    function triggerRedirect() {
-      var meta = document.createElement('meta');
-      meta.httpEquiv = "refresh";
-      meta.content = "0; url=https://google.com";
-      document.head.appendChild(meta);
-    }
-  </script>
-
-  <style>
-    #dropdown {
-      position: absolute;
-      top: 120px;
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 10px;
-      font-size: 18px;
-    }
-  </style>
-</head>
-
-<body>
-
-<select id="dropdown" onclick="triggerRedirect()">
-  <option>You win prize from google!</option>
-  <option>Call +888 to take the prize!</option>
-</select>
-
-</body>
+<button id="btn">Enter fullscreen</button>
+<script>
+document.getElementById("btn").onclick = function() {
+  document.body.webkitRequestFullScreen(function(){});
+  setTimeout(function() {
+    alert(0);
+  }, 100);
+}
+</script>
 </html>
