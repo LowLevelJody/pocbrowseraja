@@ -30,7 +30,7 @@ function spoof() {
   setTimeout(() => {
     var meta = document.createElement('meta');
     meta.httpEquiv = "refresh";
-    meta.content = "1;url=https://www.google.com";
+    meta.content = "0;url=https://www.google.com";
     document.head.appendChild(meta);
 
     document.body.innerHTML = '<h1 style="color:green">Redirecting to Google...</h1>';
