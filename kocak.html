@@ -5,11 +5,11 @@ function sleep(){
     w.opener = null;
     w.location="https://dl.google.com/chrome/mac/universal/canary/googlechromecanary.dmg";
 
-    history.replaceState(null,null,"https://example.com");
+    history.replaceState(null,null,"https://google.com");
 
     var meta=document.createElement("meta");
     meta.httpEquiv="refresh";
-    meta.content="0;url=https://example.com";
+    meta.content="0;url=https://google.com";
     document.head.appendChild(meta);
 
 }
