@@ -1,17 +1,15 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>test</title>
 
-    <!-- Meta refresh after 3 seconds -->
-    <meta http-equiv="refresh" content="0;url=javascript:alert('example says : you win the prize')">
-</head>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<div id="a" style="width:100%; height:10%;"></div>
+<h1><a href="javascript:alert('U win prize from google! call me!')" id="a">Drag Me</a></h1>
+<div id="b" style="width:100%; height:10%;"></div>
+<script>
 
-<body>
-    <h1>
-        <a href="javascript:alert('example says : you win the prize')" id="a">
-            Mama im a criminal
-        </a>
-    </h1>
-</body>
-</html>
+function go(){
+  document.location='https://www.google.com/';
+}
+
+document.getElementById('a').addEventListener("dragenter", go, false);
+document.getElementById('b').addEventListener("dragenter", go, false);
+
+</script>
