@@ -1,120 +1,163 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fake Mini URL Bar Demo</title>
-<style>
-  
-  button { padding: 12px 18px; font-size: 16px; margin-right: 10px; }
-  textarea { width: 100%; font-size: 18px; padding: 10px; margin-top: 20px; box-sizing: border-box; }
-
-  .fake-bar {
-    text-align: center;
-    background: #fff7f0;
-    border-top: 1px solid #e0cbb0;
-    border-bottom: 1px solid #e0cbb0;
-    color: #222;
-    font-size: 16px;
-    padding: 5px 0;
-    position: fixed;
-    width: 100%;
-    z-index: 9999;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.3s ease, bottom 0.2s ease;
-  }
-
-  .fake-bar.show { opacity: 1; visibility: visible; }
-
-  .spacer { height: 800px; }        /* Space to push middle textarea down */
-  .spacer-bottom { height: 1200px; } /* Space to push bottom text far down */
-
-  .bottom-text { font-size: 20px; text-align: center; margin: 20px; }
-</style>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PoC: Fake URL Bar + Fullscreen Spoof</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f4f4f8;
+      padding: 20px;
+    }
+    h2 { font-size: 1.1em; color: #333; margin-bottom: 12px; }
+    p  { font-size: 0.85em; color: #777; margin-bottom: 18px; line-height: 1.5; }
+    .search-wrap {
+      display: flex;
+      align-items: center;
+      background: #fff;
+      border-radius: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      padding: 10px 16px;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .search-wrap span { font-size: 1.2em; }
+    #ta {
+      border: none;
+      outline: none;
+      font-size: 16px;
+      width: 100%;
+      background: transparent;
+      color: #222;
+    }
+    button {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      background: #1a73e8;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 1em;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+    button:active { opacity: 0.85; }
+    /* ── Fake URL bar ── */
+    .fake-bar {
+      position: fixed;
+      left: 0;
+      width: 100%;
+      z-index: 99999;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.25s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 14px;
+      background: #f1f3f4;
+      border-top: 1px solid #dadce0;
+    }
+    .fake-bar.show { opacity: 1; visibility: visible; }
+    .fake-bar .lock { font-size: 13px; color: #188038; }
+    .fake-bar .url  {
+      flex: 1;
+      font-size: 14px;
+      font-weight: 500;
+      color: #202124;
+      letter-spacing: 0.01em;
+    }
+    .fake-bar .reload { font-size: 16px; color: #5f6368; }
+    /* spacers */
+    .spacer { height: 900px; }
+    .bottom-text { font-size: 18px; text-align: center; padding: 40px 20px; color: #555; }
+    #middleTa {
+      width: 100%;
+      font-size: 16px;
+      padding: 12px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+  </style>
 </head>
 <body>
-
-<button id="showBtn">Show Keyboard</button>
-<textarea id="ta" placeholder="Textarea at top…"></textarea>
-
-<div class="fake-bar" id="fakeBar">google.com</div>
-
-<!-- Spacer to push the middle textarea down -->
-<div class="spacer"></div>
-
-<!-- Middle textarea -->
-<textarea id="middleTa" placeholder="Textarea in the middle of page…"></textarea>
-
-<!-- Spacer to push the bottom text far down -->
-<div class="spacer-bottom"></div>
-
-<!-- Text far down the page -->
-<div class="bottom-text">
-  🎉 You finally scrolled down and found this text! 🎉
-</div>
-
+  <h2>🔍 Search or type a URL</h2>
+  <p>Tap the search box or button to trigger fullscreen. The real browser URL bar disappears and a fake one takes its place above the keyboard.</p>
+  <!-- Fake search bar (triggers the PoC) -->
+  <div class="search-wrap">
+    <span>🌐</span>
+    <textarea id="ta" rows="1" placeholder="Search or type URL"></textarea>
+  </div>
+  <button id="showBtn">▶ Tap to focus + enter fullscreen</button>
+  <!-- Fake URL bar — sits above virtual keyboard -->
+  <div class="fake-bar" id="fakeBar">
+    <span class="lock">🔒</span>
+    <span class="url">google.com</span>
+    <span class="reload">↻</span>
+  </div>
+  <div class="spacer"></div>
+  <textarea id="middleTa" rows="3" placeholder="Middle textarea — tap to focus and trigger spoof too…"></textarea>
+  <div class="spacer"></div>
+  <div class="bottom-text">🎉 You scrolled all the way down!</div>
 <script>
 const fakeBar = document.getElementById('fakeBar');
-const ta = document.getElementById('ta');
-const middleTa = document.getElementById('middleTa');
-
-function adjustFakeBar() {
+const ta      = document.getElementById('ta');
+const midTa   = document.getElementById('middleTa');
+/* ── Position the fake bar just above the keyboard ── */
+function positionBar() {
   const vv = window.visualViewport;
-  let keyboardHeight = 0;
-  if (vv) {
-    keyboardHeight = window.innerHeight - vv.height - vv.offsetTop;
-  }
-  fakeBar.style.bottom = keyboardHeight + 'px';
+  if (!vv) return;
+  const keyboardTop = vv.offsetTop + vv.height;   // pixels from top of layout
+  fakeBar.style.top = (keyboardTop - fakeBar.offsetHeight) + 'px';
 }
-
 function showFakeBar() {
   fakeBar.classList.add('show');
-  adjustFakeBar();
+  positionBar();
 }
-
 function hideFakeBar() {
   fakeBar.classList.remove('show');
 }
-
-// Update fake bar position when viewport changes (keyboard show/hide)
-if ('visualViewport' in window) {
+/* ── Track viewport resize (keyboard open/close) ── */
+if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', () => {
-    if (document.activeElement === ta || document.activeElement === middleTa) adjustFakeBar();
+    const active = document.activeElement;
+    if (active === ta || active === midTa) positionBar();
+  });
+  window.visualViewport.addEventListener('scroll', () => {
+    const active = document.activeElement;
+    if (active === ta || active === midTa) positionBar();
   });
 }
-
-// Handle orientation changes
-window.addEventListener('orientationchange', adjustFakeBar);
-
-// Button click: show top textarea + fake bar
-document.getElementById("showBtn").onclick = async () => {
-  ta.focus();
+/* ── Enter fullscreen, which hides the real browser chrome / URL bar ── */
+async function enterFullscreen() {
   try {
-    await document.documentElement.requestFullscreen();
-    setTimeout(() => {
-      prompt();
-      document.exitFullscreen().catch(() => {});
-    }, 2020);
-  } catch (e) {}
-
-  setTimeout(async () => {
-    if (navigator.virtualKeyboard?.show) {
-      try { await navigator.virtualKeyboard.show(); } catch(e){}
-    }
-    showFakeBar();
-  }, 150);
-};
-
-// Show fake bar when either textarea is focused
-ta.addEventListener('focus', showFakeBar);
-middleTa.addEventListener('focus', showFakeBar);
-
-// Hide fake bar when either textarea loses focus
-ta.addEventListener('blur', hideFakeBar);
-middleTa.addEventListener('blur', hideFakeBar);
+    await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+  } catch (e) {
+    // Already fullscreen or denied — still show the fake bar
+  }
+}
+/* ── Main trigger: fullscreen + show fake bar ── */
+async function triggerSpoof(field) {
+  field.focus();
+  await enterFullscreen();
+  // Small delay so the keyboard has time to animate up
+  setTimeout(showFakeBar, 200);
+}
+/* ── Button ── */
+document.getElementById('showBtn').addEventListener('click', () => triggerSpoof(ta));
+/* ── Focus events ── */
+ta.addEventListener('focus',    () => triggerSpoof(ta));
+midTa.addEventListener('focus', () => triggerSpoof(midTa));
+/* ── Blur events ── */
+ta.addEventListener('blur',    hideFakeBar);
+midTa.addEventListener('blur', hideFakeBar);
+/* ── Exit fullscreen when keyboard dismissed ── */
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement) hideFakeBar();
+});
 </script>
-
 </body>
 </html>
-
-here is the code that hide minibar, now can you combine it with fullscreen so when it focus and the fullscreen happening
