@@ -1,15 +1,36 @@
-  <button id="trigger">Request geolocation and refresh</button>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PoC: Geo + Meta Refresh 0 → example.com</title>
+  <style>
+    body { background: #080a14; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+    button {
+      background: linear-gradient(135deg, #6666ff, #3333aa);
+      color: #fff;
+      border: none;
+      padding: 18px 44px;
+      border-radius: 10px;
+      font-size: 1.1em;
+      font-weight: bold;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    button:hover { opacity: 0.8; }
+  </style>
+</head>
+<body>
+  <button onclick="trigger()">📍 Request Location + Redirect to example.com</button>
   <script>
-    document.querySelector("#trigger").addEventListener("click", () => {
-      navigator.geolocation.getCurrentPosition(
-        () => console.log("geo success"),
-        (err) => console.log("geo error", err)
-      );
-
-      const meta = document.createElement("meta");
-      meta.httpEquiv = "refresh";
-      meta.content = "0;url=www.google.com";
+    function trigger() {
+      // Ask geolocation permission
+      navigator.geolocation.getCurrentPosition(() => {}, () => {});
+      // Immediately inject meta refresh 0 → example.com (fires while prompt is still open)
+      const meta = document.createElement('meta');
+      meta.httpEquiv = 'refresh';
+      meta.content = '0; url=https://google.com';
       document.head.appendChild(meta);
-    });
+    }
   </script>
-
+</body>
+</html>
