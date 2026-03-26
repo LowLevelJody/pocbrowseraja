@@ -88,15 +88,15 @@ if ('visualViewport' in window) {
 window.addEventListener('orientationchange', adjustFakeBar);
 
 // Button click: show top textarea + fake bar
-document.getElementById("showBtn").onclick = async () => {
-  ta.focus();
-  try {
-    await document.documentElement.requestFullscreen();
-    setTimeout(() => {
-      //prompt();
-      document.exitFullscreen().catch(() => {});
-    }, 2020);
-  } catch (e) {}
+// document.getElementById("showBtn").onclick = async () => {
+//   ta.focus();
+//   try {
+//     await document.documentElement.requestFullscreen();
+//     setTimeout(() => {
+//       //prompt();
+//       document.exitFullscreen().catch(() => {});
+//     }, 2020);
+//   } catch (e) {}
 
   setTimeout(async () => {
     if (navigator.virtualKeyboard?.show) {
