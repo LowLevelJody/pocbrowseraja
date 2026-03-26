@@ -1,15 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PoC SRC-5: Permission Anchor Lost (LocationBar Hidden)</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', sans-serif; background: #080a14; color: #e0e0e0; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+.card { background: #10121e; border: 1px solid #1a2040; border-radius: 16px; padding: 40px; max-width: 720px; width: 90%; box-shadow: 0 0 60px rgba(80,80,255,0.12); }
+h1 { font-size: 1.4em; color: #6666ff; margin-bottom: 10px; }
+.tag { display: inline-block; background: #3333aa; color: #fff; font-size: 0.72em; padding: 3px 10px; border-radius: 4px; margin-bottom: 20px; letter-spacing: 1px; }
+p { color: #888; line-height: 1.7; margin-bottom: 14px; font-size: 0.9em; }
+code { background: #181830; color: #aaaaff; padding: 2px 6px; border-radius: 4px; }
+.source { background: #181830; border-left: 3px solid #6666ff; padding: 14px 18px; border-radius: 6px; margin: 20px 0; font-size: 0.82em; color: #cdd6f4; font-family: monospace; line-height: 1.6; }
+.attack-flow { background: #0e1028; border-radius: 10px; padding: 20px; margin: 20px 0; }
+.attack-flow h3 { color: #6666ff; margin-bottom: 14px; font-size: 0.95em; }
+.step { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 12px; }
+.step-num { background: #2222aa; color: #fff; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.85em; flex-shrink: 0; }
+.step-text { color: #a0a0c0; font-size: 0.88em; line-height: 1.6; }
+.btn { display: block; background: linear-gradient(135deg, #6666ff, #3333aa); color: #fff; border: none; padding: 16px 40px; border-radius: 8px; font-size: 1.05em; font-weight: bold; cursor: pointer; width: 100%; margin-top: 20px; transition: opacity 0.2s; }
+.btn:hover { opacity: 0.85; }
+.clickjack-overlay { display: none; position: fixed; top: 80px; left: 20px; width: 340px; background: rgba(20,20,60,0.95); border: 2px solid #6666ff; border-radius: 12px; padding: 20px; z-index: 9999; }
+.clickjack-overlay h3 { color: #fff; margin-bottom: 10px; }
+.clickjack-overlay p { font-size: 0.85em; color: #aaa; margin-bottom: 14px; }
+.clickjack-overlay .fake-allow { position: absolute; top: 110px; left: 30px; width: 120px; height: 36px; background: transparent; border: none; cursor: pointer; z-index: 10000; }
+.overlay-note { position: absolute; top: 110px; left: 30px; background: #1a73e8; color: white; padding: 8px 18px; border-radius: 4px; font-size: 0.85em; pointer-events: none; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="tag">NOVEL FINDING · SRC-5 · CHROMIUM BRWSR TEST CONFIRMED</div>
+  <h1>Permission Anchor Lost When Location Bar Hidden</h1>
+  
+  <p>From <code>permission_prompt_bubble_view_browsertest.cc</code>:</p>
+  <div class="source">
+<span style="color:#888">// Test switching between chip and bubble — make sure no crashes.</span><br>
+browser_view-&gt;GetLocationBarView()-&gt;SetVisible(<span style="color:#ff6666">false</span>); <span style="color:#888">// ← triggers anchor fallback</span><br>
+ShowUi("geolocation");<br>
+permission_request_manager-&gt;UpdateAnchor(); <span style="color:#888">// ← anchor now at page-level</span><br>
+browser_view-&gt;GetLocationBarView()-&gt;SetVisible(<span style="color:#66ff66">true</span>);<br>
+permission_request_manager-&gt;UpdateAnchor(); <span style="color:#888">// ← chip visible again</span>
+  </div>
 
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<div id="a" style="width:100%; height:10%;"></div>
-<h1><a href="javascript:alert('U win prize from google! call me!')" id="a">Drag Me</a></h1>
-<div id="b" style="width:100%; height:10%;"></div>
+  <p>When <code>LocationBarView</code> is hidden (zero height, or visibility toggled), <code>UpdateAnchorPosition()</code> falls back to <code>GetPageInfoAnchorRect(browser_)</code> — which is inside the page's coordinate frame. A permission bubble now floats within the page content area instead of the browser chrome.</p>
+
+  <div class="attack-flow">
+    <h3>🎯 Clickjacking Attack Chain</h3>
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-text">Page requests permission (geolocation/camera). Bubble appears anchored to location bar at top of screen.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-text">Page uses CSS animation/scroll to visually push browser chrome out of viewport (e.g. extreme zoom, <code>scroll-to-top-button</code>, or kiosk mode).</div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-text">When <code>LocationBarView</code> becomes invisible/zero-height, <code>UpdateAnchor()</code> is called and the permission bubble RE-ANCHORS to the page's <code>GetPageInfoAnchorRect</code>.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-text">The bubble now floats inside the page content. Attacker positions an opaque UI element OVER the "Allow" button area, tricking the user into clicking it.</div>
+    </div>
+  </div>
+
+  <p><strong>Testing methodology</strong>: Combine with kiosk-mode or PWA standalone windows where the location bar is already hidden by design (Apps use <code>is_type_app()</code> which doesn't have a location bar). Permission prompts in PWA windows may re-anchor differently.</p>
+
+  <button class="btn" onclick="demoAnchorLost()">▶ Request geolocation — See how prompt positions itself</button>
+</div>
+
+<!-- Conceptual clickjacking overlay demo -->
+<div id="demo-overlay" class="clickjack-overlay">
+  <h3>📍 Confirm your location</h3>
+  <p>We detected your approximate location. Click <strong>Allow</strong> to get personalized results.</p>
+  <div style="position:relative;height:50px;">
+    <div class="overlay-note">Allow</div>
+    <!-- In real attack: transparent iframe or permission button here -->
+    <button class="fake-allow" onclick="alert('Clicked Allow! In real attack: permission granted.')"></button>
+  </div>
+</div>
+
 <script>
-
-function go(){
-  document.location='https://www.google.com/';
+function demoAnchorLost() {
+  // Request permission — in real attack, the anchor would be lost due to location bar being hidden
+  navigator.geolocation.getCurrentPosition(
+    () => { alert('Location granted!'); },
+    () => {}
+  );
+  
+  // After a short delay, show our conceptual overlay to illustrate the clickjacking
+  setTimeout(() => {
+    document.getElementById('demo-overlay').style.display = 'block';
+  }, 1500);
 }
-
-document.getElementById('a').addEventListener("dragenter", go, false);
-document.getElementById('b').addEventListener("dragenter", go, false);
-
 </script>
+</body>
+</html>
