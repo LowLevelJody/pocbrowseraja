@@ -87,16 +87,14 @@ if ('visualViewport' in window) {
 // Handle orientation changes
 window.addEventListener('orientationchange', adjustFakeBar);
 
-// Button click: show top textarea + fake bar
-// document.getElementById("showBtn").onclick = async () => {
-//   ta.focus();
-//   try {
-//     await document.documentElement.requestFullscreen();
-//     setTimeout(() => {
-//       //prompt();
-//       document.exitFullscreen().catch(() => {});
-//     }, 2020);
-//   } catch (e) {}
+document.getElementById("showBtn").onclick = async () => {
+  ta.focus();
+  try {
+    await document.documentElement.requestFullscreen();
+  } catch (e) {
+    console.error(e);
+  }
+};
 
   setTimeout(async () => {
     if (navigator.virtualKeyboard?.show) {
