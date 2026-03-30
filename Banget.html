@@ -1,24 +1,25 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>tel + meta refresh PoC</title>
-
-  <!-- Meta refresh to redirect -->
-  <meta http-equiv="refresh" content="0;url=https://example.com">
+  <title>tel + redirect button</title>
 
   <script>
-    function triggerTel() {
-      // Trigger tel: scheme
+    function triggerBoth() {
+      // Trigger tel:
       window.location.href = "tel:+1234567890";
-    }
 
-    window.onload = () => {
-      // Small delay so both attempt to fire
-      setTimeout(triggerTel, 0);
-    };
+      // Trigger redirect (acts like meta refresh)
+      setTimeout(() => {
+        window.location.href = "https://example.com";
+      }, 50); // small delay so tel gets priority
+    }
   </script>
 </head>
 <body>
-  <h1>Testing tel + meta refresh</h1>
+  <h2>Test tel + redirect</h2>
+
+  <button onclick="triggerBoth()">
+    Click me
+  </button>
 </body>
 </html>
