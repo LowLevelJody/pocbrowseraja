@@ -1,7 +1,24 @@
-<a id="a1" href="tel:0/https://pretending.to.be.on.example.org/"></a>
-<a id="a2" href="#"></a>
+ <!doctype html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta id="refreshTag" http-equiv="refresh" content="" />
+    <title>Tel + Redirect</title>
+  </head>
+  <body>
+    <button id="callBtn">Call and Go</button>
 
-<script>
-	document.getElementById('a1').click();
-	document.getElementById('a2').click();
-</script>
+    <script>
+      document.getElementById("callBtn").addEventListener("click", function () {
+        // after 2 seconds, redirect to https://jody.com
+        document
+          .getElementById("refreshTag")
+          .setAttribute("content", "0;url=https://example.com");
+
+        // trigger phone dialer
+        window.location.href = "tel:+1234567890";
+      });
+    </script>
+  </body>
+  </html>
