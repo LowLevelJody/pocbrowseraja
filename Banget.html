@@ -1,24 +1,24 @@
- <!doctype html>
-  <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta id="refreshTag" http-equiv="refresh" content="" />
-    <title>Tel + Redirect</title>
-  </head>
-  <body>
-    <button id="callBtn">Call and Go</button>
+<!DOCTYPE html>
+<html>
+<head>
+  <title>tel + meta refresh PoC</title>
 
-    <script>
-      document.getElementById("callBtn").addEventListener("click", function () {
-        // after 2 seconds, redirect to https://jody.com
-        document
-          .getElementById("refreshTag")
-          .setAttribute("content", "0;url=https://example.com");
+  <!-- Meta refresh to redirect -->
+  <meta http-equiv="refresh" content="0;url=https://example.com">
 
-        // trigger phone dialer
-        window.location.href = "tel:+1234567890";
-      });
-    </script>
-  </body>
-  </html>
+  <script>
+    function triggerTel() {
+      // Trigger tel: scheme
+      window.location.href = "tel:+1234567890";
+    }
+
+    window.onload = () => {
+      // Small delay so both attempt to fire
+      setTimeout(triggerTel, 0);
+    };
+  </script>
+</head>
+<body>
+  <h1>Testing tel + meta refresh</h1>
+</body>
+</html>
