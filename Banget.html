@@ -1,25 +1,52 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>tel + redirect button</title>
-
-  <script>
-    function triggerBoth() {
-      // Trigger tel:
-      window.location.href = "tel:+1234567890";
-
-      // Trigger redirect (acts like meta refresh)
-      setTimeout(() => {
-        window.location.href = "https://example.com";
-      }, 50); // small delay so tel gets priority
-    }
-  </script>
+  <title>Success → Fullscreen → Fail</title>
 </head>
-<body>
-  <h2>Test tel + redirect</h2>
 
-  <button onclick="triggerBoth()">
-    Click me
-  </button>
+<body>
+
+<button onclick="runFlow()">Click Me</button>
+
+<script>
+async function runFlow() {
+  try {
+    // Step 1: SUCCESS copy (valid user gesture)
+    await navigator.clipboard.writeText("First copy success");
+    console.log("First copy success");
+
+    // Step 2: Fullscreen (still inside gesture)
+    await document.documentElement.requestFullscreen();
+
+    // Step 3: BREAK gesture → force failure
+    setTimeout(async () => {
+      try {
+        await navigator.clipboard.writeText("Second copy");
+        console.log("Unexpected success");
+      } catch (err) {
+        console.log("Second copy failed (expected):", err);
+        showFakeInput();
+      }
+    }, 50);
+
+  } catch (e) {
+    console.log("Error:", e);
+  }
+}
+
+function showFakeInput() {
+  const input = document.createElement("input");
+  input.placeholder = "Input Test";
+  input.style.position = "fixed";
+  input.style.top = "50%";
+  input.style.left = "50%";
+  input.style.transform = "translate(-50%, -50%)";
+  input.style.padding = "10px";
+  input.style.fontSize = "18px";
+
+  document.body.appendChild(input);
+}
+</script>
+
 </body>
 </html>
