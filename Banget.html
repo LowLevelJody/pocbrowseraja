@@ -1,50 +1,46 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-  <title>Success → Fullscreen → Fail</title>
+  <title>AAA Multi Trigger PoC</title>
 </head>
 
-<body>
-
-<button onclick="runFlow()">Click Me</button>
+<body onclick="run()">
+<h2>Click anywhere</h2>
 
 <script>
-async function runFlow() {
-  try {
-    // Step 1: SUCCESS copy (valid user gesture)
-    await navigator.clipboard.writeText("First copy success");
-    console.log("First copy success");
+async function run() {
+  // prevent re-trigger
+  document.body.onclick = null;
 
-    // Step 2: Fullscreen (still inside gesture)
+  try {
+    // ✅ FIRST: success copy
+    await navigator.clipboard.writeText("SUCCESS");
+
+    // ✅ FIRST: fullscreen
     await document.documentElement.requestFullscreen();
 
-    // Step 3: BREAK gesture → force failure
-    setTimeout(async () => {
-      try {
-        await navigator.clipboard.writeText("Second copy");
-        console.log("Unexpected success");
-      } catch (err) {
-        console.log("Second copy failed (expected):", err);
-        showFakeInput();
-      }
-    }, 50);
+    console.log("Initial success");
+
+    // 🔥 AAA STYLE: spam multiple clipboard calls
+    for (let i = 0; i < 30; i++) {
+      triggerFail(i);
+    }
 
   } catch (e) {
     console.log("Error:", e);
   }
 }
 
-function showFakeInput() {
-  const input = document.createElement("input");
-  input.placeholder = "Input Test";
-  input.style.position = "fixed";
-  input.style.top = "50%";
-  input.style.left = "50%";
-  input.style.transform = "translate(-50%, -50%)";
-  input.style.padding = "10px";
-  input.style.fontSize = "18px";
-
-  document.body.appendChild(input);
+function triggerFail(i) {
+  setTimeout(async () => {
+    try {
+      await navigator.clipboard.writeText("FAIL " + i);
+      console.log("unexpected success", i);
+    } catch (err) {
+      console.log("fail", i);
+    }
+  }, i * 10); // rapid burst like your repeated execCommand
 }
 </script>
 
