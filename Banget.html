@@ -1,11 +1,11 @@
-<!DOCTYPE html>
+<input onclick="start()" type="button" value="Click here" />
 
-<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
-<meta charset="utf-8">
-<ol>
-<li>
-    Click <a href="nonexistant:12121">this link to nonexistant:12121</a> 
-</li>
-<li>Click <a href="https://www.google.com/">this HTTPS link</a></li>
-<li>PASS if address bar shows google.com address</li>
-</ol>
+<script>
+  function start(){
+   var recognition = new webkitSpeechRecognition();
+  recognition.start();
+  navigator.webkitGetUserMedia({audio: true}, function(){}, function(){});
+  document.location = "https://www.google.com"
+  }
+
+  </script>
