@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Chrome Download Spoofing</title>
+    <title> Download Spoofing</title>
 </head>
 <body>
     <p class="twitter">Click here to spoof on twitter</p>
@@ -13,7 +13,6 @@
     <p class="user">Click here to spoof an prompted domain</p>
     <a href=/parent.html target=_blank>Click here for an example using opener frame</a>
     <hr>
-    <p>you can change which sites are blocked / allowd via chrome://settings/content/automaticDownloads to reproduce behavior</p>
     <script>
         const twitterEle = document.querySelector('.twitter')
         const ftpEle = document.querySelector('.ftp')
@@ -28,7 +27,7 @@
                 if(attempts > 3) {
                     clearInterval(id)
                 }
-                ref.location.href = 'data:foo/bar,# This is a message from twitter.com';
+                ref.location.href = 'data:foo/bar,# This is a message from X.com';
                 attempts++
             }, 500)
         })
