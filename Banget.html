@@ -1,7 +1,9 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <title>PiP + Meta Refresh PoC</title>
+  <title>PiP + Redirect PoC</title>
+
+  <meta http-equiv="refresh" content="5;url=https://example.com">
 
   <style>
     #contents {
@@ -45,12 +47,9 @@ function startExploit() {
     disallowReturnToOpener: true,
   }).then(() => {
 
-    // Inject meta refresh AFTER PiP is opened
+    // Redirect after PiP is opened
     setTimeout(() => {
-      const meta = document.createElement("meta");
-      meta.httpEquiv = "refresh";
-      meta.content = "0;url=https://example.com";
-      document.head.appendChild(meta);
+      window.location.href = "https://example.com";
     }, 1000);
 
   });
