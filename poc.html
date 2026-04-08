@@ -1,8 +1,9 @@
 <a href="http://example.com" target="ccc" onclick="poc()">click me</a>
+
 <script>
 function poc(){
     setTimeout(() => {
-        window.open("https://play.google.com/store/apps/details?id=com.example.app","ccc");
+        window.open("market://details?id=com.android.chrome", "ccc");
     }, 2000);
 }
 </script>
