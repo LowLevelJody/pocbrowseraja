@@ -1,18 +1,26 @@
-<body>
-<h1>Click anywhere</h1>
+<html onmousedown="rfsSelectAll()" onclick="selectAllChildren()">
+
 <script>
+    function rfsSelectAll() {
+        document.documentElement.requestFullscreen();
+        document.execCommand("selectAll");
+    }
 
-
-  in_then_getter = false;
-  Array.prototype.__defineGetter__('then', function () {
-    if (in_then_getter)
-      return;
-    navigator.usb.requestDevice({filters: [{}]});
-    in_then_getter = true;
-    navigator.usb.getDevices();
-    in_then_getter = false;
-  });
-  navigator.usb.getDevices();
-
+    function selectAllChildren() {
+        document.getSelection().selectAllChildren(paragraph1);
+    }
 </script>
+
+<body>
+    <img style="margin-top: 9999px;"></img>
+
+    <p id="paragraph1">
+        <!-- Trigger Translate Menu -->
+        A[=
+        ?:TLv
+        S9y
+        <!-- Trigger Translate Menu -->
+    </p>
 </body>
+
+</html>
