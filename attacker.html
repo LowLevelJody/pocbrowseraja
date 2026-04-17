@@ -1,58 +1,11 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Multiple Copy Toast</title>
-  <style>
-    .toast {
-      position: fixed;
-      right: 20px;
-      top: 20px;
-      background: #333;
-      color: white;
-      padding: 12px 18px;
-      margin-top: 10px;
-      border-radius: 8px;
-      opacity: 0;
-      transform: translateY(-20px);
-      transition: 0.3s;
-    }
-
-    .toast.show {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  </style>
-</head>
-<body>
-
-<button onclick="copyText()">Copy</button>
+<button onclick="manyCopy()">Copy Many</button>
 
 <script>
-function showToast(message, delay) {
-  setTimeout(() => {
-    let toast = document.createElement("div");
-    toast.className = "toast";
-    toast.innerText = message;
-    document.body.appendChild(toast);
-
-    setTimeout(() => toast.classList.add("show"), 50);
-
+async function manyCopy() {
+  for (let i = 0; i < 10; i++) {
     setTimeout(() => {
-      toast.classList.remove("show");
-      setTimeout(() => toast.remove(), 300);
-    }, 2000);
-  }, delay);
-}
-
-function copyText() {
-  navigator.clipboard.writeText("Hello World");
-
-  // Trigger multiple toasts
-  for (let i = 1; i <= 3; i++) {
-    showToast("Copied " + i, i * 500);
+      navigator.clipboard.writeText("Hello " + i);
+    }, i * 300);
   }
 }
 </script>
-
-</body>
-</html>
