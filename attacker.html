@@ -1,11 +1,31 @@
-<button onclick="manyCopy()">Copy Many</button>
+<!DOCTYPE html>
+<html>
+<body style="margin:0;display:flex;justify-content:center;align-items:center;height:100vh;background:black;">
+
+<button onclick="startSpam()" style="padding:20px 40px;font-size:24px;">
+START
+</button>
 
 <script>
-async function manyCopy() {
-  for (let i = 0; i < 10; i++) {
-    setTimeout(() => {
-      navigator.clipboard.writeText("Hello " + i);
-    }, i * 300);
+async function startSpam() {
+  // Enter fullscreen
+  if (document.documentElement.requestFullscreen) {
+    await document.documentElement.requestFullscreen();
   }
+
+  // Spam clipboard copy
+  let i = 0;
+
+  let interval = setInterval(() => {
+    navigator.clipboard.writeText("Spam " + i);
+    i++;
+
+    if (i >= 200) {
+      clearInterval(interval);
+    }
+  }, 30);
 }
 </script>
+
+</body>
+</html>
