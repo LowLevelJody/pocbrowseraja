@@ -1,46 +1,92 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Fullscreen Omnibox Repro</title>
 <style>
-    body {
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
-    }
+  html, body {
+    margin: 0;
+    height: 100%;
+    font-family: sans-serif;
+  }
 
-    select {
-        height: 9999px;
-        width: 9999px;
-        font-size: 9em;
-    }
+  #stage {
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(135deg, #222, #555);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 24px;
+  }
 
-    button {
-        position: absolute;
-        top: 20px;
-        left: 20px;
-        z-index: 10;
-        padding: 10px 20px;
-        font-size: 16px;
-    }
+  button {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 9999;
+    padding: 12px 18px;
+    font-size: 16px;
+  }
 </style>
+</head>
+<body>
+<button id="go">Run Repro</button>
+
+<div id="stage">Tap button, then wait</div>
 
 <script>
-    function spoof() {
-        window.requestAnimationFrame(fillSelect);
-    }
+const btn = document.getElementById("go");
+const stage = document.getElementById("stage");
 
-    function fillSelect() {
-        selectElement[641811] = optionElement;
-    }
+btn.onclick = async () => {
+  try {
+    // create fullscreen target
+    const fs = document.createElement("div");
+    fs.style.position = "fixed";
+    fs.style.inset = "0";
+    fs.style.background = "black";
+    fs.style.zIndex = "999999";
+    fs.textContent = "Fullscreen...";
+    fs.style.color = "white";
+    fs.style.display = "flex";
+    fs.style.alignItems = "center";
+    fs.style.justifyContent = "center";
 
-    function triggerSelect() {
-        const sel = document.getElementById('selectElement');
-        sel.focus();
-        sel.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-    }
+    document.body.appendChild(fs);
+
+    // must be user gesture
+    await fs.requestFullscreen();
+
+    // canvas.toBlob used to introduce async timing
+    const c = document.createElement("canvas");
+    c.width = 100;
+    c.height = 100;
+
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "red";
+    ctx.fillRect(0, 0, 100, 100);
+
+    c.toBlob(() => {
+      // cancel fullscreen
+      document.exitFullscreen().then(() => {
+        // append fullscreen element into <html> after exit timing
+        document.documentElement.appendChild(fs);
+
+        // If bug reproduces:
+        // omnibox/address bar may remain hidden
+        stage.textContent =
+          "Exited fullscreen. Check whether omnibox restored.";
+      });
+    });
+
+  } catch (e) {
+    console.error(e);
+    stage.textContent = e.message;
+  }
+};
 </script>
-
-<button onclick="triggerSelect()">Click me</button>
-
-<select id="selectElement" onmousedown="spoof()">
-    <option id="optionElement">
-        ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ Google.com
-    </option>
-</select>
+</body>
+</html>
