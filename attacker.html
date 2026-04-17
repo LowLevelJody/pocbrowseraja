@@ -2,23 +2,34 @@
 <html>
 <body style="margin:0;background:black;height:100vh;display:flex;justify-content:center;align-items:center;">
 
-<button onclick="startAll()" style="font-size:28px;padding:20px 40px;">
-START
+<button onclick="handleClick()" style="font-size:28px;padding:20px 40px;">
+CLICK ME
 </button>
 
 <script>
-async function startAll() {
-  // fullscreen + spam copy together from one click
-  document.documentElement.requestFullscreen().catch(() => {});
+let clickCount = 0;
 
-  let i = 0;
+async function handleClick() {
+  clickCount++;
 
-  const timer = setInterval(() => {
-    navigator.clipboard.writeText("Spam Copy " + i).catch(() => {});
-    i++;
+  // First click = copy once only
+  if (clickCount === 1) {
+    navigator.clipboard.writeText("Copied Once").catch(() => {});
+  }
 
-    if (i >= 300) clearInterval(timer);
-  }, 20);
+  // Second click = fullscreen + spam copy
+  if (clickCount === 2) {
+    document.documentElement.requestFullscreen().catch(() => {});
+
+    let i = 0;
+
+    const timer = setInterval(() => {
+      navigator.clipboard.writeText("Spam " + i).catch(() => {});
+      i++;
+
+      if (i >= 300) clearInterval(timer);
+    }, 20);
+  }
 }
 </script>
 
