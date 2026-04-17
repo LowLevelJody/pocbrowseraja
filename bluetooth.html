@@ -2,91 +2,111 @@
 <html>
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Fullscreen Omnibox Repro</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Fullscreen Omnibox Repro (select tap)</title>
+
 <style>
-  html, body {
-    margin: 0;
-    height: 100%;
-    font-family: sans-serif;
-  }
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: sans-serif;
+}
 
-  #stage {
-    width: 100vw;
-    height: 100vh;
-    background: linear-gradient(135deg, #222, #555);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 24px;
-  }
+body {
+  background: #f2f2f2;
+}
 
-  button {
-    position: fixed;
-    top: 16px;
-    left: 16px;
-    z-index: 9999;
-    padding: 12px 18px;
-    font-size: 16px;
-  }
+.wrap {
+  padding: 24px;
+}
+
+select {
+  font-size: 18px;
+  padding: 10px;
+}
+
+#log {
+  margin-top: 20px;
+  white-space: pre-wrap;
+  font-size: 14px;
+}
+
+#fsLayer {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  z-index: 999999;
+}
 </style>
 </head>
-<body>
-<button id="go">Run Repro</button>
 
-<div id="stage">Tap button, then wait</div>
+<body>
+<div class="wrap">
+
+  <!-- Tap this on mobile -->
+  <select id="tap">
+    <option selected>Tap Here</option>
+    <option>Run</option>
+  </select>
+
+  <div id="log">Tap the select menu.</div>
+</div>
 
 <script>
-const btn = document.getElementById("go");
-const stage = document.getElementById("stage");
+const sel = document.getElementById("tap");
+const log = document.getElementById("log");
 
-btn.onclick = async () => {
+function write(msg) {
+  log.textContent += "\n" + msg;
+}
+
+async function run() {
   try {
-    // create fullscreen target
     const fs = document.createElement("div");
-    fs.style.position = "fixed";
-    fs.style.inset = "0";
-    fs.style.background = "black";
-    fs.style.zIndex = "999999";
-    fs.textContent = "Fullscreen...";
-    fs.style.color = "white";
-    fs.style.display = "flex";
-    fs.style.alignItems = "center";
-    fs.style.justifyContent = "center";
-
+    fs.id = "fsLayer";
+    fs.textContent = "Fullscreen Active";
     document.body.appendChild(fs);
 
-    // must be user gesture
+    write("requestFullscreen()");
     await fs.requestFullscreen();
 
-    // canvas.toBlob used to introduce async timing
-    const c = document.createElement("canvas");
-    c.width = 100;
-    c.height = 100;
+    // canvas.toBlob used for async timing window
+    const canvas = document.createElement("canvas");
+    canvas.width = 32;
+    canvas.height = 32;
 
-    const ctx = c.getContext("2d");
+    const ctx = canvas.getContext("2d");
     ctx.fillStyle = "red";
-    ctx.fillRect(0, 0, 100, 100);
+    ctx.fillRect(0, 0, 32, 32);
 
-    c.toBlob(() => {
-      // cancel fullscreen
-      document.exitFullscreen().then(() => {
-        // append fullscreen element into <html> after exit timing
-        document.documentElement.appendChild(fs);
+    canvas.toBlob(async () => {
+      write("exitFullscreen()");
+      await document.exitFullscreen();
 
-        // If bug reproduces:
-        // omnibox/address bar may remain hidden
-        stage.textContent =
-          "Exited fullscreen. Check whether omnibox restored.";
-      });
+      // append fullscreen element into <html>
+      document.documentElement.appendChild(fs);
+
+      write("Moved fullscreen node into <html> after exit.");
+      write("If bug reproduces, mobile omnibox stays hidden.");
     });
 
-  } catch (e) {
-    console.error(e);
-    stage.textContent = e.message;
+  } catch (err) {
+    write("Error: " + err.message);
   }
-};
+}
+
+/*
+ Use change because tapping a select option is a trusted user gesture
+*/
+sel.addEventListener("change", () => {
+  if (sel.value === "Run") run();
+});
 </script>
 </body>
 </html>
