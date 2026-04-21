@@ -1,28 +1,40 @@
-<!DOCTYPE html>
-<html lang="en">
-    <head>
-        <title>PoC</title>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-        <script>
-            onclick = async () => {
-                (async () => {
-                    let contacts = await navigator.contacts.select(["name"], {});
-                    document.write(`
-                        <h1>
-                            <font color="red">Leaked information:</font> ${contacts[0]["name"]}</font>
-                        </h1>
-                    `);
-                })();
-                open("https://www.google.com", "PoC", "_blank");
-            }
-        </script>
-    </head>  
-    <body>
-        <br><br><br>
-        <center>
-            <h1>Click anywhere on the page to show the Contact dialog over a cross-origin page!</h1>
-        </center>
-    </body>
-  </body>
+<html>
+
+
+<h1>Press Enter 3-4 times</h1>
+
+
+
 </html>
+
+<script>
+
+window.onkeypress = function(e) { 
+triggerDownload()
+triggerDownload2()
+
+}
+
+
+
+  function triggerDownload() {
+   window.alert(1)
+    var a = document.createElement('a');
+    a.download = "harmless.txt";
+    a.href="data:text/plain,This is an evil executable"
+	a.click();
+  }
+  
+    function triggerDownload2() {
+	 window.alert(1)
+    var a = document.createElement('a');
+    //a.download = "test-image.png";
+	a.download = "harmless.txt";
+    //a.href = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAABC0lEQVQYlTXPPUsCYQDA8b/e04tdQR5ZBpE3NAR6S0SDVDZKDQ2BY9TUy1foE0TQ1Edo6hOEkyUG0QuBRtQgl0hnenVdnZD5eLbU7xv8Avy5X16KhrQBg47EtpziXO6qBhAEeNEm0qr7VdBcLxt2mlnNbhVu0NMAgdj1wvjOoX2xdSt0L7MGgx2GGid8yLrJvJMUkbKfOF8N68bUIqcz2wQR7GUcYvJIr1dFQijvkh89xGV6BPPMwvMF/nQXJMgWiM+KLPX2tc0HNa/HUxDv2owpx7xV+023Hiwpdt7yhmcjj9/NdrIhn8LrPVmotctWVd01Nt27wH9T3YhHU5O+sT/6SuVZKa4cNGoAv/ZMas7pC/KaAAAAAElFTkSuQmCC";
+    a.href="data:text/plain,This is an evil executable"
+	a.click();
+  }
+  
+
+
+</script>
