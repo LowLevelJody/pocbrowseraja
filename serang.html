@@ -2,50 +2,90 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Android Intent Lab</title>
+  <title>Android Minibar Race Lab</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="/assets/lab.css">
+  <style>
+    .tall {
+      min-height: 190vh;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      padding: 18px 0 40vh;
+    }
+    .race-box {
+      margin-top: 42vh;
+      padding: 18px;
+      border: 1px solid rgba(16,16,16,0.14);
+      border-radius: 18px;
+      background: rgba(255,255,255,0.82);
+      box-shadow: 0 16px 40px rgba(16,16,16,0.08);
+    }
+    .fake-bar {
+      position: sticky;
+      bottom: 12px;
+      margin-top: auto;
+      width: min(520px, 100%);
+      padding: 10px 14px;
+      border-radius: 999px;
+      color: #fff;
+      background: linear-gradient(90deg, #9a3412, #b45309);
+      box-shadow: 0 10px 28px rgba(0,0,0,0.22);
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity .18s ease, transform .18s ease;
+      pointer-events: none;
+    }
+    .fake-bar.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
 </head>
-<body data-case-id="android-intent-lab">
+<body data-case-id="android-minibar-race">
+  <div class="fake-topbar"><div class="fake-url"><span class="dot"></span><strong>Case:</strong> Android minibar / keyboard / fullscreen / alert return races</div></div>
   <div class="shell">
     <section class="hero">
       <div class="panel">
-        <span class="badge">Seeds: 329890199, 426480606, 363930141, 461532432</span>
-        <h1>Android Intent + Deep Link Lab</h1>
-        <p>Stress `tel:`, `sms:`, `intent:`, fallback URLs, and browser-state recovery around external launches. Use this in Android Chrome and from app-opened Custom Tabs when possible.</p>
+        <span class="badge">Seeds: 467448811, 461532432, 454354281, 452392032</span>
+        <h1>Android Minibar Race Lab</h1>
+        <p>This page reproduces the exact modern trigger family: hide browser chrome by scrolling, focus a field, then fire alert, navigation, fullscreen exit, or external-launch return.</p>
         <div class="actions">
-          <a class="btn warn" id="launch-tel" href="#">Launch `tel:`</a>
-          <a class="btn alt" id="launch-sms" href="#">Launch `sms:`</a>
-          <a class="btn" id="launch-intent" href="#">Launch `intent:`</a>
-          <a class="btn alt" id="launch-custom-scheme" href="#">Launch custom scheme</a>
-          <a class="btn alt" id="launch-fallback" href="#">Intent with fallback</a>
-          <button class="warn" id="popup-then-intent" data-log-click="popup-then-intent">Popup then intent</button>
+          <button id="scroll-mid" data-log-click="scroll-mid">Scroll to trigger zone</button>
+          <button class="alt" id="show-fake" data-log-click="show-fake">Show fake bar</button>
+          <button class="warn" id="alert-race" data-log-click="alert-race">Focus then alert</button>
+          <button class="alt" id="nav-race" data-log-click="nav-race">Focus then delayed nav</button>
+          <button class="alt" id="fullscreen-race" data-log-click="fullscreen-race">Focus then fullscreen race</button>
+          <button class="warn" id="intent-race" data-log-click="intent-race">Focus then intent</button>
           <button class="alt" id="save">Save log</button>
         </div>
       </div>
       <div class="panel">
         <h2>Manual checks</h2>
         <ul>
-          <li>Does the address bar, minibar, or bottom bar stay truthful before and after the external-launch UI appears?</li>
-          <li>If the intent falls back into Chrome, does the recovered page state still match the visible trust surface?</li>
-          <li>In split view or Custom Tab entry points, does protocol UI visually belong to the wrong page or stale origin?</li>
+          <li>Scroll until the real omnibox/minibar auto-hides, then focus the textarea.</li>
+          <li>Check whether the minibar is blank, stale, missing, or delayed after alert, return, or fullscreen exit.</li>
+          <li>In split view, verify whether the mini origin bar appears above the virtual keyboard at all.</li>
         </ul>
       </div>
     </section>
 
     <section class="grid">
-      <div class="panel">
-        <h2>Controls</h2>
-        <div class="inputs">
-          <label>Phone <input id="phone" value="+1234567890"></label>
-          <label>Intent package <input id="intent-package" value="com.android.dialer"></label>
-          <label>Custom scheme <input id="custom-scheme" value="faceviewer://arvr.google.com/faceviewer?arbi=1&amp;wturl="></label>
-          <label>Fallback label <input id="fallback-label" value="Trusted Payments Recovery"></label>
-          <label>Delay ms <input id="delay" value="2500"></label>
-          <textarea id="notes" rows="6">Android recipe: open this page in Chrome, scroll to hide controls, focus an input elsewhere if needed, trigger popup-then-intent, cancel the external launch, then watch minibar and origin recovery. Repeat from split view and from an app-opened Custom Tab if you have a convenient test app.</textarea>
+      <div class="panel" style="grid-column: 1 / -1;">
+        <div class="tall">
+          <div class="race-box" id="trigger-box">
+            <h2>Trigger zone</h2>
+            <p>Android recipe from current public fixes: scroll here so browser controls are minimized, tap the textarea, and then trigger one of the race buttons.</p>
+            <div class="inputs">
+              <textarea id="race-input" rows="6">Tap here after scrolling so the keyboard shows. Then run alert, delayed navigation, fullscreen race, or external-launch return. Watch the browser-managed minibar/origin region, not just page content.</textarea>
+              <label>Delayed nav label <input id="nav-label" value="Post keyboard delayed target"></label>
+              <label>Intent package <input id="intent-package" value="com.android.dialer"></label>
+            </div>
+          </div>
+          <div class="fake-bar" id="fake-bar">accounts.google.com | Session verified</div>
         </div>
       </div>
-      <div class="panel">
+      <div class="panel" style="grid-column: 1 / -1;">
         <h2>Log</h2>
         <div class="log" data-log></div>
       </div>
@@ -56,78 +96,73 @@
     import { bindCommon, log, saveLog } from '/assets/lab.js';
     bindCommon();
 
-    const phone = document.getElementById('phone');
+    const fakeBar = document.getElementById('fake-bar');
+    const raceInput = document.getElementById('race-input');
+    const navLabel = document.getElementById('nav-label');
     const intentPackage = document.getElementById('intent-package');
-    const customScheme = document.getElementById('custom-scheme');
-    const fallbackLabel = document.getElementById('fallback-label');
-    const delay = document.getElementById('delay');
 
-    function fallbackUrl() {
-      const slow = `/api/slow?ms=${encodeURIComponent(delay.value)}&label=${encodeURIComponent(fallbackLabel.value)}`;
-      return new URL(`/api/redirect?to=${encodeURIComponent(slow)}`, location.origin).toString();
+    function focusInput() {
+      raceInput.focus();
+      raceInput.setSelectionRange(raceInput.value.length, raceInput.value.length);
+      log('race-input-focused');
     }
 
-    function telUrl() {
-      return `tel:${phone.value}`;
+    function delayedNavUrl() {
+      return `/api/slow?ms=2600&label=${encodeURIComponent(navLabel.value)}`;
     }
 
-    function smsUrl() {
-      return `sms:${phone.value}?body=${encodeURIComponent('hello from android-intent-lab')}`;
+    function intentUrl() {
+      const fallback = new URL(delayedNavUrl(), location.origin).toString();
+      return `intent://1234567890#Intent;scheme=tel;package=${intentPackage.value};S.browser_fallback_url=${encodeURIComponent(fallback)};end`;
     }
 
-    function dialerIntentUrl(withFallback = false) {
-      const parts = [
-        `intent://${encodeURIComponent(phone.value.replace(/^\+/, ''))}#Intent`,
-        'scheme=tel',
-        `package=${intentPackage.value}`,
-      ];
-      if (withFallback) {
-        parts.push(`S.browser_fallback_url=${encodeURIComponent(fallbackUrl())}`);
-      }
-      parts.push('end');
-      return parts.join(';');
-    }
-
-    function customSchemeUrl() {
-      return `${customScheme.value}${encodeURIComponent(fallbackUrl())}`;
-    }
-
-    function launch(url, label, target = '_self') {
-      log(`${label}:${url}`);
-      if (target === '_blank') {
-        window.open(url, '_blank', 'noopener');
-      } else {
-        location.href = url;
-      }
-    }
-
-    document.getElementById('launch-tel').addEventListener('click', (event) => {
-      event.preventDefault();
-      launch(telUrl(), 'tel');
+    document.getElementById('scroll-mid').addEventListener('click', () => {
+      document.getElementById('trigger-box').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      log('scroll-mid');
     });
-    document.getElementById('launch-sms').addEventListener('click', (event) => {
-      event.preventDefault();
-      launch(smsUrl(), 'sms');
+    document.getElementById('show-fake').addEventListener('click', () => {
+      fakeBar.classList.toggle('show');
+      log(`fake-bar:${fakeBar.classList.contains('show')}`);
     });
-    document.getElementById('launch-intent').addEventListener('click', (event) => {
-      event.preventDefault();
-      launch(dialerIntentUrl(false), 'intent');
-    });
-    document.getElementById('launch-custom-scheme').addEventListener('click', (event) => {
-      event.preventDefault();
-      launch(customSchemeUrl(), 'custom-scheme');
-    });
-    document.getElementById('launch-fallback').addEventListener('click', (event) => {
-      event.preventDefault();
-      launch(dialerIntentUrl(true), 'intent-fallback');
-    });
-    document.getElementById('popup-then-intent').addEventListener('click', () => {
-      const helper = window.open(`/api/slow?ms=1200&label=${encodeURIComponent('trusted-helper-before-intent')}`, '_blank', 'noopener,width=420,height=420');
-      log('popup-opened-before-intent');
+    document.getElementById('alert-race').addEventListener('click', () => {
+      focusInput();
       setTimeout(() => {
-        helper?.focus();
-        launch(dialerIntentUrl(true), 'popup-then-intent');
-      }, 500);
+        log('alert-open');
+        alert('Observe whether the minibar or bottom address bar comes back truthfully after dismiss.');
+      }, 420);
+    });
+    document.getElementById('nav-race').addEventListener('click', () => {
+      focusInput();
+      setTimeout(() => {
+        log(`nav-race:${delayedNavUrl()}`);
+        location.href = delayedNavUrl();
+      }, 420);
+    });
+    document.getElementById('fullscreen-race').addEventListener('click', async () => {
+      focusInput();
+      try {
+        await document.documentElement.requestFullscreen();
+        log('entered-fullscreen-from-minibar-race');
+      } catch (error) {
+        log(`fullscreen-request-failed:${error}`);
+        return;
+      }
+      setTimeout(async () => {
+        try {
+          await document.exitFullscreen();
+          log('fullscreen-exit-from-minibar-race');
+        } catch (error) {
+          log(`fullscreen-exit-failed:${error}`);
+        }
+      }, 160);
+    });
+    document.getElementById('intent-race').addEventListener('click', () => {
+      focusInput();
+      setTimeout(() => {
+        const url = intentUrl();
+        log(`intent-race:${url}`);
+        location.href = url;
+      }, 420);
     });
     document.getElementById('save').addEventListener('click', () => saveLog());
   </script>
