@@ -25,5 +25,10 @@ var waitUntil = f => new Promise(r => {
 var log = msg => div.innerHTML += "<p>" + msg + "</p>";
 var failed = e => log(e +", line "+ e.lineNumber);
 </script>
+
+  <video id="video" height="120" width="160" autoplay></video><br>
+<div id="div"></div>
+<script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+  
 </body>
 </html>
