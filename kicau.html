@@ -1,28 +1,21 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Camera Permission Test</title>
-</head>
-<body>
+ <video id="video" height="120" width="160" autoplay></video><br>
+  <div id="div"></div>
+  <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+  <script>
+  var constraints = { video: true, audio: true };
 
-<button onclick="requestCamera()">Open Camera</button>
-<video id="video" autoplay playsinline width="400"></video>
+  var gum = () => navigator.mediaDevices.getUserMedia(constraints)
+    .then(stream => video.srcObject = stream)
+    .then(() => new Promise(r => video.onloadedmetadata = r))
+    .then(() => waitUntil(() => video.paused))
+    .then(() => gum())
+    .catch(failed);
 
-<script>
-async function requestCamera() {
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-            video: true
-        });
+  gum();
 
-        document.getElementById("video").srcObject = stream;
-        console.log("Camera access granted");
-    } catch (err) {
-        console.log("Camera access denied:", err);
-        alert("Camera permission denied");
-    }
-}
-</script>
-
-</body>
-</html>
+  var waitUntil = f => new Promise(r => {
+    var iv = setInterval(() => f() && r(clearInterval(iv)), 200);
+  });
+  var log = msg => div.innerHTML += "<p>" + msg + "</p>";
+  var failed = e => log(e + ", line " + e.lineNumber);
+  </script>
