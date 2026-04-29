@@ -1,34 +1,28 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="utf-8">
+    <title>Camera Permission Test</title>
 </head>
 <body>
 
-<iframe style="display:none" src="http://www.google.com　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　@l0.cm/fg.html"></iframe>
+<button onclick="requestCamera()">Open Camera</button>
+<video id="video" autoplay playsinline width="400"></video>
 
 <script>
-var constraints = { video: true, audio: true };
+async function requestCamera() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: true
+        });
 
-var gum = () => navigator.mediaDevices.getUserMedia(constraints)
-  .then(stream => video.srcObject = stream)
-  .then(() => new Promise(r => video.onloadedmetadata = r))
-  .then(() => waitUntil(() => video.paused))
-  .then(() => gum())
-  .catch(failed);
-
-gum();
-
-var waitUntil = f => new Promise(r => {
-  var iv = setInterval(() => f() && r(clearInterval(iv)), 200);
-});
-var log = msg => div.innerHTML += "<p>" + msg + "</p>";
-var failed = e => log(e +", line "+ e.lineNumber);
+        document.getElementById("video").srcObject = stream;
+        console.log("Camera access granted");
+    } catch (err) {
+        console.log("Camera access denied:", err);
+        alert("Camera permission denied");
+    }
+}
 </script>
 
-  <video id="video" height="120" width="160" autoplay></video><br>
-<div id="div"></div>
-<script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
-  
 </body>
 </html>
