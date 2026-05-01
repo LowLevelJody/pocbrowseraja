@@ -8,7 +8,6 @@
 </style>
 <h1>word joiner download probe</h1>
 <p>Run </p>
-<label>Server <input id="server" size="40" value="http://127.0.0.1:8767"></label><br>
 <label>Prefix <input id="prefix" size="28" value="invoice.pdf"></label>
 <label>Joiners <input id="spaces" size="5" value="220"></label>
 <label>Suffix <input id="suffix" size="8" value=".exe"></label><br>
@@ -25,14 +24,12 @@ function download(fallback) {
   const prefix = document.getElementById('prefix').value;
   const spaces = document.getElementById('spaces').value;
   const suffix = document.getElementById('suffix').value;
-  const url = `${server}/download?case=custom&prefix=${encodeURIComponent(prefix)}&spaces=${encodeURIComponent(spaces)}&fill=wordjoiner&suffix=${encodeURIComponent(suffix)}&fallback=${fallback ? '1' : '0'}`;
   const a = document.createElement('a');
   a.href = url;
   a.download = '';
   document.body.append(a);
   a.click();
   a.remove();
-  log(url);
 }
 document.getElementById('download').onclick = () => download(true);
 document.getElementById('downloadNoFallback').onclick = () => download(false);
