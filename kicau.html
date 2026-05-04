@@ -1,21 +1,34 @@
- <video id="video" height="120" width="160" autoplay></video><br>
-  <div id="div"></div>
-  <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
-  <script>
-  var constraints = { video: true, audio: true };
+<script>
+    var stealFocusWindow;
 
-  var gum = () => navigator.mediaDevices.getUserMedia(constraints)
-    .then(stream => video.srcObject = stream)
-    .then(() => new Promise(r => video.onloadedmetadata = r))
-    .then(() => waitUntil(() => video.paused))
-    .then(() => gum())
-    .catch(failed);
+    function launchStealFocusWindow() {
+        stealFocusWindow = window.open('pleasewait.html', 'aaa', 'width=1,height=1');
+        stealFocusWindow.document.write('<h2>Click "requestFullscreen"</h2>')
+    }
 
-  gum();
+    function launchRequestFullScreenWindow() {
+        stealFocusWindow.resizeTo(9999, 9999)
 
-  var waitUntil = f => new Promise(r => {
-    var iv = setInterval(() => f() && r(clearInterval(iv)), 200);
-  });
-  var log = msg => div.innerHTML += "<p>" + msg + "</p>";
-  var failed = e => log(e + ", line " + e.lineNumber);
-  </script>
+        var rfsWindow = window.open('', 'rfs', 'test');
+        rfsWindow.document.write(`
+            <script>
+                function rfs() {
+                    document.documentElement.requestFullscreen()
+                    setTimeout(function() {
+                        window.opener.launchStealFocusWindow();
+                    }, 50)
+
+                    setTimeout(function() {
+                        window.opener.stealFocusWindow.close();
+                    }, 4000)
+                }
+            <\/script>
+
+            <button onclick="rfs()">requestFullscreen</button>
+    `)
+
+    }
+</script>
+
+<button onclick="launchStealFocusWindow()">Launch stealFocusWindow</button>
+<button onclick="launchRequestFullScreenWindow()">Launch requestFullscreenWindow</button>
