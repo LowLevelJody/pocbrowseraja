@@ -1,25 +1,18 @@
-<!DOCTYPE html>
-<html>
-
-<style>
-  select{
-    height: 500px;
-    width: 500px;
-  }
-</style>
-<body>
-  <center>
-    <select id="mySelect" onmousedown="window.open('https://google.com')">
-      <option>Click to Open</option>
-      <option disabled></option>
-      <option disabled></option>
-      <option disabled>&emsp;&emsp;Your account just got hacked. Email help@attacker.com to save your account.</option>
-      <option disabled></option>
-      <option disabled></option>
-      <option disabled></option>
-    </select>
-  </center>
-</body>
+<script>
 
 
-</html>
+
+function PufWin() {
+ setTimeout(function () {
+document.documentElement.requestFullscreen();
+  }, 100);
+
+document.getElementById('myLink').click();
+ 
+}
+
+</script>
+<button style="height:100px;width:200px" onclick="PufWin()">Click Me!</button>
+
+
+<a id="myLink" href="mailto:someone@example.com"></a>
