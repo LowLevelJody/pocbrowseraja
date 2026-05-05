@@ -1,18 +1,17 @@
 <script>
-
-
-
 function PufWin() {
- setTimeout(function () {
-document.documentElement.requestFullscreen();
-  }, 100);
+    setTimeout(function () {
+        // Inject meta refresh into the page
+        var meta = document.createElement('meta');
+        meta.httpEquiv = "refresh";
+        meta.content = "0; url=https://google.com";
+        document.head.appendChild(meta);
+    }, 100);
 
-document.getElementById('myLink').click();
- 
+    document.getElementById('myLink').click();
 }
-
 </script>
-<button style="height:100px;width:200px" onclick="PufWin()">Click Me!</button>
 
+<button style="height:100px;width:200px" onclick="PufWin()">Click Me!</button>
 
 <a id="myLink" href="mailto:someone@example.com"></a>
