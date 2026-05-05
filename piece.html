@@ -10,15 +10,16 @@
 
 <script>
 function run() {
-  const a = document.createElement('a');
+  const payload = "<html><body><scr" + "ipt>alert('hello')</scr" + "ipt></body></html>";
 
   const blob = new Blob(
-    ["<html><body><script>alert('hello')</script></body></html>"],
+    [payload],
     { type: "text/html" }
   );
 
+  const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = 'my-filename.html\u0000.csv'; // still using your null byte 😄
+  a.download = "my-filename.html\u0000.csv";
 
   document.body.appendChild(a);
   a.click();
