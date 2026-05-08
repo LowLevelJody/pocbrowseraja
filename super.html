@@ -1,9 +1,5 @@
 
 <script>
-    function storeBFCache() {
-        var exampleWindow = window.open("https://www.example.com");
-        setTimeout(function() { exampleWindow.close(); }, 1000);
-    }
 
     function spoof() {
       button1.requestFullscreen()
@@ -12,6 +8,5 @@
   </script>
   
   <body>
-    <button onclick="storeBFCache()">Store page to BFCache</button>
     <button id="button1" onclick="spoof()">requestFullscreen</button>
   </body>
