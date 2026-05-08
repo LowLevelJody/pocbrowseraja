@@ -5,32 +5,6 @@ function launchInPopup() {
     window.open(location.href, "", "newWindow")
 }
 
-function calculatePrimes(iterations, multiplier) {
-    var primes = [];
-    for (var i = 0; i < iterations; i++) {
-        var candidate = i * (multiplier * Math.random());
-        var isPrime = true;
-        for (var c = 2; c <= Math.sqrt(candidate); ++c) {
-            if (candidate % c === 0) {
-                // not prime
-                isPrime = false;
-                break;
-            }
-        }
-        if (isPrime) {
-            primes.push(candidate);
-        }
-    }
-    return primes;
-}
-
-function blockEventLoop() {
-    calculatePrimes(20100, 10000)
-}
-
-function launchOrRefocus() {
-     spoofWindow = window.open("https://www.example.com", "spoofWindow" , "newWindow")
-}
 
 function rfs() {
   setInterval(function(){ 
@@ -44,18 +18,9 @@ function rfs() {
     Launch Main Window
   </button>
 
-<button onmousedown="launchOrRefocus()">
-    Launch Spoof Window
-  </button>
-
-  <button onclick="blockEventLoop()">
-    Block Event Loop
-  </button>
   
   <button onmousedown="rfs()">
     requestFullscreen
   </button>
   
-  <button onmousedown="launchOrRefocus()">
-    reFocus
-</button>
+
