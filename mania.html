@@ -11,17 +11,5 @@
 
 <b>Right click, wait for redirection, then click "view background image"</b>
 
-<script>
-if (!location.hash) {
-  location.href = location.href + "#history-entry";
-}
-
-window.oncontextmenu = e => {
-  setTimeout(() => {
-    history.back();
-  }, 100);
-};
-</script>
-
 </body>
 </html>
