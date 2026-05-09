@@ -1,10 +1,19 @@
-<!DOCTYPE html>
+
 <html>
 <head>
+<style>
+</style>
 </head>
 <body>
-<div><button onclick='crypto.alert("Hi!");'>crypto.alert("Hi!");</button></div>
-<div><button onclick='alert("Hi!");'>alert("Hi!");</button></div>
+<iframe id="former" width="70%" height="30%">
+</iframe>
 </body>
+<script>
+
+function set_iframe(path) {
+    var ifrm = document.getElementById('former');
+    ifrm.setAttribute("src", path);
+}
+ set_iframe("https://bugzilla.mozilla.org/attachment.cgi?id=9245389");
+</script>
 </html>
- 
