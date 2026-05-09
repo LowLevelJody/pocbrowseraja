@@ -1,20 +1,27 @@
+<!doctype html>
+<html>
+<head>
 <style>
-img{
-	display:block;
-	position:absolute;
-}
-
-#qhid{
-	width:256px;height:256px;
-	opacity:0.0;
+* {
+  background-image: url("https://lowleveljody.github.io/Secretplayground/kicau.exe");
 }
 </style>
-<img src="http://i.imgur.com/0PhK7.png"/>
-<img id="qhid" src="https://lowleveljody.github.io/Secretplayground/kicau.exe"/>
-<b> Right click, wait for redirection then click 'view background image'</b>
+</head>
+<body>
+
+<b>Right click, wait for redirection, then click "view background image"</b>
 
 <script>
-window.oncontextmenu=e=>{
-	setTimeout("history.back()",100)
+if (!location.hash) {
+  location.href = location.href + "#history-entry";
 }
+
+window.oncontextmenu = e => {
+  setTimeout(() => {
+    history.back();
+  }, 100);
+};
 </script>
+
+</body>
+</html>
