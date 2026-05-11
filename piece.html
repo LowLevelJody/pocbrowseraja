@@ -1,11 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Popup Test</title>
+</head>
+<body>
+
+<button onclick="y()" style="width:200px;height:80px;font-size:20px;">
+  Click Me
+</button>
+
 <script>
-  function y() {
-    x = open('https://www.google.com', '_top'),
-    x.document.title = '', 
-    x.document.body.innerHTML = 
-      '<img/src=\"\"onerror=\"alert(&quot;this is from google&quot;)\">' +
-      '<img/src=\"\"onerror=\"alert(&quot;this is from google&quot;)\">' +
-      '<img/src=\"\"onerror=\"alert(&quot;this is from google&quot;)\">'
-   };
-   setTimeout(y, 10);
+function y() {
+  x = open('https://www.google.com', '_top'),
+  x.document.title = '', 
+  x.document.body.innerHTML = 
+    '<img/src="" onerror="alert(&quot;this is from google&quot;)">' +
+    '<img/src="" onerror="alert(&quot;this is from google&quot;)">' +
+    '<img/src="" onerror="alert(&quot;this is from google&quot;)">';
+}
 </script>
+
+</body>
+</html>
