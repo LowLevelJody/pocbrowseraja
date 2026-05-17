@@ -1,6 +1,35 @@
 <!DOCTYPE html>
-<div><button onclick="w = window.open('data:text/html,', null, 'width=300,height=300');">Open an empty window</button></div>
-<div><button onclick="w = window.open('data:text/html,<div style=width:2000px;height:2000px;background:lightgreen;></div>', null, 'width=300,height=300');">Open a full window</button></div>
-<div><button onclick="w.resizeTo(1, 1);">w.resizeTo(1, 1);</div>
-<div><button onclick="w.resizeTo(2000, 2000);">w.resizeTo(2000, 2000);</div>
-<div><button onclick="w.sizeToContent();">w.sizeToContent();</button></div>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Blob Protocol Navigation Test</title>
+</head>
+<body>
+  <h1>Navigation with Blob and Other Protocols</h1>
+
+  <ul>
+    <li><a href="blob:https://abc.com" target="_blank">Open blob:https://abc.com</a></li>
+    <li><a href="blob://" target="_blank">Open blob://</a></li>
+    <li><a href="blob:/" target="_blank">Open blob:/</a></li>
+    <li><a href="blob:///" target="_blank">Open blob:///</a></li>
+    <li><a href="data:text/html,<h1>Hi</h1>" target="_blank">Open data:text/html</a></li>
+    <li><a href="javascript:alert('Test')" target="_blank">Open javascript:alert()</a></li>
+    <li><a href="filesystem:https://abc.com/temporary/test.txt" target="_blank">Open filesystem:https://abc.com</a></li>
+    <li><a href="abc.com" target="_blank">Open abc.com (without protocol)</a></li>
+	<a href="blob:/https://example.com/123456" target="_blank">Click here</a>
+  </ul>
+
+  <script>
+    // Create a blob URL that navigates to a simulated page
+    const htmlContent = `<h1>This is a blob URL page</h1><p>You are inside a blob context.</p>`;
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const blobUrl = URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.innerText = 'Open Blob Page (real blob)';
+    link.target = '_blank';
+    document.body.appendChild(link);
+  </script>
+</body>
+</html>
