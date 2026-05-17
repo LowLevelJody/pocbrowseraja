@@ -1,3 +1,4 @@
+<!doctype html>
   <meta charset="utf-8">
   <title>File Picker Popup Spoof PoC</title>
 
@@ -9,8 +10,8 @@
 
   <script>
   function startPoc() {
+    spoof();
     document.getElementById('picker').click();
-    setTimeout(spoof, 200);
     return true;
   }
 
@@ -25,3 +26,4 @@
     }
   }
   </script>
+
