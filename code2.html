@@ -1,15 +1,10 @@
-<!doctype html>
+ <!doctype html>
   <meta charset="utf-8">
-  <title>Preview + popup spoof test</title>
+  <title>Preview label test</title>
 
-  <a
-    href="https://www.facebook.com:1234"
-    target="ux"
-    title="Facebook"
-    aria-label="Facebook"
-    onclick="setTimeout(spoof, 200)"
-  >
-    <h1>Facebook</h1>
+  <a href="https://www.facebook.com:1234" target="ux" onclick="setTimeout(spoof, 200)">
+    <span style="position:absolute;left:-9999px;top:auto">hi from facebook</span>
+    <h1>hi from facebook</h1>
   </a>
 
   <script>
@@ -17,10 +12,11 @@
     var t = window.open('javascript:alert(document.domain)', 'ux');
     try {
       t.document.open();
-      t.document.write('<!doctype html><title>Facebook</title><h1>Spoofing</h1>');
+      t.document.write('<!doctype html><title>Facebook</title><h1>hi from facebook</h1>');
       t.document.close();
     } catch (e) {
       console.log(e);
     }
   }
   </script>
+
