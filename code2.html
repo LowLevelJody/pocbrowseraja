@@ -1,13 +1,26 @@
-  <!doctype html>
+<!doctype html>
   <meta charset="utf-8">
-  <title>Preview label spoof test</title>
+  <title>Preview + popup spoof test</title>
 
   <a
     href="https://www.facebook.com:1234"
     target="ux"
     title="Facebook"
     aria-label="Facebook"
+    onclick="setTimeout(spoof, 200)"
   >
-    <h1>click here</h1>
+    <h1>Facebook</h1>
   </a>
 
+  <script>
+  function spoof() {
+    var t = window.open('javascript:alert(document.domain)', 'ux');
+    try {
+      t.document.open();
+      t.document.write('<!doctype html><title>Facebook</title><h1>Spoofing</h1>');
+      t.document.close();
+    } catch (e) {
+      console.log(e);
+    }
+  }
+  </script>
