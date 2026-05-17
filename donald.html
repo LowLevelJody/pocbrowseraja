@@ -1,0 +1,6 @@
+<!DOCTYPE html>
+<div><button onclick="w = window.open('data:text/html,', null, 'width=300,height=300');">Open an empty window</button></div>
+<div><button onclick="w = window.open('data:text/html,<div style=width:2000px;height:2000px;background:lightgreen;></div>', null, 'width=300,height=300');">Open a full window</button></div>
+<div><button onclick="w.resizeTo(1, 1);">w.resizeTo(1, 1);</div>
+<div><button onclick="w.resizeTo(2000, 2000);">w.resizeTo(2000, 2000);</div>
+<div><button onclick="w.sizeToContent();">w.sizeToContent();</button></div>
